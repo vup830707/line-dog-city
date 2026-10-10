@@ -1,0 +1,505 @@
+{
+  "seeds": 32,
+  "hours": 12,
+  "elapsedSec": 32.931,
+  "config": {
+    "offlineCapHours": 8,
+    "tickMs": 1000,
+    "wishSuccessRate": 0.6,
+    "ichibanRestockTicks": 40,
+    "startingMoney": 800
+  },
+  "idle": {
+    "seeds": 32,
+    "finalMoneyMedian": 255259.5,
+    "finalMoneyP10": 253816,
+    "finalMoneyP90": 256150.6,
+    "hour1Median": 24129,
+    "hour3Median": 67148,
+    "grossHourMedian": [
+      23329,
+      22074.5,
+      20918,
+      20884,
+      20924,
+      20894,
+      20862,
+      20916,
+      20872,
+      20899,
+      20916,
+      20894
+    ],
+    "collectionComplete": 26,
+    "collectionHourMedian": 1.7377777777777776,
+    "boxOpensMedian": 1,
+    "boxOpensMax": 2,
+    "drawsMedian": 70.5,
+    "finalTicketsMedian": 10,
+    "stalled": 32,
+    "stallHourMedian": 2.4955555555555557,
+    "lastPrizeSeeds": 1,
+    "minOpDelta": 0,
+    "maxQuietMinMedian": 0.48333333333333334,
+    "maxQuietMinMax": 0.6,
+    "maxUnaffordableMinMedian": 0,
+    "maxUnaffordableMinMax": 0,
+    "safeInteger": true,
+    "endStockMedian": {
+      "ice": 2,
+      "can": 0,
+      "charge": 0,
+      "fortune": 0
+    },
+    "milestones": {
+      "hire-1": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "hire-2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "ice-lv2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "can-lv2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "charge-lv2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "fortune-lv2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "wish-placed": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "collection": {
+        "seeds": 26,
+        "medianHour": 1.7377777777777776
+      },
+      "letter-sparrow": {
+        "seeds": 32,
+        "medianHour": 0.0016666666666666668
+      },
+      "letter-bear": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "bear-seen": {
+        "seeds": 0,
+        "medianHour": null
+      }
+    }
+  },
+  "reasonable": {
+    "seeds": 32,
+    "finalMoneyMedian": 666382.5,
+    "finalMoneyP10": 662328.7000000001,
+    "finalMoneyP90": 739714.5,
+    "hour1Median": 47578,
+    "hour3Median": 163001.5,
+    "grossHourMedian": [
+      63682.5,
+      62307.5,
+      56195,
+      56017,
+      55873,
+      56315,
+      55975,
+      56014,
+      56295,
+      55818,
+      55972,
+      56036
+    ],
+    "collectionComplete": 26,
+    "collectionHourMedian": 1.7369444444444446,
+    "boxOpensMedian": 1,
+    "boxOpensMax": 2,
+    "drawsMedian": 70.5,
+    "finalTicketsMedian": 11,
+    "stalled": 32,
+    "stallHourMedian": 2.6174999999999997,
+    "lastPrizeSeeds": 1,
+    "minOpDelta": 0,
+    "maxQuietMinMedian": 0.21666666666666667,
+    "maxQuietMinMax": 0.25,
+    "maxUnaffordableMinMedian": 1.5333333333333334,
+    "maxUnaffordableMinMax": 1.7166666666666666,
+    "safeInteger": true,
+    "endStockMedian": {
+      "ice": 12,
+      "can": 12,
+      "charge": 12,
+      "fortune": 12
+    },
+    "milestones": {
+      "hire-1": {
+        "seeds": 32,
+        "medianHour": 0.002777777777777778
+      },
+      "hire-2": {
+        "seeds": 32,
+        "medianHour": 0.10138888888888889
+      },
+      "ice-lv2": {
+        "seeds": 32,
+        "medianHour": 0.04166666666666667
+      },
+      "can-lv2": {
+        "seeds": 32,
+        "medianHour": 0.027777777777777776
+      },
+      "charge-lv2": {
+        "seeds": 32,
+        "medianHour": 0.10972222222222222
+      },
+      "fortune-lv2": {
+        "seeds": 32,
+        "medianHour": 0.1388888888888889
+      },
+      "wish-placed": {
+        "seeds": 26,
+        "medianHour": 1.738888888888889
+      },
+      "collection": {
+        "seeds": 26,
+        "medianHour": 1.7369444444444446
+      },
+      "letter-sparrow": {
+        "seeds": 32,
+        "medianHour": 0.0016666666666666668
+      },
+      "letter-bear": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "bear-seen": {
+        "seeds": 26,
+        "medianHour": 1.7409722222222221
+      }
+    }
+  },
+  "blueprint": {
+    "seeds": 32,
+    "finalMoneyMedian": 552992.5,
+    "finalMoneyP10": 251701.4,
+    "finalMoneyP90": 565532.6,
+    "hour1Median": 21980,
+    "hour3Median": 84085.5,
+    "grossHourMedian": [
+      23160,
+      29869.5,
+      51861,
+      52095,
+      51951,
+      51900,
+      52047,
+      51924,
+      51834,
+      51945,
+      51984,
+      51915
+    ],
+    "collectionComplete": 24,
+    "collectionHourMedian": 1.7433333333333334,
+    "boxOpensMedian": 1,
+    "boxOpensMax": 2,
+    "drawsMedian": 69,
+    "finalTicketsMedian": 11,
+    "stalled": 32,
+    "stallHourMedian": 2.617916666666667,
+    "lastPrizeSeeds": 2,
+    "minOpDelta": 0,
+    "maxQuietMinMedian": 0.55,
+    "maxQuietMinMax": 0.6333333333333333,
+    "maxUnaffordableMinMedian": 0.8333333333333334,
+    "maxUnaffordableMinMax": 1.5833333333333333,
+    "safeInteger": true,
+    "endStockMedian": {
+      "ice": 12,
+      "can": 12,
+      "charge": 12,
+      "fortune": 12
+    },
+    "milestones": {
+      "hire-1": {
+        "seeds": 24,
+        "medianHour": 1.7472222222222222
+      },
+      "hire-2": {
+        "seeds": 24,
+        "medianHour": 1.75
+      },
+      "ice-lv2": {
+        "seeds": 24,
+        "medianHour": 1.75
+      },
+      "can-lv2": {
+        "seeds": 24,
+        "medianHour": 1.7472222222222222
+      },
+      "charge-lv2": {
+        "seeds": 24,
+        "medianHour": 1.7555555555555555
+      },
+      "fortune-lv2": {
+        "seeds": 24,
+        "medianHour": 1.761111111111111
+      },
+      "wish-placed": {
+        "seeds": 24,
+        "medianHour": 1.7444444444444445
+      },
+      "collection": {
+        "seeds": 24,
+        "medianHour": 1.7433333333333334
+      },
+      "letter-sparrow": {
+        "seeds": 32,
+        "medianHour": 0.012361111111111111
+      },
+      "letter-bear": {
+        "seeds": 24,
+        "medianHour": 1.7481944444444444
+      },
+      "bear-seen": {
+        "seeds": 24,
+        "medianHour": 1.7461111111111112
+      }
+    }
+  },
+  "refund": {
+    "seeds": 8,
+    "finalMoneyMedian": 280026,
+    "finalMoneyP10": 279806.4,
+    "finalMoneyP90": 280231.6,
+    "hour1Median": 94086,
+    "hour3Median": 280026,
+    "grossHourMedian": [
+      93286,
+      92955,
+      92984
+    ],
+    "collectionComplete": 0,
+    "collectionHourMedian": 0,
+    "boxOpensMedian": 270,
+    "boxOpensMax": 270,
+    "drawsMedian": 0,
+    "finalTicketsMedian": 0,
+    "stalled": 0,
+    "stallHourMedian": 0,
+    "lastPrizeSeeds": 0,
+    "minOpDelta": 0,
+    "maxQuietMinMedian": 0.4166666666666667,
+    "maxQuietMinMax": 0.4666666666666667,
+    "maxUnaffordableMinMedian": 0,
+    "maxUnaffordableMinMax": 0,
+    "safeInteger": true,
+    "endStockMedian": {
+      "ice": 1.5,
+      "can": 0,
+      "charge": 0,
+      "fortune": 0
+    },
+    "milestones": {
+      "hire-1": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "hire-2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "ice-lv2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "can-lv2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "charge-lv2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "fortune-lv2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "wish-placed": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "collection": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "letter-sparrow": {
+        "seeds": 8,
+        "medianHour": 0.0015277777777777779
+      },
+      "letter-bear": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "bear-seen": {
+        "seeds": 0,
+        "medianHour": null
+      }
+    },
+    "goldPerHour": 93075.33333333333,
+    "idleGoldPerHour": 22116
+  },
+  "missingFiguresIdle": {
+    "milkTea": 4,
+    "pajama": 3,
+    "chicken": 1,
+    "chargeTail": 2
+  },
+  "letters": {
+    "idle:sparrow": 32,
+    "reasonable:sparrow": 32,
+    "blueprint:rabbit": 32,
+    "blueprint:sparrow": 32,
+    "blueprint:hamster": 32,
+    "blueprint:otter": 32,
+    "blueprint:hedgehog": 27,
+    "blueprint:bear": 24
+  },
+  "speciesIdle": {
+    "cat": 19.49431428638975,
+    "rabbit": 21.618477978202794,
+    "hamster": 13.302087519799523,
+    "sparrow": 18.207404430364782,
+    "otter": 12.206789758623135,
+    "hedgehog": 14.919383436960684,
+    "fox": 0.25154258965933,
+    "bear": 0
+  },
+  "speciesFestivalIdle": {
+    "cat": 19.064372160347393,
+    "rabbit": 21.064693820111778,
+    "hamster": 13.006111535523301,
+    "sparrow": 17.868199911543563,
+    "otter": 12.00796107916851,
+    "hedgehog": 14.849624060150376,
+    "fox": 2.1390374331550803,
+    "bear": 0
+  },
+  "bearShareWhileWish": 0.24769129731914322,
+  "wish": {
+    "trials": 20000,
+    "mechanismRate": 0.60415,
+    "outcomeRate": 0.70285
+  },
+  "levers": {
+    "baseline": {
+      "goldPerHour": 22821.75,
+      "spawnsPerHour": 2203.75,
+      "visitMin": 1.5,
+      "visitMax": 1.5,
+      "endStock": {
+        "ice": 1.5,
+        "can": 0,
+        "charge": 0,
+        "fortune": 0
+      }
+    },
+    "no-decor": {
+      "goldPerHour": 22821.75,
+      "spawnsPerHour": 2203.75,
+      "visitMin": 1.5,
+      "visitMax": 1.5,
+      "endStock": {
+        "ice": 1.5,
+        "can": 0,
+        "charge": 0,
+        "fortune": 0
+      }
+    },
+    "stall-lv3": {
+      "goldPerHour": 23568.25,
+      "spawnsPerHour": 2203.25,
+      "visitMin": 1.5,
+      "visitMax": 1.5,
+      "endStock": {
+        "ice": 5,
+        "can": 0,
+        "charge": 0,
+        "fortune": 0
+      }
+    },
+    "restock-lv3": {
+      "goldPerHour": 63590,
+      "spawnsPerHour": 2203.25,
+      "visitMin": 1.5,
+      "visitMax": 1.5,
+      "endStock": {
+        "ice": 4,
+        "can": 4,
+        "charge": 4,
+        "fortune": 3.5
+      }
+    }
+  },
+  "reasonableWish": {
+    "casts": 16183,
+    "hits": 11348
+  },
+  "offline": [
+    {
+      "seed": 1,
+      "offline": 171029,
+      "online": 171029,
+      "match": true
+    },
+    {
+      "seed": 2,
+      "offline": 171327,
+      "online": 171327,
+      "match": true
+    },
+    {
+      "seed": 3,
+      "offline": 169628,
+      "online": 169628,
+      "match": true
+    },
+    {
+      "seed": 4,
+      "offline": 170374,
+      "online": 170374,
+      "match": true
+    }
+  ],
+  "long": {
+    "idleMoney72": 1510069,
+    "reasonableMoney72": 4018953,
+    "idleLinearSlopePerHour": 20914.245989304804,
+    "idleLinearR2": 0.99999986192311,
+    "idleLogR2": 0.9156893209097196,
+    "idleMissing": [],
+    "idleTickets": 10,
+    "idleOpens": 1,
+    "reasonableOpens": 1,
+    "reasonableMissing": [],
+    "idleSafe": true,
+    "reasonableSafe": true,
+    "idleMinDelta": 0,
+    "reasonableMinDelta": 0
+  },
+  "visitFactor": {
+    "idleMin": 1.5,
+    "idleMax": 1.5,
+    "reasonableMin": 1.5,
+    "blueprintMin": 1.5
+  }
+}
