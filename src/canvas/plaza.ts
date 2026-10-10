@@ -10,16 +10,43 @@ export interface PlazaPoint {
 }
 
 /**
- * Sixteen cobblestone slots. The back rank sits farther up the plaza (smaller y).
- * The front rank is closer to the camera. Characters walk a path in front of both.
+ * Sixteen cobblestone slots. 0–7 run along the back arc (far).
+ * 8–15 sit on the sides, nearer the camera, still facing the oval.
  */
-const BACK_X = [360, 520, 680, 840, 1000, 1160, 1320, 1480]
-const FRONT_X = [440, 600, 760, 920, 1080, 1240, 1400, 1560]
-
 export const PLAZA_SLOTS: PlazaPoint[] = [
-  ...BACK_X.map((x) => ({ x, y: 460 })),
-  ...FRONT_X.map((x) => ({ x, y: 610 })),
+  { x: 300, y: 650 },
+  { x: 520, y: 580 },
+  { x: 740, y: 530 },
+  { x: 970, y: 505 },
+  { x: 1200, y: 530 },
+  { x: 1430, y: 580 },
+  { x: 1640, y: 650 },
+  { x: 1760, y: 760 },
+  { x: 240, y: 860 },
+  { x: 430, y: 960 },
+  { x: 700, y: 900 },
+  { x: 960, y: 900 },
+  { x: 1220, y: 900 },
+  { x: 1480, y: 900 },
+  { x: 1700, y: 940 },
+  { x: 1540, y: 760 },
 ]
+
+/** Near-rank size. The far rank is drawn at 0.85 of this, which is 30% of a 1080p frame. */
+export const STALL_NEAR_H = Math.round((PLAZA_H * 0.3) / 0.85)
+export const CUSTOMER_H = Math.round(PLAZA_H * 0.11)
+export const PUPPY_H = Math.round(PLAZA_H * 0.12)
+
+const WALK = { x: 960, y: 830, rx: 360, ry: 115 }
+
+export function rankScale(index: number): number {
+  return index < 8 ? 0.85 : 1
+}
+
+export function depthScale(y: number): number {
+  const t = Math.min(1, Math.max(0, (y - 450) / (880 - 450)))
+  return 0.85 + 0.15 * t
+}
 
 export interface CoverTransform {
   scale: number
@@ -44,10 +71,24 @@ export function toScreen(point: PlazaPoint, cover: CoverTransform): PlazaPoint {
   }
 }
 
-/** Where a character stands while visiting a slot: on the path in front of the stall. */
-export function standPoint(slot: PlazaPoint): PlazaPoint {
-  const dx = (slot.x - 960) / 700
-  return { x: slot.x, y: Math.round(750 + dx * dx * 40) }
+/** A spot in front of a stall, toward the oval, outside the stall sprite. */
+export function standPoint(slot: PlazaPoint, order = 0): PlazaPoint {
+  const dx = WALK.x - slot.x
+  const dy = WALK.y - slot.y
+  const dist = Math.hypot(dx, dy) || 1
+  const step = Math.min(dist * 0.42, 150)
+  const x = slot.x + (dx / dist) * step + order * 34
+  let y = slot.y + (dy / dist) * step + order * 28
+  if (slot.y < WALK.y - 80) y = Math.max(y, slot.y + 145 + order * 24)
+  return { x: Math.round(x), y: Math.round(y) }
+}
+
+export function ovalPoint(turns: number, lane = 0): PlazaPoint {
+  const angle = -Math.PI / 2 + turns * Math.PI * 2
+  return {
+    x: Math.round(WALK.x + Math.cos(angle) * (WALK.rx - lane * 36)),
+    y: Math.round(WALK.y + Math.sin(angle) * (WALK.ry - lane * 16)),
+  }
 }
 
 export function pathPoint(slotT: number): PlazaPoint {
@@ -116,48 +157,48 @@ function piece(src: string, width: number, height: number, drawH: number): ArtPi
 export const BG_SRC = 'assets/art25/bg/plaza-night-1920.jpg'
 
 export const STALL_ART: Record<StallType, ArtPiece> = {
-  ice: piece('assets/art25/stalls/dream-ice-cream-cart.png', 348, 512, 230),
-  can: piece('assets/art25/stalls/weather-jar-shelf.png', 358, 512, 230),
-  charge: piece('assets/art25/stalls/mood-charging-station.png', 384, 512, 230),
-  fortune: piece('assets/art25/stalls/fortune-teller-booth.png', 323, 512, 230),
-  ichiban: piece('assets/art25/stalls/ichiban-kuji-booth.png', 374, 512, 230),
-  wish: piece('assets/art25/stalls/wishing-pond.png', 512, 337, 170),
+  ice: piece('assets/art25/stalls/dream-ice-cream-cart.png', 348, 512, STALL_NEAR_H),
+  can: piece('assets/art25/stalls/weather-jar-shelf.png', 358, 512, STALL_NEAR_H),
+  charge: piece('assets/art25/stalls/mood-charging-station.png', 384, 512, STALL_NEAR_H),
+  fortune: piece('assets/art25/stalls/fortune-teller-booth.png', 323, 512, STALL_NEAR_H),
+  ichiban: piece('assets/art25/stalls/ichiban-kuji-booth.png', 374, 512, STALL_NEAR_H),
+  wish: piece('assets/art25/stalls/wishing-pond.png', 512, 337, Math.round(PLAZA_H * 0.22)),
 }
 
 export const DECOR_ART: Record<DecorType, ArtPiece> = {
-  lantern: piece('assets/art25/decor/lantern-post.png', 460, 512, 200),
-  seat: piece('assets/art25/decor/wooden-bench.png', 512, 469, 160),
-  sign: piece('assets/art25/decor/signboard-blank.png', 430, 512, 190),
-  flower: piece('assets/art25/decor/flower-cart.png', 430, 512, 200),
-  star: piece('assets/art25/decor/potted-plant.png', 336, 512, 180),
+  lantern: piece('assets/art25/decor/lantern-post.png', 460, 512, Math.round(PLAZA_H * 0.26)),
+  seat: piece('assets/art25/decor/wooden-bench.png', 512, 469, Math.round(PLAZA_H * 0.16)),
+  sign: piece('assets/art25/decor/signboard-blank.png', 430, 512, Math.round(PLAZA_H * 0.2)),
+  flower: piece('assets/art25/decor/flower-cart.png', 430, 512, Math.round(PLAZA_H * 0.24)),
+  star: piece('assets/art25/decor/potted-plant.png', 336, 512, Math.round(PLAZA_H * 0.18)),
 }
 
 /** Game species keep their rules. A few use the closest finished sprite. */
 export const ANIMAL_ART: Record<Species, ArtPiece> = {
-  cat: piece('assets/art25/animals/cat.png', 438, 512, 168),
-  rabbit: piece('assets/art25/animals/rabbit.png', 280, 512, 168),
-  hamster: piece('assets/art25/animals/hamster.png', 412, 512, 168),
-  sparrow: piece('assets/art25/animals/duck.png', 375, 512, 168),
-  otter: piece('assets/art25/animals/otter.png', 451, 512, 168),
-  hedgehog: piece('assets/art25/animals/hedgehog.png', 433, 512, 168),
-  fox: piece('assets/art25/animals/red-panda.png', 452, 512, 168),
-  bear: piece('assets/art25/animals/raccoon.png', 425, 512, 176),
+  cat: piece('assets/art25/animals/cat.png', 438, 512, CUSTOMER_H),
+  rabbit: piece('assets/art25/animals/rabbit.png', 280, 512, CUSTOMER_H),
+  hamster: piece('assets/art25/animals/hamster.png', 412, 512, CUSTOMER_H),
+  sparrow: piece('assets/art25/animals/duck.png', 375, 512, CUSTOMER_H),
+  otter: piece('assets/art25/animals/otter.png', 451, 512, CUSTOMER_H),
+  hedgehog: piece('assets/art25/animals/hedgehog.png', 433, 512, CUSTOMER_H),
+  fox: piece('assets/art25/animals/red-panda.png', 452, 512, CUSTOMER_H),
+  bear: piece('assets/art25/animals/raccoon.png', 425, 512, CUSTOMER_H),
 }
 
 const PUPPY: Record<string, ArtPiece> = {
-  'white-stand': piece('assets/art25/chars/white-puppy-stand.png', 367, 512, 176),
-  'white-front': piece('assets/art25/chars/white-puppy-walk-front.png', 512, 482, 176),
-  'white-back': piece('assets/art25/chars/white-puppy-walk-back.png', 347, 512, 176),
-  'white-carry': piece('assets/art25/chars/white-puppy-carry.png', 385, 512, 176),
-  'brown-stand': piece('assets/art25/chars/brown-puppy-stand.png', 392, 512, 176),
-  'brown-front': piece('assets/art25/chars/brown-puppy-walk-front.png', 484, 512, 176),
-  'brown-back': piece('assets/art25/chars/brown-puppy-walk-back.png', 330, 512, 176),
-  'brown-sweep': piece('assets/art25/chars/brown-puppy-sweep.png', 427, 512, 176),
+  'white-stand': piece('assets/art25/chars/white-puppy-stand.png', 367, 512, PUPPY_H),
+  'white-front': piece('assets/art25/chars/white-puppy-walk-front.png', 512, 482, PUPPY_H),
+  'white-back': piece('assets/art25/chars/white-puppy-walk-back.png', 347, 512, PUPPY_H),
+  'white-carry': piece('assets/art25/chars/white-puppy-carry.png', 385, 512, PUPPY_H),
+  'brown-stand': piece('assets/art25/chars/brown-puppy-stand.png', 392, 512, PUPPY_H),
+  'brown-front': piece('assets/art25/chars/brown-puppy-walk-front.png', 484, 512, PUPPY_H),
+  'brown-back': piece('assets/art25/chars/brown-puppy-walk-back.png', 330, 512, PUPPY_H),
+  'brown-sweep': piece('assets/art25/chars/brown-puppy-sweep.png', 427, 512, PUPPY_H),
 }
 
 const HIRE_ART = {
-  munia: piece('assets/art25/staff/munia.png', 469, 512, 160),
-  ferret: piece('assets/art25/staff/ferret.png', 459, 512, 160),
+  munia: piece('assets/art25/staff/munia.png', 469, 512, CUSTOMER_H),
+  ferret: piece('assets/art25/staff/ferret.png', 459, 512, CUSTOMER_H),
 }
 
 export interface SceneSprite {
@@ -173,18 +214,90 @@ export interface SceneSprite {
   seed: number
 }
 
-function sprite(id: string, art: ArtPiece, at: PlazaPoint, pose: { shadow: boolean; bob: boolean; mirror: boolean; seed: number }): SceneSprite {
+export interface Footprint {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+function sprite(
+  id: string,
+  art: ArtPiece,
+  at: PlazaPoint,
+  pose: { shadow: boolean; bob: boolean; mirror: boolean; seed: number },
+  scale = 1,
+): SceneSprite {
   return {
     id,
     src: art.src,
     x: at.x,
     y: at.y,
-    drawH: art.drawH,
+    drawH: art.drawH * scale,
     aspect: art.aspect,
     shadow: pose.shadow,
     bob: pose.bob,
     mirror: pose.mirror,
     seed: pose.seed,
+  }
+}
+
+/** The ground patch a stall or decoration occupies. Characters must stay outside it. */
+export function propFootprint(item: SceneSprite): Footprint {
+  const width = item.drawH * item.aspect
+  const base = item.drawH * 0.2
+  return {
+    left: item.x - width * 0.34,
+    right: item.x + width * 0.34,
+    top: item.y - base,
+    bottom: item.y + 8,
+  }
+}
+
+export function characterFootprint(item: SceneSprite): Footprint {
+  const width = item.drawH * item.aspect
+  return {
+    left: item.x - width * 0.46,
+    right: item.x + width * 0.46,
+    top: item.y - item.drawH * 0.82,
+    bottom: item.y + 4,
+  }
+}
+
+export function footprintsOverlap(a: Footprint, b: Footprint): boolean {
+  return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
+}
+
+function resolveOverlap(mover: SceneSprite, block: Footprint): boolean {
+  const body = characterFootprint(mover)
+  if (!footprintsOverlap(body, block)) return false
+  const overlapX = Math.min(body.right, block.right) - Math.max(body.left, block.left)
+  const overlapY = Math.min(body.bottom, block.bottom) - Math.max(body.top, block.top)
+  if (overlapX <= overlapY) {
+    mover.x += (mover.x < (block.left + block.right) / 2 ? -1 : 1) * (overlapX + 2)
+  } else {
+    mover.y += (mover.y < (block.top + block.bottom) / 2 ? -1 : 1) * (overlapY + 2)
+  }
+  return true
+}
+
+function separateCharacters(people: SceneSprite[], props: SceneSprite[]): void {
+  const blocks = props.map(propFootprint)
+  for (let pass = 0; pass < 16; pass++) {
+    for (let i = 0; i < people.length; i++) {
+      for (let j = i + 1; j < people.length; j++) {
+        const a = people[i] as SceneSprite
+        const b = people[j] as SceneSprite
+        if (!footprintsOverlap(characterFootprint(a), characterFootprint(b))) continue
+        resolveOverlap(a, characterFootprint(b))
+        resolveOverlap(b, characterFootprint(a))
+      }
+    }
+    for (const person of people) {
+      for (const block of blocks) resolveOverlap(person, block)
+      person.x = Math.min(1780, Math.max(140, person.x))
+      person.y = Math.min(1000, Math.max(560, person.y))
+    }
   }
 }
 
@@ -197,61 +310,69 @@ function puppyArt(dog: 'white' | 'brown', job: Job, facing: Facing, moving: bool
 }
 
 export function layoutScene(street: Street, timeMs = 0): SceneSprite[] {
-  const sprites: SceneSprite[] = []
+  const props: SceneSprite[] = []
   street.slots.forEach((place, index) => {
     const slot = PLAZA_SLOTS[index]
     if (!place || !slot) return
+    const scale = rankScale(index)
     if (place.kind === 'stall' && place.stallType) {
-      sprites.push(sprite(`slot-${index}`, STALL_ART[place.stallType], slot, { shadow: false, bob: false, mirror: false, seed: 0 }))
+      props.push(sprite(`slot-${index}`, STALL_ART[place.stallType], slot, { shadow: false, bob: false, mirror: false, seed: 0 }, scale))
     } else if (place.decorType) {
-      sprites.push(sprite(`slot-${index}`, DECOR_ART[place.decorType], slot, { shadow: false, bob: false, mirror: false, seed: 0 }))
+      props.push(sprite(`slot-${index}`, DECOR_ART[place.decorType], slot, { shadow: false, bob: false, mirror: false, seed: 0 }, scale))
     }
   })
 
+  const queued = new Map<number, number>()
+  const people: SceneSprite[] = []
   street.visitors.forEach((visitor, index) => {
-    const here = pathPoint(visitor.position)
-    const ahead = pathPoint(visitor.position + (visitor.target >= visitor.position ? 0.4 : -0.4))
+    const moving = Math.abs(visitor.target - visitor.position) > 0.35
+    let here: PlazaPoint
+    if (moving) {
+      here = ovalPoint(visitor.position / PLAZA_SLOTS.length, index % 2)
+    } else {
+      const slotIndex = Math.min(PLAZA_SLOTS.length - 1, Math.max(0, Math.round(visitor.target)))
+      const order = queued.get(slotIndex) ?? 0
+      queued.set(slotIndex, order + 1)
+      const slot = PLAZA_SLOTS[slotIndex] as PlazaPoint
+      here = standPoint(slot, order)
+    }
+    const ahead = moving ? ovalPoint((visitor.position + 0.4) / PLAZA_SLOTS.length, index % 2) : here
     const facing = walkFacing(ahead.x - here.x, ahead.y - here.y)
-    const moving = Math.abs(visitor.target - visitor.position) > 0.05
-    sprites.push(
-      sprite(`visitor-${visitor.id}`, ANIMAL_ART[visitor.species], here, {
+    const art = ANIMAL_ART[visitor.species]
+    people.push(
+      sprite(`visitor-${visitor.id}`, art, here, {
         shadow: true,
         bob: true,
-        mirror: moving ? facing.mirror : false,
+        mirror: facing.mirror,
         seed: index * 0.8,
-      }),
+      }, depthScale(here.y)),
     )
   })
 
   street.staff.forEach((member, index) => {
     const moving = member.job !== 'rest'
-    const travel = moving ? timeMs / 900 + index * 2.2 : 1.4 + index * 1.8
-    const here = patrolPoint(travel)
-    const ahead = patrolPoint(travel + 0.35)
+    const phase = (((moving ? timeMs / 8000 : 0) + index * 0.5) % 1 + 1) % 1
+    const swing = phase < 0.5 ? phase * 2 : (1 - phase) * 2
+    const travel = 0.36 + swing * 0.28
+    const here = ovalPoint(travel, index + 1)
+    const ahead = ovalPoint(travel + 0.03, index + 1)
     const facing = walkFacing(ahead.x - here.x, ahead.y - here.y)
-    if (member.kind === 'hire' && member.hireSpecies) {
-      sprites.push(
-        sprite(`staff-${member.id}`, HIRE_ART[member.hireSpecies], here, {
-          shadow: true,
-          bob: true,
-          mirror: moving ? facing.mirror : false,
-          seed: 2 + index,
-        }),
-      )
-      return
-    }
-    const dog = member.dog === 'brown' ? 'brown' : 'white'
-    sprites.push(
-      sprite(`staff-${member.id}`, puppyArt(dog, member.job, facing, moving), here, {
+    const art =
+      member.kind === 'hire' && member.hireSpecies
+        ? HIRE_ART[member.hireSpecies]
+        : puppyArt(member.dog === 'brown' ? 'brown' : 'white', member.job, facing, moving)
+    people.push(
+      sprite(`staff-${member.id}`, art, here, {
         shadow: true,
         bob: true,
         mirror: moving ? facing.mirror : false,
         seed: index + 0.4,
-      }),
+      }, depthScale(here.y)),
     )
   })
 
-  return depthSort(sprites)
+  separateCharacters(people, props)
+  return depthSort([...props, ...people])
 }
 
 export function artSources(): string[] {

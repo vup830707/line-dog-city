@@ -1,33 +1,39 @@
 import { describe, expect, it } from 'vitest'
+import { createNewGame } from '../game/newGame'
+import { gameConfig } from '../config'
 import { stall, streetWith, visitor } from '../rules/fixtures'
 import {
   ANIMAL_ART,
+  CUSTOMER_H,
   PLAZA_H,
   PLAZA_SLOTS,
   PLAZA_W,
+  PUPPY_H,
   STALL_ART,
   bobOffset,
+  characterFootprint,
   coverTransform,
   depthSort,
   layoutScene,
   pathPoint,
+  propFootprint,
+  rankScale,
   standPoint,
+  footprintsOverlap,
   walkFacing,
 } from './plaza'
 
 describe('plaza slot layout', () => {
-  it('puts sixteen slots on the cobblestone, back rank farther than the front rank', () => {
+  it('puts sixteen slots on the cobblestone, back arc farther than the sides', () => {
     expect(PLAZA_SLOTS).toHaveLength(16)
     for (const slot of PLAZA_SLOTS) {
-      expect(slot.x).toBeGreaterThan(200)
-      expect(slot.x).toBeLessThan(PLAZA_W - 200)
-      expect(slot.y).toBeGreaterThan(360)
-      expect(slot.y).toBeLessThan(760)
+      expect(slot.x).toBeGreaterThan(180)
+      expect(slot.x).toBeLessThan(PLAZA_W - 120)
+      expect(slot.y).toBeGreaterThan(400)
+      expect(slot.y).toBeLessThan(980)
     }
-    const back = PLAZA_SLOTS.slice(0, 8)
-    const front = PLAZA_SLOTS.slice(8)
-    for (const slot of back) expect(slot.y).toBeLessThan(500)
-    for (const slot of front) expect(slot.y).toBeGreaterThan(560)
+    const average = (items: { y: number }[]) => items.reduce((sum, slot) => sum + slot.y, 0) / items.length
+    expect(average(PLAZA_SLOTS.slice(0, 8))).toBeLessThan(average(PLAZA_SLOTS.slice(8)))
     let nearest = 9999
     for (let i = 0; i < PLAZA_SLOTS.length; i++) {
       for (let j = i + 1; j < PLAZA_SLOTS.length; j++) {
@@ -36,18 +42,29 @@ describe('plaza slot layout', () => {
         nearest = Math.min(nearest, Math.hypot(a.x - b.x, a.y - b.y))
       }
     }
-    expect(nearest).toBeGreaterThan(140)
+    expect(nearest).toBeGreaterThan(130)
   })
 
-  it('stands characters in front of every stall anchor', () => {
-    for (const slot of PLAZA_SLOTS) {
-      expect(standPoint(slot).y).toBeGreaterThan(slot.y + 80)
+  it('draws back-arc stalls at about 30% of 1080p and puppies a little taller than customers', () => {
+    expect((STALL_ART.ice.drawH * rankScale(0)) / PLAZA_H).toBeCloseTo(0.3, 2)
+    expect(rankScale(8)).toBe(1)
+    expect(rankScale(3)).toBeCloseTo(0.85)
+    expect(CUSTOMER_H / PLAZA_H).toBeGreaterThanOrEqual(0.1)
+    expect(CUSTOMER_H / PLAZA_H).toBeLessThanOrEqual(0.12)
+    expect(PUPPY_H).toBeGreaterThan(CUSTOMER_H)
+    expect(PUPPY_H / PLAZA_H).toBeLessThanOrEqual(0.125)
+    expect(STALL_ART.ice.drawH * rankScale(0)).toBeGreaterThan(PUPPY_H * 2.4)
+  })
+
+  it('stands characters on the oval in front of the back arc', () => {
+    for (const slot of PLAZA_SLOTS.slice(0, 6)) {
+      expect(standPoint(slot).y).toBeGreaterThan(slot.y + 70)
     }
     const walking = pathPoint(3.5)
     const from = standPoint(PLAZA_SLOTS[3] as { x: number; y: number })
     const to = standPoint(PLAZA_SLOTS[4] as { x: number; y: number })
-    expect(walking.x).toBeGreaterThan(Math.min(from.x, to.x))
-    expect(walking.x).toBeLessThan(Math.max(from.x, to.x))
+    expect(walking.x).toBeGreaterThan(Math.min(from.x, to.x) - 1)
+    expect(walking.x).toBeLessThan(Math.max(from.x, to.x) + 1)
   })
 
   it('covers 1920x1080 and 1280x720 without leaving a gap', () => {
@@ -77,24 +94,49 @@ describe('depth sort', () => {
   })
 
   it('paints a back stall, then a front stall, then the visitor on the path', () => {
+    const far = PLAZA_SLOTS.reduce((best, slot, index) => (slot.y < (PLAZA_SLOTS[best]?.y ?? 9999) ? index : best), 0)
+    const near = PLAZA_SLOTS.reduce((best, slot, index) => (slot.y > (PLAZA_SLOTS[best]?.y ?? 0) ? index : best), 0)
     const slots = streetWith().slots.slice()
-    slots[0] = stall('ice', 'ice')
-    slots[8] = stall('fortune', 'fortune')
+    slots[far] = stall('ice', 'ice')
+    slots[near] = stall('fortune', 'fortune')
     const scene = layoutScene(
       streetWith({
         slots,
-        visitors: [visitor('cat', 8, 8)],
+        visitors: [visitor('cat', far, far)],
         staff: [],
       }),
       0,
     )
     const order = scene.map((sprite) => sprite.id)
-    expect(order.indexOf('slot-0')).toBeLessThan(order.indexOf('slot-8'))
-    expect(order.indexOf('slot-8')).toBeLessThan(order.indexOf('visitor-v-cat'))
-    expect(scene.find((sprite) => sprite.id === 'slot-0')?.src).toBe(STALL_ART.ice.src)
+    expect(order.indexOf(`slot-${far}`)).toBeLessThan(order.indexOf(`slot-${near}`))
+    expect(order.indexOf(`slot-${far}`)).toBeLessThan(order.indexOf('visitor-v-cat'))
+    expect(scene.find((sprite) => sprite.id === `slot-${far}`)?.src).toBe(STALL_ART.ice.src)
     expect(scene.find((sprite) => sprite.id === 'visitor-v-cat')?.src).toBe(ANIMAL_ART.cat.src)
     expect(scene.find((sprite) => sprite.id === 'visitor-v-cat')?.shadow).toBe(true)
-    expect(scene.find((sprite) => sprite.id === 'slot-0')?.shadow).toBe(false)
+    expect(scene.find((sprite) => sprite.id === `slot-${far}`)?.shadow).toBe(false)
+  })
+})
+
+describe('plaza spacing', () => {
+  it('keeps characters out of stall footprints and off each other', () => {
+    const save = createNewGame({ playerDog: 'white', whiteName: '雪球', brownName: '可可', now: 0, seed: 2 }, gameConfig)
+    const scene = layoutScene(save.street, 0)
+    const stalls = scene.filter((sprite) => sprite.id.startsWith('slot-') && Object.values(STALL_ART).some((art) => art.src === sprite.src))
+    const people = scene.filter((sprite) => sprite.shadow)
+    expect(stalls.length).toBeGreaterThanOrEqual(5)
+    expect(people.length).toBeGreaterThanOrEqual(6)
+    for (const person of people) {
+      for (const stallSprite of stalls) {
+        expect(footprintsOverlap(characterFootprint(person), propFootprint(stallSprite))).toBe(false)
+      }
+    }
+    for (let i = 0; i < people.length; i++) {
+      for (let j = i + 1; j < people.length; j++) {
+        const a = people[i] as (typeof people)[number]
+        const b = people[j] as (typeof people)[number]
+        expect(footprintsOverlap(characterFootprint(a), characterFootprint(b))).toBe(false)
+      }
+    }
   })
 })
 

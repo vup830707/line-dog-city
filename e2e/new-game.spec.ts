@@ -23,8 +23,8 @@ test('a new game can place a stall, earn coins, reload, and cap offline time', a
 
   const before = Number((await page.getByTestId('money').innerText()).replace(/[^\d]/g, ''))
   await page.getByTestId('tab-build').click()
-  await page.getByTestId('build-ice').dragTo(page.getByTestId('slot-0'))
-  await page.getByTestId('build-lantern').dragTo(page.getByTestId('slot-1'))
+  await page.getByTestId('build-lantern').dragTo(page.getByTestId('slot-11'))
+  await page.getByTestId('build-sign').dragTo(page.getByTestId('slot-12'))
   await expect(page.getByTestId('slot-0')).not.toHaveText('1')
   await expect(page.getByTestId('slot-1')).not.toHaveText('2')
 
@@ -59,7 +59,7 @@ test('desktop layouts do not scroll the page sideways', async ({ page }) => {
   await page.getByLabel('咖啡色狗的名字').fill('可可')
   await page.getByTestId('start-game').click()
   await page.getByTestId('tab-build').click()
-  await page.getByTestId('build-ice').dragTo(page.getByTestId('slot-2'))
+  await page.getByTestId('build-sign').dragTo(page.getByTestId('slot-12'))
   for (const viewport of [
     { width: 1920, height: 1080 },
     { width: 1280, height: 720 },
@@ -77,7 +77,7 @@ test('the plaza background covers the window at both desktop sizes', async ({ pa
   await page.getByLabel('咖啡色狗的名字').fill('可可')
   await page.getByTestId('start-game').click()
   await page.getByTestId('tab-build').click()
-  await page.getByTestId('build-ice').dragTo(page.getByTestId('slot-0'))
+  await page.getByTestId('build-sign').dragTo(page.getByTestId('slot-12'))
   await page.evaluate(() => window.__puppy?.spawn('cat'))
   await expect(page.getByTestId('street-metrics')).toHaveAttribute('data-art-ready', '1')
 

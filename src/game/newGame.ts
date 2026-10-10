@@ -1,7 +1,7 @@
 import { expectedVisits } from '../rules/ambience'
 import { createRng } from '../rules/rng'
 import { scheduleArrivals } from '../rules/street'
-import type { GameConfig, SaveV3, Street } from '../rules/types'
+import type { DecorType, GameConfig, Placement, SaveV3, Species, StallType, Street, Visitor } from '../rules/types'
 import { isFestival, rollWeather } from '../rules/weather'
 
 export function cleanName(value: string): string | null {
@@ -29,6 +29,7 @@ export function createNewGame(
   const rng = createRng(input.seed ?? hashSeed(`${input.playerDog}|${whiteName}|${brownName}`))
   const weather = rollWeather(rng)
   const first = config.flavors[Math.floor(rng.next() * config.flavors.length)]?.id ?? 'fly'
+  const opening = openingPlaza(config)
   const street: Street = {
     tick: 0,
     day: 1,
@@ -40,9 +41,9 @@ export function createNewGame(
     wishMessage: null,
     money: config.startingMoney,
     cleanliness: 100,
-    slots: Array.from({ length: config.streetSlots }, () => null),
-    stock: {},
-    visitors: [],
+    slots: opening.slots,
+    stock: opening.stock,
+    visitors: opening.visitors,
     staff: [
       { id: 'dog-white', name: whiteName, kind: 'dog', dog: 'white', job: 'restock', level: 1 },
       { id: 'dog-brown', name: brownName, kind: 'dog', dog: 'brown', job: 'clean', level: 1 },
@@ -56,7 +57,7 @@ export function createNewGame(
     arrivals: [],
     trending: [first],
     rngState: rng.getState(),
-    nextVisitor: 1,
+    nextVisitor: opening.visitors.length + 1,
     offlineNote: null,
     lastOfflineTicks: 0,
   }
@@ -74,6 +75,62 @@ export function createNewGame(
     brownName,
     savedAt: input.now ?? 0,
     street,
+  }
+}
+
+/** A full market on the back arc and sides. The opening is a gift, so it does not spend coins. */
+function openingPlaza(config: GameConfig): { slots: (Placement | null)[]; stock: Record<string, number>; visitors: Visitor[] } {
+  const slots: (Placement | null)[] = Array.from({ length: config.streetSlots }, () => null)
+  const stock: Record<string, number> = {}
+  const place = (index: number, kind: 'stall' | 'decor', id: StallType | DecorType) => {
+    const uid = `open-${id}-${index}`
+    if (kind === 'stall') {
+      const stallType = id as StallType
+      slots[index] = { uid, kind: 'stall', stallType, level: 1 }
+      if (stallType !== 'ichiban') stock[uid] = config.stockPerLevel
+    } else {
+      slots[index] = { uid, kind: 'decor', decorType: id as DecorType, level: 1 }
+    }
+  }
+  place(0, 'decor', 'lantern')
+  place(1, 'stall', 'ice')
+  place(2, 'stall', 'can')
+  place(3, 'stall', 'charge')
+  place(4, 'stall', 'fortune')
+  place(5, 'stall', 'ichiban')
+  place(6, 'decor', 'lantern')
+  place(7, 'decor', 'flower')
+  place(8, 'decor', 'star')
+  place(9, 'decor', 'seat')
+  place(10, 'decor', 'star')
+  place(13, 'decor', 'seat')
+  place(14, 'decor', 'lantern')
+  place(15, 'decor', 'star')
+
+  const guest = (n: number, species: Species, slot: number, wander = false): Visitor => ({
+    id: `open-${n}`,
+    species,
+    position: wander ? slot - 1.4 : slot,
+    target: slot,
+    status: 'walk',
+    charged: false,
+    liked: false,
+    satisfaction: 0,
+    spent: 0,
+    fortune: null,
+    drewGrade: null,
+  })
+  return {
+    slots,
+    stock,
+    visitors: [
+      guest(1, 'rabbit', 1),
+      guest(2, 'hamster', 2),
+      guest(3, 'otter', 3),
+      guest(4, 'cat', 4),
+      guest(5, 'hedgehog', 9),
+      guest(6, 'sparrow', 5, true),
+    ],
   }
 }
 

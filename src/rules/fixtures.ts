@@ -4,7 +4,16 @@ import type { GameConfig, Placement, Species, Street } from './types'
 
 export function streetWith(patch: Partial<Street> = {}, config: GameConfig = gameConfig): Street {
   const save = createNewGame({ playerDog: 'white', whiteName: '雪球', brownName: '可可', now: 0, seed: 1 }, config)
-  return { ...save.street, arrivals: [], ...patch, slots: patch.slots ?? save.street.slots }
+  const slots = Array.from({ length: config.streetSlots }, () => null)
+  return {
+    ...save.street,
+    arrivals: [],
+    visitors: [],
+    stock: {},
+    box: null,
+    ...patch,
+    slots: patch.slots ?? slots,
+  }
 }
 
 export function stall(stallType: Placement['stallType'], uid = stallType ?? 'stall'): Placement {

@@ -77,12 +77,12 @@ input {
 .hud {
   position: absolute;
   z-index: 5;
-  top: 12px;
-  left: 12px;
-  right: 12px;
+  top: max(10px, 0.8vw);
+  left: max(12px, 1vw);
+  right: max(12px, 1vw);
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: max(8px, 0.5vw);
   align-items: center;
   pointer-events: none;
 }
@@ -92,17 +92,24 @@ input {
 .hud-chip, .hud button, .build-dock button {
   background: rgba(255, 250, 243, 0.92);
   border-radius: 999px;
-  padding: 6px 12px;
+  padding: 0.35em 0.85em;
+  font-size: max(14px, 0.95vw);
+  line-height: 1.2;
+}
+
+.hud button, .hud-actions button {
+  min-height: max(40px, 2.5vw);
+  min-width: max(72px, 4vw);
 }
 
 .hud-chip { margin: 0; }
 
-.hud-actions { display: flex; gap: 6px; }
+.hud-actions { display: flex; gap: max(6px, 0.4vw); }
 
 .offline-note {
   position: absolute;
   z-index: 5;
-  top: 58px;
+  top: max(64px, 4.6vw);
   left: 12px;
   margin: 0;
   padding: 6px 10px;
