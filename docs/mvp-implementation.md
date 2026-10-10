@@ -13,7 +13,7 @@
 - 介面文字用繁體中文。
 - 執行時不打網路。字型用系統字，圖放在包體內。
 - 直向優先：390×844、360×780 不能破版，430×932 也不能破。
-- 不加 GitHub Actions。
+- 本機 `base` 預設 `/`。GitHub Pages 用 `VITE_BASE=/line-dog-city/`。Actions 只部署，不跑 e2e。
 - 美術先用概念圖裁切＋簡單佔位，路徑集中在 `src/assets/assetMap.ts`，之後換 AI 圖只改這張表。
 
 ## 一天怎麼跑
@@ -96,4 +96,4 @@
 
 ## 驗證
 
-`npm ci && npm run lint && npm run typecheck && npm test && npm run build`，再加上 `npm run test:e2e`。截圖 390×844：開場、夜市、營業中、帳本、圖鑑、一番賞。
+`npm ci && npm run lint && npm run typecheck && npm test && npm run build`，再加上 `npm run test:e2e`（預覽伺服器的 base 是 `/line-dog-city/`）。截圖 390×844：開場、夜市、營業中、帳本、圖鑑、一番賞。

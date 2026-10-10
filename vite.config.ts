@@ -1,8 +1,12 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { publicBase } from './scripts/public-base.mjs'
+
+const base = publicBase()
 
 export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -19,15 +23,17 @@ export default defineConfig({
         orientation: 'portrait',
         background_color: '#fffaf3',
         theme_color: '#24170f',
-        start_url: '/',
+        start_url: base,
+        scope: base,
         icons: [
-          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          { src: `${base}icons/icon-192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: `${base}icons/icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,json,webmanifest}'],
-        navigateFallback: 'index.html',
+        navigateFallback: `${base}index.html`,
+        modifyURLPrefix: { '': base },
       },
     }),
   ],

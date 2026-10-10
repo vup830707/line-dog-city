@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test'
 
 test('a new game can open a stall, fast-forward a day, and keep the save', async ({ page }) => {
-  await page.goto('/')
+  const sheet = page.waitForResponse((response) => response.url().includes('/assets/concept-duo.jpg'))
+  await page.goto('./')
+  await expect(page).toHaveURL(/\/line-dog-city\//)
+  expect((await sheet).ok()).toBeTruthy()
+  expect((await sheet).url()).toContain('/line-dog-city/assets/concept-duo.jpg')
   await page.getByTestId('dog-white').click()
   await page.getByLabel('白狗的名字').fill('雪球')
   await page.getByLabel('咖啡色狗的名字').fill('可可')
@@ -28,7 +32,8 @@ test('a new game can open a stall, fast-forward a day, and keep the save', async
 })
 
 test('portrait layouts do not scroll sideways', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('./')
+  await expect(page).toHaveURL(/\/line-dog-city\/?/)
   for (const viewport of [
     { width: 360, height: 780 },
     { width: 390, height: 844 },
