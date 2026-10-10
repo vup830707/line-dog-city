@@ -18,7 +18,7 @@ test('capture the 2.5D plaza at 1920x1080 and 1280x720', async ({ page }) => {
   await expect(page.getByTestId('slot-1')).toBeVisible()
   await page.screenshot({ path: `${dir}/plaza-1920.png` })
 
-  await page.getByTestId('slot-5').click()
+  await page.getByTestId('slot-5').click({ position: { x: 24, y: 36 } })
   const card1920 = await page.getByTestId('stall-card').boundingBox()
   expect(card1920).not.toBeNull()
   expect(card1920!.x).toBeGreaterThanOrEqual(0)

@@ -45,7 +45,8 @@ export function App() {
     const persist = () => {
       const current = saveRef.current
       if (!current) return
-      const stamped = { ...current, savedAt: Date.now() }
+      // A paused debug session may have rewound savedAt. Reloading fires pagehide, and stamping "now" would erase that.
+      const stamped = pauseRef.current ? current : { ...current, savedAt: Date.now() }
       storeGame(localStorage, stamped)
       saveRef.current = stamped
       booted = stamped
