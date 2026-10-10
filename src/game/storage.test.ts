@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createNewGame } from './newGame'
 import { gameConfig } from '../config'
-import { loadGame, storeGame, type KeyValueStore } from './storage'
+import { loadGame, shouldPersistTick, storeGame, type KeyValueStore } from './storage'
 
 function memory(): KeyValueStore {
   const data = new Map<string, string>()
@@ -24,5 +24,12 @@ describe('storage', () => {
     expect(loadGame(other)).toEqual(save)
     other.setItem('puppy-city-save', JSON.stringify({ schemaVersion: 2, whiteName: '舊', brownName: '檔' }))
     expect(loadGame(other)).toBeNull()
+  })
+
+  it('writes the tick loop every few ticks instead of every tick', () => {
+    expect(gameConfig.saveEveryTicks).toBe(5)
+    expect(shouldPersistTick(1, 5)).toBe(false)
+    expect(shouldPersistTick(4, 5)).toBe(false)
+    expect(shouldPersistTick(5, 5)).toBe(true)
   })
 })

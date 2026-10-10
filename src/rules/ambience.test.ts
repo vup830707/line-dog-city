@@ -4,12 +4,15 @@ import { ambienceScore, expectedVisits, visitFactor } from './ambience'
 import { decor, stall, streetWith } from './fixtures'
 
 describe('ambience', () => {
-  it('adds cleanliness, decor, and stall looks', () => {
+  it('counts decor and stall looks, and keeps cleanliness out of the bustle score', () => {
     const slots = streetWith().slots.slice()
     slots[0] = stall('ice', 'ice')
     slots[1] = decor('lantern')
-    const street = streetWith({ cleanliness: 10, slots })
-    expect(ambienceScore(street, gameConfig)).toBe(10 + gameConfig.lookByLevel[0] + gameConfig.decorScore.lantern)
+    const dirty = streetWith({ cleanliness: 10, slots })
+    const clean = streetWith({ cleanliness: 90, slots })
+    const bustle = (gameConfig.lookByLevel[0] ?? 0) + gameConfig.decorScore.lantern
+    expect(ambienceScore(dirty, gameConfig)).toBe(bustle)
+    expect(ambienceScore(clean, gameConfig)).toBe(bustle)
   })
 
   it('keeps a floor, hits 1 at the target, and caps above it', () => {

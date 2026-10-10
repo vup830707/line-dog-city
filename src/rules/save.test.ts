@@ -3,7 +3,10 @@ import { createNewGame } from '../game/newGame'
 import { gameConfig } from '../config'
 import { loadGame, SAVE_KEY, storeGame, type KeyValueStore } from '../game/storage'
 import { importSave } from '../ui/StreetScreen'
+import { offlineTickCount } from './offline'
 import { parseSave, serializeSave } from './save'
+import { streetTick } from './street'
+import { visitor } from './fixtures'
 
 function memory(): KeyValueStore {
   const data = new Map<string, string>()
@@ -64,6 +67,80 @@ describe('save schema', () => {
     expect(fresh.street.visitors.length).toBeGreaterThan(2)
     storeGame(store, fresh)
     expect(loadGame(store)?.street.money).toBe(gameConfig.startingMoney)
+  })
+
+  it('rejects an empty street and normalizes a string balance and a bad timestamp', () => {
+    const empty = parseSave({
+      schemaVersion: 3,
+      playerDog: 'white',
+      whiteName: '雪球',
+      brownName: '可可',
+      savedAt: 'yesterday',
+      street: {},
+    })
+    expect(empty.ok).toBe(false)
+    if (!empty.ok) expect(empty.reason).toBe('invalid')
+
+    const save = createNewGame({ playerDog: 'white', whiteName: '雪球', brownName: '可可', now: 5, seed: 3 }, gameConfig)
+    const stringMoney = parseSave({
+      ...save,
+      street: { ...save.street, money: '100' },
+    })
+    expect(stringMoney.ok).toBe(true)
+    if (!stringMoney.ok) return
+    expect(stringMoney.save.street.money).toBe(100)
+    const slots = stringMoney.save.street.slots.slice()
+    const ice = slots.find((slot) => slot?.stallType === 'ice')
+    expect(ice).toBeTruthy()
+    const sold = streetTick(
+      {
+        ...stringMoney.save.street,
+        slots,
+        stock: { ...stringMoney.save.street.stock, [ice?.uid ?? '']: 4 },
+        visitors: [visitor('rabbit', slots.indexOf(ice ?? null), slots.indexOf(ice ?? null))],
+        arrivals: [],
+        staff: [],
+      },
+      gameConfig,
+    )
+    const profit = gameConfig.prices.ice - Math.round(gameConfig.prices.ice * gameConfig.restockCostRatio)
+    expect(sold.money).toBe(100 + profit)
+    expect(typeof sold.money).toBe('number')
+
+    const badClock = parseSave({ ...save, savedAt: 'yesterday' })
+    expect(badClock.ok).toBe(true)
+    if (!badClock.ok) return
+    expect(Number.isFinite(badClock.save.savedAt)).toBe(true)
+    expect(offlineTickCount(Date.now() - badClock.save.savedAt, gameConfig)).toBe(0)
+
+    const infiniteClock = parseSave({ ...save, savedAt: Number.POSITIVE_INFINITY })
+    expect(infiniteClock.ok).toBe(true)
+    if (!infiniteClock.ok) return
+    expect(Number.isFinite(infiniteClock.save.savedAt)).toBe(true)
+    expect(offlineTickCount(Date.now() - infiniteClock.save.savedAt, gameConfig)).toBe(0)
+
+    const tampered = parseSave({
+      ...save,
+      street: {
+        ...save.street,
+        box: {
+          boxId: 'set1',
+          name: '奇幻夜市 第一彈',
+          wholesale: 9_999_999,
+          tickets: [{ grade: 'D', figureId: null, label: '貼紙小卡', unitCost: 1_000_000 }],
+          lastPrize: { id: 'lantern', label: '夜市燈籠', unitCost: 1_000_000, awarded: false },
+          draws: 0,
+          income: 0,
+          paid: true,
+          idleTicks: 0,
+        },
+      },
+    })
+    expect(tampered.ok).toBe(true)
+    if (!tampered.ok) return
+    expect(tampered.save.street.box?.tickets[0]?.unitCost).toBe(15)
+    expect(tampered.save.street.box?.lastPrize.unitCost).toBe(200)
+    expect(tampered.save.street.box?.wholesale).toBe(2670)
   })
 
   it('round-trips an exported save through import', () => {

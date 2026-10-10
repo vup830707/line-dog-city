@@ -1,4 +1,4 @@
-import { expectedVisits } from '../rules/ambience'
+import { ambienceScore, expectedVisits } from '../rules/ambience'
 import { createRng } from '../rules/rng'
 import { scheduleArrivals } from '../rules/street'
 import type { DecorType, GameConfig, Placement, SaveV3, Species, StallType, Street, Visitor } from '../rules/types'
@@ -61,9 +61,11 @@ export function createNewGame(
     offlineNote: null,
     lastOfflineTicks: 0,
   }
-  const ambience = street.cleanliness
   street.arrivals = scheduleArrivals(
-    expectedVisits({ ambience, festival: isFestival(street.day, config) }, config),
+    expectedVisits(
+      { ambience: ambienceScore(street, config), cleanliness: street.cleanliness, festival: isFestival(street.day, config) },
+      config,
+    ),
     config.phaseMinutes,
     rng,
   )
@@ -95,17 +97,12 @@ function openingPlaza(config: GameConfig): { slots: (Placement | null)[]; stock:
   place(0, 'decor', 'lantern')
   place(1, 'stall', 'ice')
   place(2, 'stall', 'can')
-  place(3, 'stall', 'charge')
+  place(3, 'decor', 'seat')
   place(4, 'stall', 'fortune')
   place(5, 'stall', 'ichiban')
   place(6, 'decor', 'lantern')
   place(7, 'decor', 'flower')
-  place(8, 'decor', 'star')
-  place(9, 'decor', 'seat')
-  place(10, 'decor', 'star')
-  place(13, 'decor', 'seat')
-  place(14, 'decor', 'lantern')
-  place(15, 'decor', 'star')
+  place(8, 'stall', 'charge')
 
   const guest = (n: number, species: Species, slot: number, wander = false): Visitor => ({
     id: `open-${n}`,
@@ -126,9 +123,9 @@ function openingPlaza(config: GameConfig): { slots: (Placement | null)[]; stock:
     visitors: [
       guest(1, 'rabbit', 1),
       guest(2, 'hamster', 2),
-      guest(3, 'otter', 3),
+      guest(3, 'otter', 8),
       guest(4, 'cat', 4),
-      guest(5, 'hedgehog', 9),
+      guest(5, 'hedgehog', 4),
       guest(6, 'sparrow', 5, true),
     ],
   }

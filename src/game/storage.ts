@@ -24,3 +24,9 @@ export function storeGame(store: KeyValueStore, save: SaveV3): void {
 export function clearGame(store: KeyValueStore): void {
   store.removeItem(SAVE_KEY)
 }
+
+/** Player actions save immediately. The tick loop writes once every `saveEveryTicks` ticks. */
+export function shouldPersistTick(ticksSinceWrite: number, saveEveryTicks: number): boolean {
+  if (!(saveEveryTicks > 0)) return true
+  return ticksSinceWrite >= saveEveryTicks
+}

@@ -28,20 +28,37 @@ export function greetLevel(street: Street): number {
   return street.staff.reduce((best, member) => (member.job === 'greet' ? Math.max(best, member.level) : best), 0)
 }
 
-/** Restock and clean. Neither spends coins; empty shelves simply wait. */
+/** The shelf with the lowest stock / capacity. Ties go to the earlier slot, so equal shelves take turns. */
+function emptiestStall(street: Street, stock: Record<string, number>, config: GameConfig): string | null {
+  let bestUid: string | null = null
+  let bestRatio = Number.POSITIVE_INFINITY
+  let bestIndex = Number.POSITIVE_INFINITY
+  street.slots.forEach((slot, index) => {
+    if (!slot || slot.kind !== 'stall' || !slot.stallType || slot.stallType === 'ichiban') return
+    const cap = stockCap(slot.level, config)
+    const have = stock[slot.uid] ?? 0
+    if (have >= cap) return
+    const ratio = cap <= 0 ? 0 : have / cap
+    if (ratio < bestRatio || (ratio === bestRatio && index < bestIndex)) {
+      bestUid = slot.uid
+      bestRatio = ratio
+      bestIndex = index
+    }
+  })
+  return bestUid
+}
+
+/** Restock and clean. Neither spends coins; empty shelves simply wait. Sweeping happens once per phase. */
 export function applyStaff(street: Street, config: GameConfig): Street {
   let cleanliness = street.cleanliness
   const stock = { ...street.stock }
   for (const member of street.staff) {
-    if (member.job === 'clean') {
+    if (member.job === 'clean' && street.phaseTick === 0) {
       cleanliness = Math.min(100, cleanliness + cleanPower(member.level, config))
     }
     if (member.job === 'restock' && street.tick % restockInterval(member.level, config) === 0) {
-      const target = street.slots.find((slot) => {
-        if (!slot || slot.kind !== 'stall' || !slot.stallType || slot.stallType === 'ichiban') return false
-        return (stock[slot.uid] ?? 0) < stockCap(slot.level, config)
-      })
-      if (target) stock[target.uid] = (stock[target.uid] ?? 0) + 1
+      const target = emptiestStall(street, stock, config)
+      if (target) stock[target] = (stock[target] ?? 0) + 1
     }
   }
   return { ...street, cleanliness, stock }

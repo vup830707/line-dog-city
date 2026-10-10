@@ -26,7 +26,7 @@ button {
 
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 
-button.on, .dog-card.selected, .slot-hit.selected { outline: 3px solid #e2b657; }
+button.on, .dog-card.selected { outline: 3px solid #e2b657; }
 
 h1, h2, h3 { font-weight: 700; margin: 0 0 8px; }
 
@@ -106,15 +106,72 @@ input {
 
 .hud-actions { display: flex; gap: max(6px, 0.4vw); }
 
+.toast {
+  position: absolute;
+  z-index: 6;
+  top: max(64px, 4.6vw);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(420px, calc(100% - 24px));
+  margin: 0;
+  padding: 8px 12px;
+  background: rgba(255, 244, 216, 0.96);
+  border: 2px solid #24170f;
+  border-radius: 12px;
+  text-align: center;
+}
+
 .offline-note {
   position: absolute;
-  z-index: 5;
-  top: max(64px, 4.6vw);
-  left: 12px;
+  z-index: 6;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100% - 32px));
   margin: 0;
-  padding: 6px 10px;
-  background: rgba(255, 244, 216, 0.94);
-  border-radius: 10px;
+  padding: 14px 16px;
+  background: rgba(255, 250, 243, 0.96);
+  border: 2px solid #24170f;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.stall-card {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  gap: 8px;
+  max-height: min(320px, calc(100% - 16px));
+  overflow: auto;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255, 250, 243, 0.96);
+  border: 2px solid #24170f;
+}
+
+.stall-card h2 { font-size: 16px; }
+
+.stall-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.stall-actions button { white-space: normal; }
+
+.block-reason { margin: 0; color: #9c3418; font-size: 14px; }
+
+.confirm-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  background: rgba(20, 16, 12, 0.35);
+}
+
+.confirm-card {
+  width: min(360px, calc(100% - 32px));
+  padding: 12px;
+  border-radius: 16px;
+  background: #fffaf3;
+  border: 2px solid #24170f;
 }
 
 .notice.banner {

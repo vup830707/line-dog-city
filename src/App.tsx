@@ -3,8 +3,9 @@ import { gameConfig } from './config'
 import { applyOffline } from './rules/offline'
 import { runTicks, spawnVisitor, streetTick } from './rules/street'
 import type { SaveV3, Species } from './rules/types'
+import { debugHooksEnabled } from './game/debug'
 import { createNewGame } from './game/newGame'
-import { clearGame, loadGame, storeGame } from './game/storage'
+import { clearGame, loadGame, shouldPersistTick, storeGame } from './game/storage'
 import { applyRename, importSave, StreetScreen } from './ui/StreetScreen'
 import { TitleScreen } from './ui/TitleScreen'
 
@@ -29,6 +30,7 @@ export function App() {
   const [notice, setNotice] = useState('')
   const saveRef = useRef(save)
   const pauseRef = useRef(false)
+  const ticksSinceSave = useRef(0)
   saveRef.current = save
 
   function commit(next: SaveV3 | null) {
@@ -40,56 +42,79 @@ export function App() {
   }
 
   useEffect(() => {
-    window.__puppy = {
-      pause() {
-        pauseRef.current = true
-      },
-      resume() {
-        pauseRef.current = false
-      },
-      runTicks(count: number) {
-        const current = saveRef.current
-        if (!current) return
-        pauseRef.current = true
-        commit({ ...current, street: runTicks(current.street, gameConfig, count) })
-      },
-      rewindClock(ms: number) {
-        const current = saveRef.current
-        if (!current) return
-        const next = { ...current, savedAt: Date.now() - ms }
-        saveRef.current = next
-        booted = next
-        storeGame(localStorage, next)
-        setSave(next)
-      },
-      spawn(species: string) {
-        const current = saveRef.current
-        if (!current) return
-        pauseRef.current = true
-        const street = spawnVisitor(current.street, gameConfig, species as Species)
-        const visitor = street.visitors[street.visitors.length - 1]
-        const visitors = visitor
-          ? street.visitors.map((item) => (item.id === visitor.id ? { ...item, position: item.target } : item))
-          : street.visitors
-        const stock = { ...street.stock }
-        for (const place of street.slots) {
-          if (place?.kind === 'stall' && place.stallType && place.stallType !== 'ichiban') stock[place.uid] = 12
-        }
-        commit({ ...current, street: { ...street, visitors, stock } })
-      },
+    const persist = () => {
+      const current = saveRef.current
+      if (!current) return
+      // A paused debug session may have rewound savedAt. Reloading fires pagehide, and stamping "now" would erase that.
+      const stamped = pauseRef.current ? current : { ...current, savedAt: Date.now() }
+      storeGame(localStorage, stamped)
+      saveRef.current = stamped
+      booted = stamped
+      ticksSinceSave.current = 0
     }
+    if (debugHooksEnabled(window.location.search)) {
+      window.__puppy = {
+        pause() {
+          pauseRef.current = true
+        },
+        resume() {
+          pauseRef.current = false
+        },
+        runTicks(count: number) {
+          const current = saveRef.current
+          if (!current) return
+          pauseRef.current = true
+          commit({ ...current, street: runTicks(current.street, gameConfig, count) })
+        },
+        rewindClock(ms: number) {
+          const current = saveRef.current
+          if (!current) return
+          const next = { ...current, savedAt: Date.now() - ms }
+          saveRef.current = next
+          booted = next
+          storeGame(localStorage, next)
+          setSave(next)
+        },
+        spawn(species: string) {
+          const current = saveRef.current
+          if (!current) return
+          pauseRef.current = true
+          const street = spawnVisitor(current.street, gameConfig, species as Species)
+          const visitor = street.visitors[street.visitors.length - 1]
+          const visitors = visitor
+            ? street.visitors.map((item) => (item.id === visitor.id ? { ...item, position: item.target } : item))
+            : street.visitors
+          const stock = { ...street.stock }
+          for (const place of street.slots) {
+            if (place?.kind === 'stall' && place.stallType && place.stallType !== 'ichiban') stock[place.uid] = 12
+          }
+          commit({ ...current, street: { ...street, visitors, stock } })
+        },
+      }
+    }
+    window.addEventListener('pagehide', persist)
     const id = window.setInterval(() => {
       if (pauseRef.current) return
       const current = saveRef.current
       if (!current) return
-      const next = { ...current, street: streetTick(current.street, gameConfig), savedAt: Date.now() }
+      ticksSinceSave.current += 1
+      const write = shouldPersistTick(ticksSinceSave.current, gameConfig.saveEveryTicks)
+      const next = {
+        ...current,
+        street: streetTick(current.street, gameConfig),
+        savedAt: write ? Date.now() : current.savedAt,
+      }
       saveRef.current = next
       booted = next
-      storeGame(localStorage, next)
+      if (write) {
+        storeGame(localStorage, next)
+        ticksSinceSave.current = 0
+      }
       setSave(next)
     }, gameConfig.tickMs)
     return () => {
       window.clearInterval(id)
+      window.removeEventListener('pagehide', persist)
       delete window.__puppy
     }
   }, [])

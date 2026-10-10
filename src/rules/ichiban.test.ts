@@ -14,9 +14,14 @@ describe('一番賞', () => {
     expect(boxWholesale(def)).toBe(2670)
     expect(def.prizes.reduce((sum, prize) => sum + prize.count, 0)).toBe(80)
     const box = createBox(def, createRng(2))
-    expect(refundAmount(box, gameConfig.refundRate)).toBe(Math.round(2670 * 0.3))
-    const partial = { ...box, tickets: [{ grade: 'D' as const, figureId: null, label: '卡', unitCost: 15 }], lastPrize: { ...box.lastPrize, awarded: false } }
-    expect(refundAmount(partial, 0.3)).toBe(Math.round((15 + 200) * 0.3))
+    expect(refundAmount(box, gameConfig.refundRate, gameConfig)).toBe(Math.round(2670 * 0.3))
+    const partial = {
+      ...box,
+      paid: true,
+      tickets: [{ grade: 'D' as const, figureId: null, label: '貼紙小卡', unitCost: 1_000_000 }],
+      lastPrize: { ...box.lastPrize, unitCost: 1_000_000, awarded: false },
+    }
+    expect(refundAmount(partial, 0.3, gameConfig)).toBe(Math.round((15 + 200) * 0.3))
     const closed = closeBox(streetWith({ box: partial, money: 10 }), gameConfig)
     expect(closed.street.money).toBe(10 + Math.round(215 * 0.3))
     expect(closed.street.box).toBeNull()
@@ -55,7 +60,7 @@ describe('一番賞', () => {
   })
 
   it('waits out the configured slow pace before a free restock', () => {
-    expect(gameConfig.ichibanRestockTicks).toBe(40)
+    expect(gameConfig.ichibanRestockTicks).toBe(180)
     const slots = streetWith().slots.slice()
     slots[4] = stall('ichiban', 'ichiban')
     const config = { ...gameConfig, phaseMinutes: 10_000 }
@@ -74,16 +79,30 @@ describe('一番賞', () => {
     const box = createBox(def, createRng(4))
     const left = box.tickets.reduce((sum, ticket) => sum + ticket.unitCost, 0) + box.lastPrize.unitCost
     expect(left).toBeGreaterThan(0)
-    expect(refundAmount(box, gameConfig.refundRate)).toBe(Math.round(left * 0.3))
-    expect(refundAmount(box, gameConfig.refundRate)).toBeLessThan(left)
-    const closed = closeBox(streetWith({ box, money: 20 }), gameConfig)
+    expect(refundAmount(box, gameConfig.refundRate, gameConfig)).toBe(Math.round(left * 0.3))
+    expect(refundAmount(box, gameConfig.refundRate, gameConfig)).toBeLessThan(left)
+    const closed = closeBox(streetWith({ box: { ...box, paid: true }, money: 20 }), gameConfig)
     expect(closed.street.money).toBe(20 + Math.round(left * 0.3))
     const spent = {
       ...box,
       tickets: [],
       lastPrize: { ...box.lastPrize, awarded: true },
     }
-    expect(refundAmount(spent, gameConfig.refundRate)).toBe(0)
+    expect(refundAmount(spent, gameConfig.refundRate, gameConfig)).toBe(0)
+    const flooded = {
+      ...box,
+      paid: true,
+      tickets: Array.from({ length: 200 }, () => ({
+        grade: 'D' as const,
+        figureId: null,
+        label: '貼紙小卡',
+        unitCost: 1_000_000,
+      })),
+      lastPrize: { id: 'lantern', label: '夜市燈籠', unitCost: 1_000_000, awarded: false },
+    }
+    expect(refundAmount(flooded, gameConfig.refundRate, gameConfig)).toBeLessThanOrEqual(Math.round(2670 * 0.3))
+    const cashed = closeBox(streetWith({ box: flooded, money: 0 }), gameConfig)
+    expect(cashed.street.money).toBeLessThanOrEqual(Math.round(2670 * 0.3))
   })
 
   it('turns a duplicate of each grade into that grade’s coins', () => {

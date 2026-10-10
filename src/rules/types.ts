@@ -38,6 +38,10 @@ export interface BoxState {
   lastPrize: { id: string; label: string; unitCost: number; awarded: boolean }
   draws: number
   income: number
+  /** Missing on older saves. Only a box opened by paying wholesale refunds. */
+  paid?: boolean
+  /** Ticks since the last draw. Missing means 0. */
+  idleTicks?: number
 }
 
 export interface Placement {
@@ -137,6 +141,11 @@ export interface GameConfig {
   ambienceCap: number
   ambienceTarget: number
   cleanDropPerPhase: number
+  cleanDropPerVisitor: number
+  cleanlinessWeight: number
+  levelPriceMultiplier: number[]
+  saveEveryTicks: number
+  ichibanIdleTicks: number
   walkSpeed: number
   restockCostRatio: number
   wishSuccessRate: number
