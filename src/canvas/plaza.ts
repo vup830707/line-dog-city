@@ -107,6 +107,20 @@ export function slotFrame(index: number, stallType?: StallType | null): SlotFram
   }
 }
 
+/** Click pad on the stall's feet. Tall sprite boxes overlap the next rank. */
+export function slotHitRect(frame: SlotFrame, cover: CoverTransform): ScreenRect {
+  const foot = toScreen(frame, cover)
+  const width = frame.rx * 2 * cover.scale
+  const above = frame.height * 0.2 * cover.scale
+  const below = 8 * cover.scale
+  return {
+    left: foot.x - width / 2,
+    top: foot.y - above,
+    width,
+    height: above + below,
+  }
+}
+
 /** Sprite rectangle in view pixels. The bottom center sits on the slot anchor. */
 export function screenRect(frame: SlotFrame, cover: CoverTransform): ScreenRect {
   const foot = toScreen(frame, cover)

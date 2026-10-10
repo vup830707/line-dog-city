@@ -56,10 +56,21 @@ export function drawTicket(box: BoxState): {
   }
 }
 
-export function refundAmount(box: BoxState, refundRate: number): number {
-  const ticketCost = box.tickets.reduce((sum, ticket) => sum + ticket.unitCost, 0)
-  const last = box.lastPrize.awarded ? 0 : box.lastPrize.unitCost
-  return Math.round((ticketCost + last) * refundRate)
+function catalogUnitCost(ticket: Ticket, def: BoxDef): number {
+  const prize = def.prizes.find(
+    (item) => item.grade === ticket.grade && item.figureId === ticket.figureId && item.label === ticket.label,
+  )
+  return prize?.unitCost ?? 0
+}
+
+/** Remaining value comes from the catalog wholesale, never from a saved unitCost. */
+export function refundAmount(box: BoxState, refundRate: number, config: GameConfig): number {
+  const def = config.ichiban.boxes.find((item) => item.id === box.boxId) ?? config.ichiban.boxes[0]
+  if (!def) return 0
+  const ticketCost = box.tickets.reduce((sum, ticket) => sum + catalogUnitCost(ticket, def), 0)
+  const last = !box.lastPrize.awarded && box.lastPrize.id === def.lastPrize.id ? def.lastPrize.unitCost : 0
+  const remaining = Math.min(def.wholesale, ticketCost + last)
+  return Math.round(remaining * refundRate)
 }
 
 export function duplicateCoins(grade: Grade, config: GameConfig): number {

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { gameConfig } from '../config'
+import { createNewGame } from '../game/newGame'
+import { ambienceScore, visitFactor } from './ambience'
 import { closeBox, castWish } from './actions'
-import { letterFor } from './animals'
+import { decorNearby, letterFor } from './animals'
 import { createBox } from './ichiban'
 import { createRng } from './rng'
 import { applyStaff } from './staff'
@@ -178,6 +180,68 @@ describe('economy regressions', () => {
     const many = streetTick(streetWith({ ...base, arrivals: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] }), gameConfig)
     expect(many.cleanliness).toBeLessThan(few.cleanliness)
     expect(gameConfig.cleanDropPerVisitor).toBe(0.5)
+  })
+
+  it('starts the gifted plaza below the visit cap, with a bench beside the fortune stall', () => {
+    const save = createNewGame({ playerDog: 'white', whiteName: '雪球', brownName: '可可', now: 0, seed: 1 }, gameConfig)
+    const factor = visitFactor(ambienceScore(save.street, gameConfig), gameConfig, save.street.cleanliness)
+    expect(factor).toBeGreaterThan(0.9)
+    expect(factor).toBeLessThan(1.15)
+    const fortune = save.street.slots.findIndex((slot) => slot?.stallType === 'fortune')
+    expect(fortune).toBeGreaterThanOrEqual(0)
+    expect(decorNearby(save.street, fortune, 'seat')).toBe(true)
+    const slots = save.street.slots.slice()
+    const empty = slots.findIndex((slot) => slot == null)
+    expect(empty).toBeGreaterThanOrEqual(0)
+    slots[empty] = { uid: 'extra-star', kind: 'decor', decorType: 'star', level: 1 }
+    const dressed = visitFactor(ambienceScore({ ...save.street, slots }, gameConfig), gameConfig, 100)
+    expect(dressed).toBeGreaterThan(factor)
+    expect(dressed).toBeLessThanOrEqual(gameConfig.ambienceCap)
+    const late = { ...save.street, phase: 'late' as const, cleanliness: 100 }
+    expect(
+      letterFor({
+        species: 'hedgehog',
+        stall: 'fortune',
+        decor: decorNearby(late, fortune, 'seat'),
+        street: late,
+        config: gameConfig,
+        drewGrade: null,
+        satisfaction: 0.95,
+      }),
+    ).not.toBeNull()
+  })
+
+  it('does not send an out-of-stock customer into the free ichiban box', () => {
+    const slots = streetWith().slots.slice()
+    slots[1] = stall('ice', 'ice')
+    slots[5] = stall('ichiban', 'ichiban')
+    const tickets = Array.from({ length: 8 }, () => ({
+      grade: 'C' as const,
+      figureId: 'pajama',
+      label: '睡衣小狗',
+      unitCost: 1_000_000,
+    }))
+    const start = streetWith({
+      slots,
+      stock: { ice: 0 },
+      money: 100,
+      visitors: [visitor('rabbit', 1, 1)],
+      staff: [],
+      arrivals: [],
+      box: {
+        boxId: 'set1',
+        name: '箱',
+        wholesale: 2670,
+        tickets,
+        lastPrize: { id: 'lantern', label: '夜市燈籠', unitCost: 200, awarded: false },
+        draws: 0,
+        income: 0,
+        paid: false,
+      },
+    })
+    const done = runTicks(start, gameConfig, 8)
+    expect(done.box?.tickets).toHaveLength(8)
+    expect(done.money).toBe(100)
   })
 
   it('sends an out-of-stock visitor to another stall that still has goods', () => {

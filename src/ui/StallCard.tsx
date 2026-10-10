@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { ScreenRect } from '../canvas/plaza'
 import type { Weather } from '../rules/types'
 import { WEATHER_LABEL } from './labels'
@@ -10,15 +10,17 @@ export function stallCardBox(
   anchor: ScreenRect,
   view: { w: number; h: number },
   card: { w: number; h: number } = STALL_CARD_SIZE,
+  hudBottom = 0,
 ): { left: number; top: number; width: number; flipped: boolean } {
   const width = Math.min(card.w, Math.max(160, view.w - 16))
+  const clearance = Math.max(8, hudBottom + 8)
   let left = anchor.left + anchor.width / 2 - width / 2
   let top = anchor.top - card.h - 8
-  const flipped = top < 8
+  const flipped = top < clearance
   if (flipped) top = anchor.top + anchor.height + 8
   left = Math.max(8, Math.min(left, view.w - width - 8))
-  const maxTop = Math.max(8, view.h - card.h - 8)
-  top = Math.max(8, Math.min(top, maxTop))
+  const maxTop = Math.max(clearance, view.h - card.h - 8)
+  top = Math.max(clearance, Math.min(top, maxTop))
   return { left, top, width, flipped }
 }
 
@@ -29,6 +31,7 @@ export function StallCard({
   view,
   upgradeReason,
   onUpgrade,
+  hudBottom = 0,
   ichiban,
   wish,
 }: {
@@ -38,6 +41,7 @@ export function StallCard({
   view: { w: number; h: number }
   upgradeReason: string | null
   onUpgrade: () => void
+  hudBottom?: number
   ichiban: {
     tickets: number
     refund: number
@@ -52,9 +56,27 @@ export function StallCard({
   } | null
 }) {
   const [confirmClose, setConfirmClose] = useState(false)
-  const box = stallCardBox(anchor, view)
+  const cardRef = useRef<HTMLDivElement | null>(null)
+  const [cardHeight, setCardHeight] = useState(0)
+  const measureKey = [
+    title,
+    goods,
+    upgradeReason ?? '',
+    confirmClose ? '1' : '0',
+    ichiban ? `${ichiban.tickets}:${ichiban.refund}:${ichiban.buyReason ?? ''}:${ichiban.closeReason ?? ''}` : '',
+    wish?.reason ?? '',
+    view.w,
+    view.h,
+    hudBottom,
+  ].join('|')
+  useLayoutEffect(() => {
+    const next = cardRef.current?.offsetHeight ?? 0
+    if (next > 0) setCardHeight((height) => (height === next ? height : next))
+  }, [measureKey])
+  const box = stallCardBox(anchor, view, { w: STALL_CARD_SIZE.w, h: cardHeight || 1 }, hudBottom)
   return (
     <div
+      ref={cardRef}
       className="stall-card"
       data-testid="stall-card"
       data-flipped={box.flipped ? '1' : '0'}

@@ -1,4 +1,5 @@
-import type { SaveV3 } from './types'
+import { gameConfig } from '../config'
+import type { BoxState, SaveV3, Ticket } from './types'
 
 export const SCHEMA_VERSION = 3
 
@@ -50,15 +51,61 @@ export function parseSave(raw: unknown): ParseResult {
         whiteName: record.whiteName,
         brownName: record.brownName,
         savedAt: finiteNumber(record.savedAt) ?? Date.now(),
-        street: repaired,
+        street: clampStreet(repaired),
       },
     }
   }
-  const savedAt = finiteNumber(record.savedAt)
-  if (savedAt == null) {
-    return { ok: true, save: { ...(record as unknown as SaveV3), savedAt: Date.now() } }
+  return {
+    ok: true,
+    save: {
+      ...(record as unknown as SaveV3),
+      savedAt: finiteNumber(record.savedAt) ?? Date.now(),
+      street: clampStreet((record as unknown as SaveV3).street),
+    },
   }
-  return { ok: true, save: record as unknown as SaveV3 }
+}
+
+function catalogTicket(ticket: Ticket): Ticket | null {
+  const def = gameConfig.ichiban.boxes[0]
+  if (!def) return null
+  const prize = def.prizes.find(
+    (item) => item.grade === ticket.grade && item.figureId === ticket.figureId && item.label === ticket.label,
+  )
+  if (!prize) return null
+  return { grade: prize.grade, figureId: prize.figureId, label: prize.label, unitCost: prize.unitCost }
+}
+
+function clampBox(value: unknown): BoxState | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const box = value as BoxState
+  const def = gameConfig.ichiban.boxes.find((item) => item.id === box.boxId) ?? gameConfig.ichiban.boxes[0]
+  if (!def || !Array.isArray(box.tickets)) return null
+  const limit = def.prizes.reduce((sum, prize) => sum + prize.count, 0)
+  const tickets = box.tickets
+    .slice(0, limit)
+    .map((ticket) => catalogTicket(ticket))
+    .filter((ticket): ticket is Ticket => ticket != null)
+  return {
+    boxId: def.id,
+    name: def.name,
+    wholesale: def.wholesale,
+    tickets,
+    lastPrize: {
+      id: def.lastPrize.id,
+      label: def.lastPrize.label,
+      unitCost: def.lastPrize.unitCost,
+      awarded: Boolean(box.lastPrize?.awarded),
+    },
+    draws: Number.isFinite(box.draws) ? box.draws : 0,
+    income: Number.isFinite(box.income) ? box.income : 0,
+    paid: box.paid === true,
+    idleTicks: Number.isFinite(box.idleTicks) ? box.idleTicks : 0,
+  }
+}
+
+function clampStreet(street: SaveV3['street']): SaveV3['street'] {
+  if (street.box == null) return street
+  return { ...street, box: clampBox(street.box) }
 }
 
 function finiteNumber(value: unknown): number | null {

@@ -112,6 +112,35 @@ describe('save schema', () => {
     if (!badClock.ok) return
     expect(Number.isFinite(badClock.save.savedAt)).toBe(true)
     expect(offlineTickCount(Date.now() - badClock.save.savedAt, gameConfig)).toBe(0)
+
+    const infiniteClock = parseSave({ ...save, savedAt: Number.POSITIVE_INFINITY })
+    expect(infiniteClock.ok).toBe(true)
+    if (!infiniteClock.ok) return
+    expect(Number.isFinite(infiniteClock.save.savedAt)).toBe(true)
+    expect(offlineTickCount(Date.now() - infiniteClock.save.savedAt, gameConfig)).toBe(0)
+
+    const tampered = parseSave({
+      ...save,
+      street: {
+        ...save.street,
+        box: {
+          boxId: 'set1',
+          name: '奇幻夜市 第一彈',
+          wholesale: 9_999_999,
+          tickets: [{ grade: 'D', figureId: null, label: '貼紙小卡', unitCost: 1_000_000 }],
+          lastPrize: { id: 'lantern', label: '夜市燈籠', unitCost: 1_000_000, awarded: false },
+          draws: 0,
+          income: 0,
+          paid: true,
+          idleTicks: 0,
+        },
+      },
+    })
+    expect(tampered.ok).toBe(true)
+    if (!tampered.ok) return
+    expect(tampered.save.street.box?.tickets[0]?.unitCost).toBe(15)
+    expect(tampered.save.street.box?.lastPrize.unitCost).toBe(200)
+    expect(tampered.save.street.box?.wholesale).toBe(2670)
   })
 
   it('round-trips an exported save through import', () => {

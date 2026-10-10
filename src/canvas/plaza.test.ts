@@ -20,6 +20,7 @@ import {
   rankScale,
   screenRect,
   slotFrame,
+  slotHitRect,
   spriteScreenRect,
   standPoint,
   footprintsOverlap,
@@ -182,6 +183,35 @@ describe('slot frames', () => {
     expect(rect.height).toBeCloseTo(sprite!.drawH)
     const path = pathPoint(sparrow?.position ?? 0)
     expect(Math.hypot(sprite!.x - path.x, sprite!.y - path.y)).toBeGreaterThan(20)
+  })
+})
+
+describe('slot hit areas', () => {
+  it('keeps every stall foot clickable at 1280x720 and 1920x1080', () => {
+    const covers = (rect: { left: number; top: number; width: number; height: number }, x: number, y: number) =>
+      x >= rect.left && x < rect.left + rect.width && y >= rect.top && y < rect.top + rect.height
+    for (const [viewW, viewH] of [
+      [1920, 1080],
+      [1280, 720],
+    ] as const) {
+      const cover = coverTransform(viewW, viewH)
+      const hits = PLAZA_SLOTS.map((_, index) => slotHitRect(slotFrame(index, index === 5 ? 'ichiban' : null), cover))
+      for (let i = 0; i < hits.length; i++) {
+        const hit = hits[i]
+        if (!hit) continue
+        const centerX = hit.left + hit.width / 2
+        const centerY = hit.top + hit.height / 2
+        for (let j = 0; j < hits.length; j++) {
+          if (i === j) continue
+          expect(covers(hits[j] as typeof hit, centerX, centerY)).toBe(false)
+        }
+      }
+      const ichiban = hits[5]
+      const front = hits[15]
+      expect(ichiban).toBeTruthy()
+      expect(front).toBeTruthy()
+      expect(covers(front as NonNullable<typeof front>, (ichiban as NonNullable<typeof ichiban>).left + (ichiban as NonNullable<typeof ichiban>).width / 2, (ichiban as NonNullable<typeof ichiban>).top + (ichiban as NonNullable<typeof ichiban>).height / 2)).toBe(false)
+    }
   })
 })
 

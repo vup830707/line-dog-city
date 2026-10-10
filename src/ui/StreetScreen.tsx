@@ -10,6 +10,7 @@ import {
   PLAZA_SLOTS,
   screenRect,
   slotFrame,
+  slotHitRect,
   spriteScreenRect,
   STALL_ART,
   toScreen,
@@ -73,6 +74,8 @@ export function StreetScreen({
   const viewRef = useRef(view)
   const selectedRef = useRef(selectedSlot)
   const hitsRef = useRef<HTMLDivElement | null>(null)
+  const hudRef = useRef<HTMLElement | null>(null)
+  const [hudBottom, setHudBottom] = useState(64)
   streetRef.current = street
   viewRef.current = view
   selectedRef.current = selectedSlot
@@ -92,6 +95,21 @@ export function StreetScreen({
     apply()
     const observer = new ResizeObserver(apply)
     observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  useLayoutEffect(() => {
+    const shell = shellRef.current
+    const hud = hudRef.current
+    if (!shell || !hud) return
+    const apply = () => {
+      const shellBox = shell.getBoundingClientRect()
+      const hudBox = hud.getBoundingClientRect()
+      setHudBottom(Math.max(0, hudBox.bottom - shellBox.top))
+    }
+    apply()
+    const observer = new ResizeObserver(apply)
+    observer.observe(hud)
     return () => observer.disconnect()
   }, [])
 
@@ -224,7 +242,7 @@ export function StreetScreen({
       {PLAZA_SLOTS.map((_, index) => {
         const place = street.slots[index]
         const stallType = place?.kind === 'stall' ? place.stallType : null
-        const rect = screenRect(slotFrame(index, stallType), cover)
+        const rect = slotHitRect(slotFrame(index, stallType), cover)
         return (
           <button
             key={index}
@@ -258,7 +276,7 @@ export function StreetScreen({
           />
         ))}
       </div>
-      <header className="hud">
+      <header className="hud" ref={hudRef}>
         <p className="hud-chip" data-testid="player-name">
           {save.playerDog === 'white' ? save.whiteName : save.brownName}
         </p>
@@ -305,6 +323,7 @@ export function StreetScreen({
           anchor={screenRect(slotFrame(selectedSlot, selected.stallType), cover)}
           view={view}
           upgradeReason={upgradeBlock(street, selectedSlot, gameConfig)}
+          hudBottom={hudBottom}
           onUpgrade={() => {
             const result = upgradeStall(street, selectedSlot, gameConfig)
             setNotice(result.ok ? '' : result.reason ?? '')
@@ -314,11 +333,11 @@ export function StreetScreen({
             selected.stallType === 'ichiban'
               ? {
                   tickets: street.box?.tickets.length ?? 0,
-                  refund: street.box?.paid ? refundAmount(street.box, gameConfig.refundRate) : 0,
+                  refund: street.box?.paid ? refundAmount(street.box, gameConfig.refundRate, gameConfig) : 0,
                   buyReason: buyBoxBlock(street, gameConfig),
                   closeReason: street.box ? null : '現在沒有箱子',
                   onClose: () => {
-                    const refund = street.box?.paid ? refundAmount(street.box, gameConfig.refundRate) : 0
+                    const refund = street.box?.paid ? refundAmount(street.box, gameConfig.refundRate, gameConfig) : 0
                     const result = closeBox(street, gameConfig)
                     setNotice(result.ok ? (refund > 0 ? `剩下的籤已退回 ${refund} 幣。` : '免費箱沒有退幣。') : result.reason ?? '')
                     if (result.ok) onChange({ ...save, street: result.street })

@@ -39,6 +39,13 @@ function coins(value: number): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+/** A snack shelf with stock. The free ichiban box is not an overflow shelf. */
+function snackStocked(street: Street, index: number): boolean {
+  const place = street.slots[index]
+  if (!place || place.kind !== 'stall' || !place.stallType || place.stallType === 'ichiban') return false
+  return (street.stock[place.uid] ?? 0) > 0
+}
+
 function targetFor(street: Street, species: Species, config: GameConfig): number {
   const slots = stallSlots(street)
   const ichiban = slots.find((index) => street.slots[index]?.stallType === 'ichiban')
@@ -47,12 +54,12 @@ function targetFor(street: Street, species: Species, config: GameConfig): number
   const liked = speciesDef(species, config).stall
   const favourite = slots.find((index) => street.slots[index]?.stallType === liked)
   if (favourite != null && stallHasGoods(street, favourite)) return favourite
-  const stocked = slots.find((index) => stallHasGoods(street, index))
+  const stocked = slots.find((index) => snackStocked(street, index))
   return stocked ?? favourite ?? slots[0] ?? 0
 }
 
 function anotherStocked(street: Street, except: number): number | null {
-  return stallSlots(street).find((index) => index !== except && stallHasGoods(street, index)) ?? null
+  return stallSlots(street).find((index) => index !== except && snackStocked(street, index)) ?? null
 }
 
 export function spawnVisitor(street: Street, config: GameConfig, species: Species): Street {

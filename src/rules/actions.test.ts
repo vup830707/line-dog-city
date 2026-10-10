@@ -7,10 +7,10 @@ import { resolveWish, rollWeather } from './weather'
 
 describe('upgrades and placement', () => {
   it('spends the place cost and the next upgrade tier', () => {
-    const placed = placeItem(streetWith({ money: 800 }), 2, { kind: 'stall', stallType: 'ice' }, gameConfig)
+    const placed = placeItem(streetWith({ money: 3000 }), 2, { kind: 'stall', stallType: 'ice' }, gameConfig)
     expect(placed.ok).toBe(true)
     expect(placed.street.slots[2]?.stallType).toBe('ice')
-    expect(placed.street.money).toBe(800 - gameConfig.placeCost.ice)
+    expect(placed.street.money).toBe(3000 - gameConfig.placeCost.ice)
     expect(placed.street.stock[placed.street.slots[2]?.uid ?? '']).toBe(gameConfig.stockPerLevel)
     const upgraded = upgradeStall(placed.street, 2, gameConfig)
     expect(upgraded.ok).toBe(true)
@@ -87,7 +87,7 @@ describe('upgrades and placement', () => {
     const placed = placeItem(streetWith({ money: 500 }), 2, { kind: 'stall', stallType: 'ice' }, gameConfig)
     const poor = { ...placed.street, money: 10 }
     expect(upgradeBlock(poor, 2, gameConfig)).toBe(`還差 ${(gameConfig.upgradeCost.ice[0] ?? 0) - poor.money} 幣`)
-    const rich = upgradeStall({ ...placed.street, money: 5000 }, 2, gameConfig)
+    const rich = upgradeStall({ ...placed.street, money: 20000 }, 2, gameConfig)
     const maxed = upgradeStall(rich.street, 2, gameConfig)
     expect(upgradeBlock(maxed.street, 2, gameConfig)).toBe('已經升到最高')
     expect(hireBlock(streetWith({ money: 10 }), gameConfig)).toContain('還差')

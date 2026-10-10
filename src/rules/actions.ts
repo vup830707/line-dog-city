@@ -124,7 +124,7 @@ export function castWish(street: Street, desired: Weather, config: GameConfig): 
 
 export function closeBox(street: Street, config: GameConfig): ActionResult {
   if (!street.box) return fail(street, '現在沒有箱子')
-  const refund = street.box.paid ? refundAmount(street.box, config.refundRate) : 0
+  const refund = street.box.paid ? refundAmount(street.box, config.refundRate, config) : 0
   return {
     ok: true,
     street: { ...street, money: street.money + refund, box: null, boxRestock: 0 },

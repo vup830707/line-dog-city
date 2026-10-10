@@ -20,7 +20,7 @@ export function offlineDurationLabel(ticks: number, config: GameConfig): string 
   if (hours > 0) parts.push(`${hours} 小時`)
   if (minutes > 0) parts.push(`${minutes} 分鐘`)
   if (remain > 0 || parts.length === 0) parts.push(`${remain} 秒`)
-  return parts.join('')
+  return parts.join(' ')
 }
 
 export function applyOffline(street: Street, elapsedMs: number, config: GameConfig): { street: Street; ticks: number; earned: number } {
