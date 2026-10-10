@@ -1,0 +1,456 @@
+{
+ "game": "動物夜市",
+ "style": "2.5D",
+ "generated_count": 32,
+ "missing": [],
+ "assets": [
+  {
+   "path": "animals/cat.png",
+   "kind": "animals",
+   "name": "cat",
+   "width": 438,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    219,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/animals.jpg"
+  },
+  {
+   "path": "animals/duck.png",
+   "kind": "animals",
+   "name": "duck",
+   "width": 375,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    187,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/animals.jpg"
+  },
+  {
+   "path": "animals/hamster.png",
+   "kind": "animals",
+   "name": "hamster",
+   "width": 412,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    206,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/animals.jpg"
+  },
+  {
+   "path": "animals/hedgehog.png",
+   "kind": "animals",
+   "name": "hedgehog",
+   "width": 433,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    216,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/animals.jpg"
+  },
+  {
+   "path": "animals/otter.png",
+   "kind": "animals",
+   "name": "otter",
+   "width": 451,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    225,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/animals.jpg"
+  },
+  {
+   "path": "animals/rabbit.png",
+   "kind": "animals",
+   "name": "rabbit",
+   "width": 280,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    140,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/animals.jpg"
+  },
+  {
+   "path": "animals/raccoon.png",
+   "kind": "animals",
+   "name": "raccoon",
+   "width": 425,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    212,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/animals.jpg"
+  },
+  {
+   "path": "animals/red-panda.png",
+   "kind": "animals",
+   "name": "red-panda",
+   "width": 452,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    226,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/animals.jpg"
+  },
+  {
+   "path": "stalls/dream-ice-cream-cart.png",
+   "kind": "stalls",
+   "name": "dream-ice-cream-cart",
+   "width": 348,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    174,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/stalls.jpg"
+  },
+  {
+   "path": "stalls/fortune-teller-booth.png",
+   "kind": "stalls",
+   "name": "fortune-teller-booth",
+   "width": 323,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    161,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/stalls.jpg"
+  },
+  {
+   "path": "stalls/ichiban-kuji-booth.png",
+   "kind": "stalls",
+   "name": "ichiban-kuji-booth",
+   "width": 374,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    187,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/stalls.jpg"
+  },
+  {
+   "path": "stalls/mood-charging-station.png",
+   "kind": "stalls",
+   "name": "mood-charging-station",
+   "width": 384,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    192,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/stalls.jpg"
+  },
+  {
+   "path": "stalls/weather-jar-shelf.png",
+   "kind": "stalls",
+   "name": "weather-jar-shelf",
+   "width": 358,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    179,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/stalls.jpg"
+  },
+  {
+   "path": "stalls/wishing-pond.png",
+   "kind": "stalls",
+   "name": "wishing-pond",
+   "width": 512,
+   "height": 337,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    256,
+    337
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/stalls.jpg"
+  },
+  {
+   "path": "chars/brown-puppy-stand.png",
+   "kind": "chars",
+   "name": "brown-puppy-stand",
+   "width": 392,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    196,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/puppies.jpg"
+  },
+  {
+   "path": "chars/brown-puppy-sweep.png",
+   "kind": "chars",
+   "name": "brown-puppy-sweep",
+   "width": 427,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    213,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/puppies.jpg"
+  },
+  {
+   "path": "chars/brown-puppy-walk-back.png",
+   "kind": "chars",
+   "name": "brown-puppy-walk-back",
+   "width": 330,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    165,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/puppies.jpg"
+  },
+  {
+   "path": "chars/brown-puppy-walk-front.png",
+   "kind": "chars",
+   "name": "brown-puppy-walk-front",
+   "width": 484,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    242,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/puppies.jpg"
+  },
+  {
+   "path": "chars/white-puppy-carry.png",
+   "kind": "chars",
+   "name": "white-puppy-carry",
+   "width": 385,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    192,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/puppies.jpg"
+  },
+  {
+   "path": "chars/white-puppy-stand.png",
+   "kind": "chars",
+   "name": "white-puppy-stand",
+   "width": 367,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    183,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/puppies.jpg"
+  },
+  {
+   "path": "chars/white-puppy-walk-back.png",
+   "kind": "chars",
+   "name": "white-puppy-walk-back",
+   "width": 347,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    173,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/puppies.jpg"
+  },
+  {
+   "path": "chars/white-puppy-walk-front.png",
+   "kind": "chars",
+   "name": "white-puppy-walk-front",
+   "width": 512,
+   "height": 482,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    256,
+    482
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/puppies.jpg"
+  },
+  {
+   "path": "decor/fence-section.png",
+   "kind": "decor",
+   "name": "fence-section",
+   "width": 512,
+   "height": 367,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    256,
+    367
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/decor-staff.jpg"
+  },
+  {
+   "path": "decor/flower-cart.png",
+   "kind": "decor",
+   "name": "flower-cart",
+   "width": 430,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    215,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/decor-staff.jpg"
+  },
+  {
+   "path": "decor/lantern-post.png",
+   "kind": "decor",
+   "name": "lantern-post",
+   "width": 460,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    230,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/decor-staff.jpg"
+  },
+  {
+   "path": "decor/potted-plant.png",
+   "kind": "decor",
+   "name": "potted-plant",
+   "width": 336,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    168,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/decor-staff.jpg"
+  },
+  {
+   "path": "decor/signboard-blank.png",
+   "kind": "decor",
+   "name": "signboard-blank",
+   "width": 430,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    215,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/decor-staff.jpg"
+  },
+  {
+   "path": "decor/wooden-bench.png",
+   "kind": "decor",
+   "name": "wooden-bench",
+   "width": 512,
+   "height": 469,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    256,
+    469
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/decor-staff.jpg"
+  },
+  {
+   "path": "staff/ferret.png",
+   "kind": "staff",
+   "name": "ferret",
+   "width": 459,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    229,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/decor-staff.jpg"
+  },
+  {
+   "path": "staff/munia.png",
+   "kind": "staff",
+   "name": "munia",
+   "width": 469,
+   "height": 512,
+   "anchor": "bottom-center",
+   "anchor_px": [
+    234,
+    512
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/decor-staff.jpg"
+  },
+  {
+   "path": "bg/plaza-night.jpg",
+   "kind": "bg",
+   "name": "plaza-night",
+   "width": 1280,
+   "height": 720,
+   "anchor": "top-left",
+   "anchor_px": [
+    0,
+    0
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/bg-plaza.jpg"
+  },
+  {
+   "path": "bg/plaza-night-1920.jpg",
+   "kind": "bg",
+   "name": "plaza-night-1920",
+   "width": 1920,
+   "height": 1080,
+   "anchor": "top-left",
+   "anchor_px": [
+    0,
+    0
+   ],
+   "tileable_x": false,
+   "source": "_raw/sheets25/bg-plaza.jpg"
+  }
+ ]
+}

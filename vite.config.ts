@@ -20,7 +20,7 @@ export default defineConfig({
         lang: 'zh-Hant',
         dir: 'ltr',
         display: 'standalone',
-        orientation: 'portrait',
+        orientation: 'any',
         background_color: '#fffaf3',
         theme_color: '#24170f',
         start_url: base,
@@ -32,6 +32,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,json,webmanifest}'],
+        globIgnores: ['**/art25/contact-sheet.png'],
         navigateFallback: `${base}index.html`,
         modifyURLPrefix: { '': base },
       },

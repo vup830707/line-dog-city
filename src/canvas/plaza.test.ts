@@ -1,0 +1,159 @@
+import { describe, expect, it } from 'vitest'
+import { createNewGame } from '../game/newGame'
+import { gameConfig } from '../config'
+import { stall, streetWith, visitor } from '../rules/fixtures'
+import {
+  ANIMAL_ART,
+  CUSTOMER_H,
+  PLAZA_H,
+  PLAZA_SLOTS,
+  PLAZA_W,
+  PUPPY_H,
+  STALL_ART,
+  bobOffset,
+  characterFootprint,
+  coverTransform,
+  depthSort,
+  layoutScene,
+  pathPoint,
+  propFootprint,
+  rankScale,
+  standPoint,
+  footprintsOverlap,
+  walkFacing,
+} from './plaza'
+
+describe('plaza slot layout', () => {
+  it('puts sixteen slots on the cobblestone, back arc farther than the sides', () => {
+    expect(PLAZA_SLOTS).toHaveLength(16)
+    for (const slot of PLAZA_SLOTS) {
+      expect(slot.x).toBeGreaterThan(180)
+      expect(slot.x).toBeLessThan(PLAZA_W - 120)
+      expect(slot.y).toBeGreaterThan(400)
+      expect(slot.y).toBeLessThan(980)
+    }
+    const average = (items: { y: number }[]) => items.reduce((sum, slot) => sum + slot.y, 0) / items.length
+    expect(average(PLAZA_SLOTS.slice(0, 8))).toBeLessThan(average(PLAZA_SLOTS.slice(8)))
+    let nearest = 9999
+    for (let i = 0; i < PLAZA_SLOTS.length; i++) {
+      for (let j = i + 1; j < PLAZA_SLOTS.length; j++) {
+        const a = PLAZA_SLOTS[i] as { x: number; y: number }
+        const b = PLAZA_SLOTS[j] as { x: number; y: number }
+        nearest = Math.min(nearest, Math.hypot(a.x - b.x, a.y - b.y))
+      }
+    }
+    expect(nearest).toBeGreaterThan(130)
+  })
+
+  it('draws back-arc stalls at about 30% of 1080p and puppies a little taller than customers', () => {
+    expect((STALL_ART.ice.drawH * rankScale(0)) / PLAZA_H).toBeCloseTo(0.3, 2)
+    expect(rankScale(8)).toBe(1)
+    expect(rankScale(3)).toBeCloseTo(0.85)
+    expect(CUSTOMER_H / PLAZA_H).toBeGreaterThanOrEqual(0.1)
+    expect(CUSTOMER_H / PLAZA_H).toBeLessThanOrEqual(0.12)
+    expect(PUPPY_H).toBeGreaterThan(CUSTOMER_H)
+    expect(PUPPY_H / PLAZA_H).toBeLessThanOrEqual(0.125)
+    expect(STALL_ART.ice.drawH * rankScale(0)).toBeGreaterThan(PUPPY_H * 2.4)
+  })
+
+  it('stands characters on the oval in front of the back arc', () => {
+    for (const slot of PLAZA_SLOTS.slice(0, 6)) {
+      expect(standPoint(slot).y).toBeGreaterThan(slot.y + 70)
+    }
+    const walking = pathPoint(3.5)
+    const from = standPoint(PLAZA_SLOTS[3] as { x: number; y: number })
+    const to = standPoint(PLAZA_SLOTS[4] as { x: number; y: number })
+    expect(walking.x).toBeGreaterThan(Math.min(from.x, to.x) - 1)
+    expect(walking.x).toBeLessThan(Math.max(from.x, to.x) + 1)
+  })
+
+  it('covers 1920x1080 and 1280x720 without leaving a gap', () => {
+    for (const [viewW, viewH] of [
+      [1920, 1080],
+      [1280, 720],
+      [1600, 700],
+    ] as const) {
+      const cover = coverTransform(viewW, viewH)
+      expect(PLAZA_W * cover.scale).toBeGreaterThanOrEqual(viewW - 0.01)
+      expect(PLAZA_H * cover.scale).toBeGreaterThanOrEqual(viewH - 0.01)
+    }
+    expect(coverTransform(1920, 1080).scale).toBe(1)
+    expect(coverTransform(1280, 720).scale).toBeCloseTo(1280 / 1920)
+  })
+})
+
+describe('depth sort', () => {
+  it('draws smaller foot y first and keeps the original order on a tie', () => {
+    const sorted = depthSort([
+      { id: 'near', y: 800 },
+      { id: 'tie-a', y: 400 },
+      { id: 'far', y: 200 },
+      { id: 'tie-b', y: 400 },
+    ])
+    expect(sorted.map((item) => item.id)).toEqual(['far', 'tie-a', 'tie-b', 'near'])
+  })
+
+  it('paints a back stall, then a front stall, then the visitor on the path', () => {
+    const far = PLAZA_SLOTS.reduce((best, slot, index) => (slot.y < (PLAZA_SLOTS[best]?.y ?? 9999) ? index : best), 0)
+    const near = PLAZA_SLOTS.reduce((best, slot, index) => (slot.y > (PLAZA_SLOTS[best]?.y ?? 0) ? index : best), 0)
+    const slots = streetWith().slots.slice()
+    slots[far] = stall('ice', 'ice')
+    slots[near] = stall('fortune', 'fortune')
+    const scene = layoutScene(
+      streetWith({
+        slots,
+        visitors: [visitor('cat', far, far)],
+        staff: [],
+      }),
+      0,
+    )
+    const order = scene.map((sprite) => sprite.id)
+    expect(order.indexOf(`slot-${far}`)).toBeLessThan(order.indexOf(`slot-${near}`))
+    expect(order.indexOf(`slot-${far}`)).toBeLessThan(order.indexOf('visitor-v-cat'))
+    expect(scene.find((sprite) => sprite.id === `slot-${far}`)?.src).toBe(STALL_ART.ice.src)
+    expect(scene.find((sprite) => sprite.id === 'visitor-v-cat')?.src).toBe(ANIMAL_ART.cat.src)
+    expect(scene.find((sprite) => sprite.id === 'visitor-v-cat')?.shadow).toBe(true)
+    expect(scene.find((sprite) => sprite.id === `slot-${far}`)?.shadow).toBe(false)
+  })
+})
+
+describe('plaza spacing', () => {
+  it('keeps characters out of stall footprints and off each other', () => {
+    const save = createNewGame({ playerDog: 'white', whiteName: '雪球', brownName: '可可', now: 0, seed: 2 }, gameConfig)
+    const scene = layoutScene(save.street, 0)
+    const stalls = scene.filter((sprite) => sprite.id.startsWith('slot-') && Object.values(STALL_ART).some((art) => art.src === sprite.src))
+    const people = scene.filter((sprite) => sprite.shadow)
+    expect(stalls.length).toBeGreaterThanOrEqual(5)
+    expect(people.length).toBeGreaterThanOrEqual(6)
+    for (const person of people) {
+      for (const stallSprite of stalls) {
+        expect(footprintsOverlap(characterFootprint(person), propFootprint(stallSprite))).toBe(false)
+      }
+    }
+    for (let i = 0; i < people.length; i++) {
+      for (let j = i + 1; j < people.length; j++) {
+        const a = people[i] as (typeof people)[number]
+        const b = people[j] as (typeof people)[number]
+        expect(footprintsOverlap(characterFootprint(a), characterFootprint(b))).toBe(false)
+      }
+    }
+  })
+})
+
+describe('walking poses', () => {
+  it('uses walk-front toward the camera and walk-back or a mirror when heading away or left', () => {
+    expect(walkFacing(4, 6)).toEqual({ facing: 'front', mirror: false })
+    expect(walkFacing(8, 1)).toEqual({ facing: 'front', mirror: false })
+    expect(walkFacing(0, 3)).toEqual({ facing: 'front', mirror: false })
+    expect(walkFacing(-2, -5)).toEqual({ facing: 'back', mirror: false })
+    expect(walkFacing(0, -4)).toEqual({ facing: 'back', mirror: false })
+    expect(walkFacing(-6, 1).mirror).toBe(true)
+    expect(walkFacing(-6, 1).facing).toBe('front')
+  })
+
+  it('bobs characters and returns to the baseline', () => {
+    expect(bobOffset(0, 0)).toBe(0)
+    expect(bobOffset((Math.PI / 2) * 160, 0)).toBeCloseTo(5)
+    expect(Math.abs(bobOffset(999, 1.2))).toBeLessThanOrEqual(5)
+  })
+})

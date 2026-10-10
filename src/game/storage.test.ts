@@ -1,32 +1,28 @@
 import { describe, expect, it } from 'vitest'
-import { createNewGame } from './day'
-import { clearGame, loadGame, SAVE_KEY, storeGame, type KeyValueStore } from './storage'
+import { createNewGame } from './newGame'
+import { gameConfig } from '../config'
+import { loadGame, storeGame, type KeyValueStore } from './storage'
 
-function memory(): KeyValueStore & { data: Map<string, string> } {
+function memory(): KeyValueStore {
   const data = new Map<string, string>()
   return {
-    data,
     getItem: (key) => data.get(key) ?? null,
-    setItem: (key, value) => {
-      data.set(key, value)
-    },
-    removeItem: (key) => {
-      data.delete(key)
-    },
+    setItem: (key, value) => data.set(key, value),
+    removeItem: (key) => data.delete(key),
   }
 }
 
-describe('local save wrapper', () => {
-  it('round-trips through a key-value store and ignores a corrupt payload', () => {
+describe('storage', () => {
+  it('exports and imports a save, and drops a legacy strategy save', () => {
     const store = memory()
-    expect(loadGame(store)).toBeNull()
-    const save = createNewGame({ playerDog: 'white', whiteName: '雪球', brownName: '可可', seed: 1 })
+    const save = createNewGame({ playerDog: 'white', whiteName: '雪球', brownName: '可可', now: 5, seed: 3 }, gameConfig)
     storeGame(store, save)
-    expect(store.data.get(SAVE_KEY)).toContain('"schemaVersion":2')
     expect(loadGame(store)).toEqual(save)
-    store.setItem(SAVE_KEY, '{')
-    expect(loadGame(store)).toBeNull()
-    clearGame(store)
-    expect(loadGame(store)).toBeNull()
+    const exported = store.getItem('puppy-city-save') ?? ''
+    const other = memory()
+    other.setItem('puppy-city-save', exported)
+    expect(loadGame(other)).toEqual(save)
+    other.setItem('puppy-city-save', JSON.stringify({ schemaVersion: 2, whiteName: '舊', brownName: '檔' }))
+    expect(loadGame(other)).toBeNull()
   })
 })
