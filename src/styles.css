@@ -38,7 +38,7 @@ p { margin: 0 0 8px; }
 
 .title-screen {
   --title-dock: clamp(132px, 18vh, 176px);
-  --title-bleed: 10px;
+  --title-bleed: 12px;
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -65,26 +65,23 @@ p { margin: 0 0 8px; }
   height: calc(100% - var(--title-dock) + var(--title-bleed));
   object-fit: cover;
   object-position: center bottom;
-  mask-image: linear-gradient(#000 calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(#000 calc(100% - 10px), transparent 100%);
 }
 
-.title-dock {
+.title-ground {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: var(--title-dock);
+  height: calc(var(--title-dock) + var(--title-bleed));
+  overflow: hidden;
   pointer-events: none;
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: 100% auto;
 }
 
-.title-dock-unlit {
-  background: linear-gradient(to bottom, #5c4e52 0%, #56484c 48%, #514348 100%);
-}
-
-.title-dock-lit {
-  opacity: 0;
-  background: linear-gradient(to bottom, #4f4042 0%, #4a3b3d 48%, #46383a 100%);
-}
+.title-ground-lit { opacity: 0; }
 
 .title-bg-lit,
 .title-wash,
@@ -107,16 +104,16 @@ p { margin: 0 0 8px; }
 }
 
 .title-screen[data-phase="lighting"] .title-bg-unlit,
-.title-screen[data-phase="lighting"] .title-dock-unlit { animation: title-unlit-out var(--title-light) linear forwards; }
+.title-screen[data-phase="lighting"] .title-ground-unlit { animation: title-unlit-out var(--title-light) linear forwards; }
 .title-screen[data-phase="lighting"] .title-bg-lit,
-.title-screen[data-phase="lighting"] .title-dock-lit { animation: title-lit-in var(--title-light) linear forwards; }
+.title-screen[data-phase="lighting"] .title-ground-lit { animation: title-lit-in var(--title-light) linear forwards; }
 .title-screen[data-phase="lighting"] .title-wash { animation: title-wash var(--title-light) linear forwards; }
 .title-screen[data-phase="lighting"] .title-glow { animation: title-glow-in var(--title-light) linear forwards; }
 
 .title-screen[data-phase="lit"] .title-bg-unlit,
-.title-screen[data-phase="lit"] .title-dock-unlit { opacity: 0; }
+.title-screen[data-phase="lit"] .title-ground-unlit { opacity: 0; }
 .title-screen[data-phase="lit"] .title-bg-lit,
-.title-screen[data-phase="lit"] .title-dock-lit { opacity: 1; }
+.title-screen[data-phase="lit"] .title-ground-lit { opacity: 1; }
 .title-screen[data-phase="lit"] .title-wash { opacity: 0; }
 .title-screen[data-phase="lit"] .title-glow { opacity: 0.42; }
 
@@ -236,18 +233,18 @@ p { margin: 0 0 8px; }
 @media (prefers-reduced-motion: reduce) {
   .title-screen[data-phase="lighting"] .title-bg-unlit,
   .title-screen[data-phase="lighting"] .title-bg-lit,
-  .title-screen[data-phase="lighting"] .title-dock-unlit,
-  .title-screen[data-phase="lighting"] .title-dock-lit,
+  .title-screen[data-phase="lighting"] .title-ground-unlit,
+  .title-screen[data-phase="lighting"] .title-ground-lit,
   .title-screen[data-phase="lighting"] .title-wash,
   .title-screen[data-phase="lighting"] .title-glow {
     animation: none;
   }
 
   .title-screen[data-phase="lighting"] .title-bg-unlit,
-  .title-screen[data-phase="lighting"] .title-dock-unlit,
+  .title-screen[data-phase="lighting"] .title-ground-unlit,
   .title-screen[data-phase="lighting"] .title-wash { opacity: 0; }
   .title-screen[data-phase="lighting"] .title-bg-lit,
-  .title-screen[data-phase="lighting"] .title-dock-lit { opacity: 1; }
+  .title-screen[data-phase="lighting"] .title-ground-lit { opacity: 1; }
   .title-screen[data-phase="lighting"] .title-glow { opacity: 0.42; }
 }
 

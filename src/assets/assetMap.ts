@@ -85,6 +85,8 @@ export const assetMap = {
     unlit: `${root}assets/art25/title/bg-unlit.jpg`,
     lit: `${root}assets/art25/title/bg-lit.jpg`,
     logo: `${root}assets/art25/title/logo.png`,
+    groundUnlit: `${root}assets/art25/title/ground-unlit.jpg`,
+    groundLit: `${root}assets/art25/title/ground-lit.jpg`,
   },
   /** Pixel rects for Canvas drawImage, matching the sheets above. */
   canvasCrops: {

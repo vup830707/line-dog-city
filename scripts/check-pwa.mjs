@@ -42,7 +42,7 @@ for (const icon of manifestJson.icons ?? []) {
 if (!workerSource.includes(`${base}index.html`) || !workerSource.includes(`${base}assets/`)) {
   problems.push(`service worker is missing ${base} asset paths`)
 }
-for (const asset of ['assets/art25/title/bg-unlit.jpg', 'assets/art25/title/bg-lit.jpg', 'assets/art25/title/logo.png']) {
+for (const asset of ['assets/art25/title/bg-unlit.jpg', 'assets/art25/title/bg-lit.jpg', 'assets/art25/title/logo.png', 'assets/art25/title/ground-unlit.jpg', 'assets/art25/title/ground-lit.jpg']) {
   if (!workerSource.includes(asset)) problems.push(`service worker is missing ${asset}`)
 }
 

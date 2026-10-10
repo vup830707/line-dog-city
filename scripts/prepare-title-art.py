@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "public/assets/art25/title"
@@ -111,6 +111,49 @@ def save_background(source: Path, dest: Path) -> None:
     image.save(dest, format="JPEG", quality=80, optimize=True, progressive=True)
 
 
+def extend_ground(source: Image.Image) -> Image.Image:
+    """Cobblestone continuation below the painting.
+
+    The plates end about 15px under the dogs, which is not enough room for the
+    wooden sign. This mirrors the side stones (the center of that strip is the
+    dogs) and keeps the real bottom edge so the join is the same pixels.
+    """
+    image = source.convert("RGB")
+    width, height = image.size
+    patch = image.crop((8, height - 72, 408, height))
+    unit = patch.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+    span = width + unit.width
+    row = Image.new("RGB", (span, unit.height))
+    x = 0
+    flip = False
+    while x < span:
+        tile = unit.transpose(Image.Transpose.FLIP_LEFT_RIGHT) if flip else unit
+        row.paste(tile, (x, 0))
+        x += unit.width
+        flip = not flip
+    row = row.crop((0, 0, width, unit.height))
+    out_h = 640
+    texture = Image.new("RGB", (width, out_h))
+    y = 0
+    flip = False
+    while y < out_h:
+        tile = row.transpose(Image.Transpose.FLIP_TOP_BOTTOM) if flip else row
+        texture.paste(tile, (0, y))
+        y += row.height
+        flip = not flip
+    real = image.crop((0, height - 12, width, height)).transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+    blurred = texture.filter(ImageFilter.GaussianBlur(radius=1.1))
+    out = blurred.copy()
+    fade = 28
+    for i in range(min(fade, real.height)):
+        if i < 8:
+            out.paste(real.crop((0, i, width, i + 1)), (0, i))
+            continue
+        alpha = max(0, 1 - (i / fade))
+        out.paste(Image.blend(blurred.crop((0, i, width, i + 1)), real.crop((0, i, width, i + 1)), alpha), (0, i))
+    return out
+
+
 def register(manifest_path: Path, entries: list[dict]) -> None:
     manifest = json.loads(manifest_path.read_text())
     assets = [item for item in manifest["assets"] if not str(item.get("path", "")).startswith("title/")]
@@ -124,6 +167,8 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     save_background(UNLIT, OUT / "bg-unlit.jpg")
     save_background(LIT, OUT / "bg-lit.jpg")
+    extend_ground(Image.open(OUT / "bg-unlit.jpg")).save(OUT / "ground-unlit.jpg", format="JPEG", quality=86, optimize=True)
+    extend_ground(Image.open(OUT / "bg-lit.jpg")).save(OUT / "ground-lit.jpg", format="JPEG", quality=86, optimize=True)
     logo = crop_to_ink(knock_out_white(Image.open(LOGO)))
     logo.save(OUT / "logo.png", format="PNG", optimize=True)
     print(f"logo {logo.size} fringe {fringe_count(logo)}")
@@ -147,6 +192,8 @@ def main() -> None:
         [
             entry("bg-unlit", "bg-unlit.jpg", Image.open(OUT / "bg-unlit.jpg")),
             entry("bg-lit", "bg-lit.jpg", Image.open(OUT / "bg-lit.jpg")),
+            entry("ground-unlit", "ground-unlit.jpg", Image.open(OUT / "ground-unlit.jpg")),
+            entry("ground-lit", "ground-lit.jpg", Image.open(OUT / "ground-lit.jpg")),
             entry("logo", "logo.png", logo),
         ],
     )
