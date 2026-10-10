@@ -32,6 +32,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,json,webmanifest}'],
+        globIgnores: ['**/art25/contact-sheet.png'],
         navigateFallback: `${base}index.html`,
         modifyURLPrefix: { '': base },
       },

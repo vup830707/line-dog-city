@@ -70,6 +70,7 @@ test('desktop layouts do not scroll the page sideways', async ({ page }) => {
 })
 
 test('the plaza background covers the window at both desktop sizes', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto('./')
   await page.getByTestId('dog-white').click()
   await page.getByLabel('白狗的名字').fill('雪球')
