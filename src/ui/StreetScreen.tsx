@@ -1,6 +1,16 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { assetMap } from '../assets/assetMap'
-import { drawStreet, layoutStreet } from '../canvas/drawStreet'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { drawPlaza } from '../canvas/drawPlaza'
+import {
+  artSources,
+  BG_SRC,
+  coverTransform,
+  DECOR_ART,
+  layoutScene,
+  pathPoint,
+  PLAZA_SLOTS,
+  STALL_ART,
+  toScreen,
+} from '../canvas/plaza'
 import { gameConfig } from '../config'
 import { assignJob, castWish, closeBox, hireStaff, placeItem, trainStaff, upgradeStall } from '../rules/actions'
 import { isWishPondUnlocked, ownedCount } from '../rules/collection'
@@ -8,11 +18,12 @@ import { parseSave } from '../rules/save'
 import type { DecorType, Job, SaveV3, Species, StallType, Weather } from '../rules/types'
 import { festivalName } from '../rules/weather'
 import { renameDogs } from '../game/newGame'
-import { Swatch } from './art'
 import { DECOR_ORDER, JOB_LABEL, PHASE_LABEL, STALL_ORDER, WEATHER_LABEL } from './labels'
 
 type Tab = 'build' | 'staff' | 'collection' | 'letters'
 type DragPayload = { kind: 'stall'; stallType: StallType } | { kind: 'decor'; decorType: DecorType }
+
+const artRoot = import.meta.env.BASE_URL
 
 export function StreetScreen({
   save,
@@ -27,11 +38,12 @@ export function StreetScreen({
   onImport: (raw: string) => string | null
   onReset: () => void
 }) {
+  const shellRef = useRef<HTMLDivElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const scrollerRef = useRef<HTMLDivElement | null>(null)
-  const panRef = useRef<{ x: number; left: number } | null>(null)
-  const [viewHeight, setViewHeight] = useState(640)
-  const [tab, setTab] = useState<Tab>('build')
+  const imagesRef = useRef(new Map<string, HTMLImageElement>())
+  const [view, setView] = useState({ w: 1280, h: 720 })
+  const [artReady, setArtReady] = useState(false)
+  const [tab, setTab] = useState<Tab | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
   const [selectedAnimal, setSelectedAnimal] = useState<string | null>(null)
   const [notice, setNotice] = useState('')
@@ -41,13 +53,14 @@ export function StreetScreen({
   const festival = festivalName(street.day, gameConfig)
   const selected = selectedSlot != null ? street.slots[selectedSlot] : null
   const animal = street.visitors.find((visitor) => visitor.id === selectedAnimal) ?? null
-  const layout = useMemo(() => layoutStreet(viewHeight), [viewHeight])
-  const sceneWidth = gameConfig.streetSlots * layout.slotW
+  const cover = coverTransform(view.w, view.h)
+  const far = toScreen(PLAZA_SLOTS[0] ?? { x: 0, y: 0 }, cover)
+  const near = toScreen(PLAZA_SLOTS[8] ?? { x: 0, y: 0 }, cover)
 
   useLayoutEffect(() => {
-    const el = scrollerRef.current
+    const el = shellRef.current
     if (!el) return
-    const apply = () => setViewHeight(Math.max(360, Math.floor(el.clientHeight)))
+    const apply = () => setView({ w: Math.max(1, el.clientWidth), h: Math.max(1, el.clientHeight) })
     apply()
     const observer = new ResizeObserver(apply)
     observer.observe(el)
@@ -55,18 +68,54 @@ export function StreetScreen({
   }, [])
 
   useEffect(() => {
+    let cancelled = false
+    const pending = artSources()
+    let left = pending.length
+    for (const src of pending) {
+      if (imagesRef.current.has(src)) {
+        left -= 1
+        continue
+      }
+      const image = new Image()
+      image.onload = () => {
+        imagesRef.current.set(src, image)
+        left -= 1
+        if (!cancelled && left <= 0) setArtReady(true)
+      }
+      image.onerror = () => {
+        left -= 1
+        if (!cancelled && left <= 0) setArtReady(true)
+      }
+      image.src = `${artRoot}${src}`
+    }
+    if (left <= 0) setArtReady(true)
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const dpr = window.devicePixelRatio || 1
-    canvas.width = Math.floor(sceneWidth * dpr)
-    canvas.height = Math.floor(layout.height * dpr)
-    canvas.style.width = `${sceneWidth}px`
-    canvas.style.height = `${layout.height}px`
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawStreet(ctx, street, gameConfig, layout)
-  }, [street, layout, sceneWidth])
+    let frame = 0
+    const paint = (now: number) => {
+      const dpr = window.devicePixelRatio || 1
+      const width = view.w
+      const height = view.h
+      canvas.width = Math.floor(width * dpr)
+      canvas.height = Math.floor(height * dpr)
+      canvas.style.width = `${width}px`
+      canvas.style.height = `${height}px`
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+        drawPlaza(ctx, width, height, imagesRef.current.get(BG_SRC), imagesRef.current, layoutScene(street, now), now)
+      }
+      frame = window.requestAnimationFrame(paint)
+    }
+    frame = window.requestAnimationFrame(paint)
+    return () => window.cancelAnimationFrame(frame)
+  }, [street, view])
 
   function dropOn(slot: number, raw: string) {
     let payload: DragPayload
@@ -86,262 +135,222 @@ export function StreetScreen({
     onChange({ ...save, street: result.street })
   }
 
+  function toggle(next: Tab) {
+    setTab((current) => (current === next ? null : next))
+  }
+
   return (
-    <div className="shell">
-      <section className="street-column">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">
-              第 {street.day} 天・{PHASE_LABEL[street.phase]}・{WEATHER_LABEL[street.weather]}
-              {festival ? `・${festival}` : ''}
-            </p>
-            <h1 data-testid="player-name">{save.playerDog === 'white' ? save.whiteName : save.brownName}</h1>
-            <p>
-              {save.whiteName} 與 {save.brownName}
-            </p>
-          </div>
-          <p data-testid="money">{street.money} 幣</p>
-        </header>
-        {street.offlineNote ? (
-          <p className="offline-note" data-testid="offline-note" data-offline-ticks={street.lastOfflineTicks}>
-            {street.offlineNote}
-          </p>
-        ) : null}
-        <div
-          className="street-scroll"
-          data-testid="street-scroll"
-          ref={scrollerRef}
-          onWheel={(event) => {
-            const el = event.currentTarget
-            if (el.scrollWidth <= el.clientWidth + 1) return
-            if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return
-            el.scrollLeft += event.deltaY
-          }}
-          onPointerDown={(event) => {
-            if (event.button !== 0) return
-            const target = event.target
-            if (target instanceof Element && target.closest('button')) return
-            panRef.current = { x: event.clientX, left: event.currentTarget.scrollLeft }
-            event.currentTarget.setPointerCapture(event.pointerId)
-          }}
-          onPointerMove={(event) => {
-            const pan = panRef.current
-            if (!pan) return
-            event.currentTarget.scrollLeft = pan.left - (event.clientX - pan.x)
-          }}
-          onPointerUp={() => {
-            panRef.current = null
-          }}
-          onPointerCancel={() => {
-            panRef.current = null
-          }}
-        >
-          <div
-            className="street-stage"
-            data-testid="street-metrics"
-            data-ground-y={layout.groundY}
-            data-scene-height={layout.height}
-            data-slot-w={layout.slotW}
-            data-animal-r={layout.animalR}
-            style={{ width: sceneWidth, height: layout.height }}
+    <div
+      className="plaza-shell"
+      ref={shellRef}
+      data-testid="street-metrics"
+      data-scene-width={view.w}
+      data-scene-height={view.h}
+      data-bg-scale={cover.scale}
+      data-far-slot-y={Math.round(far.y)}
+      data-near-slot-y={Math.round(near.y)}
+      data-art-ready={artReady ? '1' : '0'}
+    >
+      <canvas
+        ref={canvasRef}
+        className="plaza-canvas"
+        data-testid="street-canvas"
+        onClick={() => {
+          setSelectedSlot(null)
+          setSelectedAnimal(null)
+        }}
+      />
+      {PLAZA_SLOTS.map((slot, index) => {
+        const foot = toScreen(slot, cover)
+        return (
+          <button
+            key={index}
+            type="button"
+            data-testid={`slot-${index}`}
+            aria-label={`格子 ${index + 1}`}
+            className={selectedSlot === index ? 'slot-hit selected' : 'slot-hit'}
+            style={{ left: foot.x - 46, top: foot.y - 28, width: 92, height: 56 }}
+            onClick={() => setSelectedSlot(index)}
+            onDragOver={(event) => {
+              event.preventDefault()
+              event.dataTransfer.dropEffect = 'copy'
+            }}
+            onDrop={(event) => {
+              event.preventDefault()
+              dropOn(index, event.dataTransfer.getData('text/plain'))
+            }}
+          />
+        )
+      })}
+      {street.visitors.map((visitor) => {
+        const foot = toScreen(pathPoint(visitor.position), cover)
+        return (
+          <button
+            key={visitor.id}
+            type="button"
+            data-testid={`animal-${visitor.species}`}
+            className="animal-hit"
+            style={{ left: foot.x - 28, top: foot.y - 72, width: 56, height: 76 }}
+            onClick={() => setSelectedAnimal(visitor.id)}
           >
-            <canvas ref={canvasRef} data-testid="street-canvas" />
-            {street.slots.map((place, index) => (
-              <button
-                key={index}
-                type="button"
-                data-testid={`slot-${index}`}
-                className={selectedSlot === index ? 'slot-hit selected' : 'slot-hit'}
-                style={{
-                  left: index * layout.slotW,
-                  width: layout.slotW,
-                  top: layout.stallTop,
-                  height: layout.stallH,
-                  fontSize: layout.font,
-                }}
-                onClick={() => setSelectedSlot(index)}
-                onDragOver={(event) => {
-                  event.preventDefault()
-                  event.dataTransfer.dropEffect = 'copy'
-                }}
-                onDrop={(event) => {
-                  event.preventDefault()
-                  dropOn(index, event.dataTransfer.getData('text/plain'))
-                }}
-              >
-                <span>{place ? '' : index + 1}</span>
-              </button>
-            ))}
-            {street.visitors.map((visitor) => (
-              <button
-                key={visitor.id}
-                type="button"
-                data-testid={`animal-${visitor.species}`}
-                className="animal-hit"
-                style={{
-                  left: visitor.position * layout.slotW + layout.slotW / 2 - layout.animalR,
-                  top: layout.animalY - layout.animalR,
-                  width: layout.animalR * 2,
-                  height: layout.animalR * 2,
-                }}
-                onClick={() => {
-                  setSelectedAnimal(visitor.id)
-                  setTab('build')
-                }}
-              >
-                {gameConfig.species.find((item) => item.id === visitor.species)?.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-      <aside className="panel">
-        <nav className="tabs">
-          <button type="button" data-testid="tab-build" className={tab === 'build' ? 'on' : ''} onClick={() => setTab('build')}>
+            {gameConfig.species.find((item) => item.id === visitor.species)?.name}
+          </button>
+        )
+      })}
+      <header className="hud">
+        <p className="hud-chip" data-testid="player-name">
+          {save.playerDog === 'white' ? save.whiteName : save.brownName}
+        </p>
+        <p className="hud-chip">
+          {save.whiteName} 與 {save.brownName}
+        </p>
+        <p className="hud-chip">
+          第 {street.day} 天・{PHASE_LABEL[street.phase]}・{WEATHER_LABEL[street.weather]}
+          {festival ? `・${festival}` : ''}
+        </p>
+        <p className="hud-chip" data-testid="money">
+          {street.money} 幣
+        </p>
+        <nav className="hud-actions">
+          <button type="button" data-testid="tab-build" className={tab === 'build' ? 'on' : ''} onClick={() => toggle('build')}>
             建造
           </button>
-          <button type="button" data-testid="tab-staff" className={tab === 'staff' ? 'on' : ''} onClick={() => setTab('staff')}>
+          <button type="button" data-testid="tab-staff" className={tab === 'staff' ? 'on' : ''} onClick={() => toggle('staff')}>
             員工
           </button>
-          <button type="button" data-testid="tab-collection" className={tab === 'collection' ? 'on' : ''} onClick={() => setTab('collection')}>
+          <button type="button" data-testid="tab-collection" className={tab === 'collection' ? 'on' : ''} onClick={() => toggle('collection')}>
             圖鑑
           </button>
-          <button type="button" data-testid="tab-letters" className={tab === 'letters' ? 'on' : ''} onClick={() => setTab('letters')}>
+          <button type="button" data-testid="tab-letters" className={tab === 'letters' ? 'on' : ''} onClick={() => toggle('letters')}>
             信件
           </button>
         </nav>
-        {notice ? <p className="notice">{notice}</p> : null}
-        {tab === 'build' ? (
-          <div data-testid="build-panel">
-            <p className="fine">把攤位或裝飾拖到街道的空格。售價是固定的，升級只讓攤位更好看、貨更多。</p>
-            <div className="build-grid">
-              {STALL_ORDER.map((stallType) => (
+      </header>
+      {street.offlineNote ? (
+        <p className="offline-note" data-testid="offline-note" data-offline-ticks={street.lastOfflineTicks}>
+          {street.offlineNote}
+        </p>
+      ) : null}
+      {notice ? <p className="offline-note">{notice}</p> : null}
+      {selected?.kind === 'stall' && selected.stallType ? (
+        <div className="offline-note detail">
+          <span>
+            {gameConfig.stallLabels[selected.stallType]} Lv.{selected.level}
+          </span>
+          <button
+            type="button"
+            data-testid="upgrade-stall"
+            onClick={() => {
+              if (selectedSlot == null) return
+              const result = upgradeStall(street, selectedSlot, gameConfig)
+              setNotice(result.ok ? '' : result.reason ?? '')
+              if (result.ok) onChange({ ...save, street: result.street })
+            }}
+          >
+            升級
+          </button>
+          {selected.stallType === 'ichiban' ? (
+            <button
+              type="button"
+              data-testid="close-box"
+              onClick={() => {
+                const result = closeBox(street, gameConfig)
+                setNotice(result.ok ? '剩下的籤已退回 30%。' : result.reason ?? '')
+                if (result.ok) onChange({ ...save, street: result.street })
+              }}
+            >
+              收箱
+            </button>
+          ) : null}
+          {selected.stallType === 'wish' ? (
+            <span className="wish-row">
+              {(['sunny', 'hot', 'cold', 'rain'] as Weather[]).map((weather) => (
                 <button
-                  key={stallType}
+                  key={weather}
                   type="button"
-                  draggable
-                  data-testid={`build-${stallType}`}
-                  disabled={stallType === 'wish' && !unlocked}
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'stall', stallType }))
-                    event.dataTransfer.effectAllowed = 'copy'
-                  }}
-                >
-                  <Swatch accent={assetMap.stalls[stallType].accent} label={gameConfig.stallLabels[stallType]} />
-                  <span>{gameConfig.stallLabels[stallType]}</span>
-                  <small>{stallType === 'wish' && !unlocked ? '集滿解鎖' : `${gameConfig.placeCost[stallType]} 幣`}</small>
-                </button>
-              ))}
-              {DECOR_ORDER.map((decorType) => (
-                <button
-                  key={decorType}
-                  type="button"
-                  draggable
-                  data-testid={`build-${decorType}`}
-                  disabled={decorType === 'star' && !unlocked}
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'decor', decorType }))
-                    event.dataTransfer.effectAllowed = 'copy'
-                  }}
-                >
-                  <Swatch accent={assetMap.decor[decorType].accent} label={gameConfig.decorLabels[decorType]} />
-                  <span>{gameConfig.decorLabels[decorType]}</span>
-                  <small>{gameConfig.decorCost[decorType]} 幣</small>
-                </button>
-              ))}
-            </div>
-            {selected?.kind === 'stall' && selected.stallType ? (
-              <div className="detail">
-                <h2>{gameConfig.stallLabels[selected.stallType]}</h2>
-                <p>等級 {selected.level}・售價 {gameConfig.prices[selected.stallType]} 幣</p>
-                <button
-                  type="button"
-                  data-testid="upgrade-stall"
                   onClick={() => {
-                    if (selectedSlot == null) return
-                    const result = upgradeStall(street, selectedSlot, gameConfig)
-                    setNotice(result.ok ? '' : result.reason ?? '')
+                    const result = castWish(street, weather, gameConfig)
+                    setNotice(result.street.wishMessage ?? result.reason ?? '')
                     if (result.ok) onChange({ ...save, street: result.street })
                   }}
                 >
-                  升級
+                  {WEATHER_LABEL[weather]}
                 </button>
-                {selected.stallType === 'ichiban' ? (
-                  <button
-                    type="button"
-                    data-testid="close-box"
-                    onClick={() => {
-                      const result = closeBox(street, gameConfig)
-                      setNotice(result.ok ? '剩下的籤已退回 30%。' : result.reason ?? '')
-                      if (result.ok) onChange({ ...save, street: result.street })
-                    }}
-                  >
-                    收箱並退回 30%
-                  </button>
-                ) : null}
-                {selected.stallType === 'wish' ? (
-                  <div className="wish-row">
-                    {(['sunny', 'hot', 'cold', 'rain'] as Weather[]).map((weather) => (
-                      <button
-                        key={weather}
-                        type="button"
-                        onClick={() => {
-                          const result = castWish(street, weather, gameConfig)
-                          setNotice(result.street.wishMessage ?? result.reason ?? '')
-                          if (result.ok) onChange({ ...save, street: result.street })
-                        }}
-                      >
-                        許願{WEATHER_LABEL[weather]}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-            {animal ? <AnimalCard species={animal.species} satisfaction={animal.satisfaction} fortune={animal.fortune} /> : null}
+              ))}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      {tab === 'build' ? (
+        <div className="build-dock" data-testid="build-panel">
+          {STALL_ORDER.map((stallType) => (
+            <button
+              key={stallType}
+              type="button"
+              draggable
+              data-testid={`build-${stallType}`}
+              disabled={stallType === 'wish' && !unlocked}
+              title={gameConfig.stallLabels[stallType]}
+              onDragStart={(event) => {
+                event.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'stall', stallType }))
+                event.dataTransfer.effectAllowed = 'copy'
+              }}
+            >
+              <img src={`${artRoot}${STALL_ART[stallType].src}`} alt={gameConfig.stallLabels[stallType]} />
+            </button>
+          ))}
+          {DECOR_ORDER.map((decorType) => (
+            <button
+              key={decorType}
+              type="button"
+              draggable
+              data-testid={`build-${decorType}`}
+              disabled={decorType === 'star' && !unlocked}
+              title={gameConfig.decorLabels[decorType]}
+              onDragStart={(event) => {
+                event.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'decor', decorType }))
+                event.dataTransfer.effectAllowed = 'copy'
+              }}
+            >
+              <img src={`${artRoot}${DECOR_ART[decorType].src}`} alt={gameConfig.decorLabels[decorType]} />
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {animal ? <AnimalCard species={animal.species} satisfaction={animal.satisfaction} fortune={animal.fortune} /> : null}
+      {tab === 'staff' ? (
+        <StaffPanel save={save} onChange={onChange} onNotice={setNotice} onRename={onRename} onImport={onImport} onReset={onReset} />
+      ) : null}
+      {tab === 'collection' ? (
+        <div className="hud-card" data-testid="collection-panel">
+          <p data-testid="collection-progress">
+            {ownedCount(street.collection, figureIds)} / {figureIds.length}
+            {unlocked ? '。流星許願池已解鎖。' : '。集滿就能開流星許願池。'}
+          </p>
+          <div className="collection-grid">
+            {gameConfig.figures.map((figure) => {
+              const owned = (street.collection[figure.id] ?? 0) >= 1
+              return (
+                <article key={figure.id}>
+                  <h3>{owned ? figure.name : '？？？'}</h3>
+                  <p>{owned ? figure.blurb : '還沒抽到'}</p>
+                </article>
+              )
+            })}
           </div>
-        ) : null}
-        {tab === 'staff' ? (
-          <StaffPanel
-            save={save}
-            onChange={onChange}
-            onNotice={setNotice}
-            onRename={onRename}
-            onImport={onImport}
-            onReset={onReset}
-          />
-        ) : null}
-        {tab === 'collection' ? (
-          <div data-testid="collection-panel">
-            <p data-testid="collection-progress">
-              {ownedCount(street.collection, figureIds)} / {figureIds.length}
-              {unlocked ? '。流星許願池已解鎖。' : '。集滿就能開流星許願池。'}
-            </p>
-            <div className="collection-grid">
-              {gameConfig.figures.map((figure) => {
-                const owned = (street.collection[figure.id] ?? 0) >= 1
-                return (
-                  <article key={figure.id}>
-                    <h3>{owned ? figure.name : '？？？'}</h3>
-                    <p>{owned ? figure.blurb : '還沒抽到'}</p>
-                  </article>
-                )
-              })}
-            </div>
-          </div>
-        ) : null}
-        {tab === 'letters' ? (
-          <div data-testid="letter-panel">
-            {street.letters.length === 0 ? <p>還沒有信件。把動物喜歡的裝飾放在攤位旁邊，牠們滿意了就會寫。</p> : null}
-            {street.letters.map((letter) => (
-              <article key={letter.id} data-testid="letter-card">
-                <h3>{gameConfig.species.find((item) => item.id === letter.species)?.name}</h3>
-                <p>{letter.body}</p>
-              </article>
-            ))}
-          </div>
-        ) : null}
-      </aside>
+        </div>
+      ) : null}
+      {tab === 'letters' ? (
+        <div className="hud-card" data-testid="letter-panel">
+          {street.letters.length === 0 ? <p>還沒有信件。</p> : null}
+          {street.letters.map((letter) => (
+            <article key={letter.id} data-testid="letter-card">
+              <h3>{gameConfig.species.find((item) => item.id === letter.species)?.name}</h3>
+              <p>{letter.body}</p>
+            </article>
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -349,9 +358,11 @@ export function StreetScreen({
 function AnimalCard({ species, satisfaction, fortune }: { species: Species; satisfaction: number; fortune: string | null }) {
   const spec = gameConfig.species.find((item) => item.id === species)
   return (
-    <article className="animal-card" data-testid="animal-card">
+    <article className="hud-card animal-card" data-testid="animal-card">
       <h2>{spec?.name}</h2>
-      <p>喜歡 {spec ? gameConfig.stallLabels[spec.stall] : ''} 和 {spec ? gameConfig.decorLabels[spec.decor] : ''}</p>
+      <p>
+        喜歡 {spec ? gameConfig.stallLabels[spec.stall] : ''} 和 {spec ? gameConfig.decorLabels[spec.decor] : ''}
+      </p>
       <p>這次的滿意度 {Math.round(satisfaction * 100)}</p>
       {fortune ? <p>{fortune}</p> : null}
     </article>
@@ -376,8 +387,7 @@ function StaffPanel({
   const [white, setWhite] = useState(save.whiteName)
   const [brown, setBrown] = useState(save.brownName)
   return (
-    <div data-testid="staff-panel">
-      <p className="fine">兩隻狗都可以補貨、掃地或招呼。還可以再雇文鳥和雪貂，牠們不是來逛街的客人。</p>
+    <div className="hud-card" data-testid="staff-panel">
       {save.street.staff.map((member) => (
         <article key={member.id} data-testid={`staff-${member.id}`}>
           <h3>
@@ -419,7 +429,7 @@ function StaffPanel({
           if (result.ok) onChange({ ...save, street: result.street })
         }}
       >
-        雇用小動物
+        雇用
       </button>
       <form
         className="rename"

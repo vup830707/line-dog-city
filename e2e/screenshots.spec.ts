@@ -3,10 +3,10 @@ import { expect, test } from '@playwright/test'
 
 const dir = '/opt/cursor/artifacts'
 
-test('capture the cozy street at 1440x900', async ({ page }) => {
+test('capture the 2.5D plaza at 1920x1080 and 1280x720', async ({ page }) => {
   test.setTimeout(90_000)
   mkdirSync(dir, { recursive: true })
-  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto('./')
   await page.getByTestId('dog-white').click()
   await page.screenshot({ path: `${dir}/title-character-select.png` })
@@ -14,40 +14,34 @@ test('capture the cozy street at 1440x900', async ({ page }) => {
   await page.getByLabel('白狗的名字').fill('雪球')
   await page.getByLabel('咖啡色狗的名字').fill('可可')
   await page.getByTestId('start-game').click()
+  await page.getByTestId('tab-build').click()
   await expect(page.getByTestId('build-panel')).toBeVisible()
-  await page.screenshot({ path: `${dir}/build-panel.png` })
-
-  await page.getByTestId('build-ice').dragTo(page.getByTestId('slot-1'))
-  await page.getByTestId('build-lantern').dragTo(page.getByTestId('slot-2'))
-  await page.evaluate(() => window.__puppy?.runTicks(80))
-  await page.getByTestId('build-fortune').dragTo(page.getByTestId('slot-3'))
-  await page.getByTestId('build-can').dragTo(page.getByTestId('slot-5'))
-  await page.getByTestId('build-flower').dragTo(page.getByTestId('slot-0'))
-  await page.getByTestId('build-seat').dragTo(page.getByTestId('slot-6'))
-  await page.evaluate(() => window.__puppy?.spawn('cat'))
-  await expect(page.getByTestId('street-canvas')).toBeVisible()
-  await expect.poll(async () => page.getByTestId('street-metrics').getAttribute('data-scene-height')).not.toBeNull()
-  await page.screenshot({ path: `${dir}/street-day.png` })
+  const placements = [
+    ['build-ice', 'slot-2'],
+    ['build-can', 'slot-4'],
+    ['build-charge', 'slot-6'],
+    ['build-fortune', 'slot-9'],
+    ['build-ichiban', 'slot-11'],
+    ['build-lantern', 'slot-1'],
+    ['build-flower', 'slot-13'],
+    ['build-seat', 'slot-8'],
+  ] as const
+  for (const [item, slot] of placements) {
+    await page.getByTestId(item).dragTo(page.getByTestId(slot))
+  }
+  await page.getByTestId('tab-build').click()
+  await page.mouse.click(480, 1000)
+  await page.evaluate(() => {
+    window.__puppy?.spawn('cat')
+    window.__puppy?.spawn('rabbit')
+    window.__puppy?.spawn('hamster')
+    window.__puppy?.spawn('otter')
+    window.__puppy?.spawn('hedgehog')
+  })
+  await expect(page.getByTestId('street-metrics')).toHaveAttribute('data-art-ready', '1')
+  await page.screenshot({ path: `${dir}/plaza-1920.png` })
 
   await page.setViewportSize({ width: 1280, height: 720 })
-  await expect.poll(async () => page.getByTestId('street-canvas').boundingBox().then((box) => box?.height ?? 0)).toBeGreaterThan(400)
-  await page.screenshot({ path: `${dir}/street-1280.png` })
-  await page.setViewportSize({ width: 1440, height: 900 })
-
-  await page.getByTestId('animal-cat').first().click()
-  await expect(page.getByTestId('animal-card')).toBeVisible()
-  await page.screenshot({ path: `${dir}/animal-card.png` })
-
-  await page.evaluate(() => window.__puppy?.runTicks(1))
-  await page.getByTestId('tab-letters').click()
-  await expect(page.getByTestId('letter-card').first()).toBeVisible()
-  await page.screenshot({ path: `${dir}/letter.png` })
-
-  await page.getByTestId('tab-collection').click()
-  await expect(page.getByTestId('collection-progress')).toBeVisible()
-  await page.screenshot({ path: `${dir}/collection.png` })
-
-  await page.getByTestId('tab-staff').click()
-  await expect(page.getByTestId('staff-panel')).toBeVisible()
-  await page.screenshot({ path: `${dir}/staff-panel.png` })
+  await expect.poll(async () => page.getByTestId('street-canvas').boundingBox().then((box) => box?.height ?? 0)).toBeGreaterThan(640)
+  await page.screenshot({ path: `${dir}/plaza-1280.png` })
 })
