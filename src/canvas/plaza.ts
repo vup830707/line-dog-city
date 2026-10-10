@@ -71,6 +71,68 @@ export function toScreen(point: PlazaPoint, cover: CoverTransform): PlazaPoint {
   }
 }
 
+export interface ScreenRect {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+/** Ground ellipse and sprite pad for one plaza slot. Bottom-center is the slot anchor. */
+export interface SlotFrame {
+  x: number
+  y: number
+  width: number
+  height: number
+  rx: number
+  ry: number
+}
+
+/**
+ * Stall art scaled by rank. Empty slots and decorations use the ice cart so every pad
+ * lines up; the wishing pond keeps its own wide art.
+ */
+export function slotFrame(index: number, stallType?: StallType | null): SlotFrame {
+  const slot = PLAZA_SLOTS[index] ?? { x: 0, y: 0 }
+  const art = stallType ? STALL_ART[stallType] : STALL_ART.ice
+  const height = art.drawH * rankScale(index)
+  const width = height * art.aspect
+  return {
+    x: slot.x,
+    y: slot.y,
+    width,
+    height,
+    rx: width * 0.34,
+    ry: Math.max(8, height * 0.055),
+  }
+}
+
+/** Sprite rectangle in view pixels. The bottom center sits on the slot anchor. */
+export function screenRect(frame: SlotFrame, cover: CoverTransform): ScreenRect {
+  const foot = toScreen(frame, cover)
+  const width = frame.width * cover.scale
+  const height = frame.height * cover.scale
+  return {
+    left: foot.x - width / 2,
+    top: foot.y - height,
+    width,
+    height,
+  }
+}
+
+/** Screen rectangle of a laid-out character, including the current bob. */
+export function spriteScreenRect(sprite: SceneSprite, cover: CoverTransform, bob = 0): ScreenRect {
+  const foot = toScreen(sprite, cover)
+  const height = sprite.drawH * cover.scale
+  const width = height * sprite.aspect
+  return {
+    left: foot.x - width / 2,
+    top: foot.y - height + bob,
+    width,
+    height,
+  }
+}
+
 /** A spot in front of a stall, toward the oval, outside the stall sprite. */
 export function standPoint(slot: PlazaPoint, order = 0): PlazaPoint {
   const dx = WALK.x - slot.x

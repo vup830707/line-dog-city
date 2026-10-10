@@ -41,6 +41,22 @@ describe('offline earnings', () => {
     expect(offline.earned).toBeGreaterThanOrEqual(0)
   })
 
+  it('does not call ticks minutes, and a non-finite elapsed time adds nothing', () => {
+    const start = streetWith({ money: 800, tick: 3, rngState: 8, arrivals: [], staff: [] })
+    const brief = applyOffline(start, 202 * gameConfig.tickMs, gameConfig)
+    expect(brief.street.offlineNote).not.toContain('202 分鐘')
+    expect(brief.street.offlineNote).toContain('秒')
+    const capped = applyOffline(start, 10 * 3_600_000, gameConfig)
+    expect(capped.street.offlineNote).toContain('8 小時')
+    expect(capped.street.offlineNote).not.toContain('28800 分鐘')
+    expect(offlineTickCount(Number.NaN, gameConfig)).toBe(0)
+    const nan = applyOffline(start, Number.NaN, gameConfig)
+    expect(nan.ticks).toBe(0)
+    expect(nan.street.lastOfflineTicks).toBe(0)
+    expect(nan.street.money).toBe(800)
+    expect(nan.street.offlineNote).toBeNull()
+  })
+
   it('caps catch-up at 8 hours even when more time has passed', () => {
     const hour = 3_600_000
     const cap = 8 * 3600

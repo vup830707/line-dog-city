@@ -3,21 +3,41 @@ import { drawPlaza } from '../canvas/drawPlaza'
 import {
   artSources,
   BG_SRC,
+  bobOffset,
   coverTransform,
   DECOR_ART,
   layoutScene,
-  pathPoint,
   PLAZA_SLOTS,
+  screenRect,
+  slotFrame,
+  spriteScreenRect,
   STALL_ART,
   toScreen,
 } from '../canvas/plaza'
 import { gameConfig } from '../config'
-import { assignJob, castWish, closeBox, hireStaff, placeItem, trainStaff, upgradeStall } from '../rules/actions'
+import {
+  assignJob,
+  buyBox,
+  buyBoxBlock,
+  castWish,
+  closeBox,
+  hireBlock,
+  hireStaff,
+  placeItem,
+  trainBlock,
+  trainStaff,
+  upgradeBlock,
+  upgradeStall,
+  wishBlock,
+} from '../rules/actions'
 import { isWishPondUnlocked, ownedCount } from '../rules/collection'
+import { refundAmount } from '../rules/ichiban'
 import { parseSave } from '../rules/save'
-import type { DecorType, Job, SaveV3, Species, StallType, Weather } from '../rules/types'
+import { stockCap } from '../rules/staff'
+import type { DecorType, Job, SaveV3, Species, StallType, Street } from '../rules/types'
 import { festivalName } from '../rules/weather'
 import { renameDogs } from '../game/newGame'
+import { StallCard } from './StallCard'
 import { DECOR_ORDER, JOB_LABEL, PHASE_LABEL, STALL_ORDER, WEATHER_LABEL } from './labels'
 
 type Tab = 'build' | 'staff' | 'collection' | 'letters'
@@ -47,7 +67,15 @@ export function StreetScreen({
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
   const [selectedAnimal, setSelectedAnimal] = useState<string | null>(null)
   const [notice, setNotice] = useState('')
+  const [pendingReset, setPendingReset] = useState(false)
   const street = save.street
+  const streetRef = useRef(street)
+  const viewRef = useRef(view)
+  const selectedRef = useRef(selectedSlot)
+  const hitsRef = useRef<HTMLDivElement | null>(null)
+  streetRef.current = street
+  viewRef.current = view
+  selectedRef.current = selectedSlot
   const figureIds = gameConfig.figures.map((figure) => figure.id)
   const unlocked = isWishPondUnlocked(street.collection, figureIds)
   const festival = festivalName(street.day, gameConfig)
@@ -95,27 +123,60 @@ export function StreetScreen({
   }, [])
 
   useEffect(() => {
+    if (!notice) return
+    const id = window.setTimeout(() => setNotice(''), 4000)
+    return () => window.clearTimeout(id)
+  }, [notice])
+
+  useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     let frame = 0
+    const sized = { w: 0, h: 0, dpr: 0 }
     const paint = (now: number) => {
+      const width = viewRef.current.w
+      const height = viewRef.current.h
       const dpr = window.devicePixelRatio || 1
-      const width = view.w
-      const height = view.h
-      canvas.width = Math.floor(width * dpr)
-      canvas.height = Math.floor(height * dpr)
-      canvas.style.width = `${width}px`
-      canvas.style.height = `${height}px`
+      if (sized.w !== width || sized.h !== height || sized.dpr !== dpr) {
+        canvas.width = Math.floor(width * dpr)
+        canvas.height = Math.floor(height * dpr)
+        canvas.style.width = `${width}px`
+        canvas.style.height = `${height}px`
+        sized.w = width
+        sized.h = height
+        sized.dpr = dpr
+      }
       const ctx = canvas.getContext('2d')
+      const scene = layoutScene(streetRef.current, now)
       if (ctx) {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-        drawPlaza(ctx, width, height, imagesRef.current.get(BG_SRC), imagesRef.current, layoutScene(street, now), now)
+        const frames = streetRef.current.slots.flatMap((place, index) => {
+          const selected = selectedRef.current === index
+          if (!place && !selected) return []
+          const stallType = place?.kind === 'stall' ? place.stallType : null
+          return [{ frame: slotFrame(index, stallType), selected }]
+        })
+        drawPlaza(ctx, width, height, imagesRef.current.get(BG_SRC), imagesRef.current, scene, now, frames)
+      }
+      const layer = hitsRef.current
+      if (layer) {
+        const coverNow = coverTransform(width, height)
+        layer.querySelectorAll<HTMLButtonElement>('[data-visitor]').forEach((button) => {
+          const sprite = scene.find((item) => item.id === `visitor-${button.dataset.visitor}`)
+          if (!sprite) return
+          const bob = sprite.bob ? bobOffset(now, sprite.seed) * coverNow.scale : 0
+          const rect = spriteScreenRect(sprite, coverNow, bob)
+          button.style.left = `${rect.left}px`
+          button.style.top = `${rect.top}px`
+          button.style.width = `${rect.width}px`
+          button.style.height = `${rect.height}px`
+        })
       }
       frame = window.requestAnimationFrame(paint)
     }
     frame = window.requestAnimationFrame(paint)
     return () => window.cancelAnimationFrame(frame)
-  }, [street, view])
+  }, [])
 
   function dropOn(slot: number, raw: string) {
     let payload: DragPayload
@@ -160,8 +221,10 @@ export function StreetScreen({
           setSelectedAnimal(null)
         }}
       />
-      {PLAZA_SLOTS.map((slot, index) => {
-        const foot = toScreen(slot, cover)
+      {PLAZA_SLOTS.map((_, index) => {
+        const place = street.slots[index]
+        const stallType = place?.kind === 'stall' ? place.stallType : null
+        const rect = screenRect(slotFrame(index, stallType), cover)
         return (
           <button
             key={index}
@@ -169,7 +232,7 @@ export function StreetScreen({
             data-testid={`slot-${index}`}
             aria-label={`格子 ${index + 1}`}
             className={selectedSlot === index ? 'slot-hit selected' : 'slot-hit'}
-            style={{ left: foot.x - 46, top: foot.y - 28, width: 92, height: 56 }}
+            style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
             onClick={() => setSelectedSlot(index)}
             onDragOver={(event) => {
               event.preventDefault()
@@ -182,21 +245,19 @@ export function StreetScreen({
           />
         )
       })}
-      {street.visitors.map((visitor) => {
-        const foot = toScreen(pathPoint(visitor.position), cover)
-        return (
+      <div ref={hitsRef}>
+        {street.visitors.map((visitor) => (
           <button
             key={visitor.id}
             type="button"
+            data-visitor={visitor.id}
             data-testid={`animal-${visitor.species}`}
+            aria-label={gameConfig.species.find((item) => item.id === visitor.species)?.name}
             className="animal-hit"
-            style={{ left: foot.x - 28, top: foot.y - 72, width: 56, height: 76 }}
             onClick={() => setSelectedAnimal(visitor.id)}
-          >
-            {gameConfig.species.find((item) => item.id === visitor.species)?.name}
-          </button>
-        )
-      })}
+          />
+        ))}
+      </div>
       <header className="hud">
         <p className="hud-chip" data-testid="player-name">
           {save.playerDog === 'white' ? save.whiteName : save.brownName}
@@ -231,55 +292,62 @@ export function StreetScreen({
           {street.offlineNote}
         </p>
       ) : null}
-      {notice ? <p className="offline-note">{notice}</p> : null}
-      {selected?.kind === 'stall' && selected.stallType ? (
-        <div className="offline-note detail">
-          <span>
-            {gameConfig.stallLabels[selected.stallType]} Lv.{selected.level}
-          </span>
-          <button
-            type="button"
-            data-testid="upgrade-stall"
-            onClick={() => {
-              if (selectedSlot == null) return
-              const result = upgradeStall(street, selectedSlot, gameConfig)
-              setNotice(result.ok ? '' : result.reason ?? '')
-              if (result.ok) onChange({ ...save, street: result.street })
-            }}
-          >
-            升級
-          </button>
-          {selected.stallType === 'ichiban' ? (
-            <button
-              type="button"
-              data-testid="close-box"
-              onClick={() => {
-                const result = closeBox(street, gameConfig)
-                setNotice(result.ok ? '剩下的籤已退回 30%。' : result.reason ?? '')
-                if (result.ok) onChange({ ...save, street: result.street })
-              }}
-            >
-              收箱
-            </button>
-          ) : null}
-          {selected.stallType === 'wish' ? (
-            <span className="wish-row">
-              {(['sunny', 'hot', 'cold', 'rain'] as Weather[]).map((weather) => (
-                <button
-                  key={weather}
-                  type="button"
-                  onClick={() => {
-                    const result = castWish(street, weather, gameConfig)
-                    setNotice(result.street.wishMessage ?? result.reason ?? '')
+      {notice ? (
+        <p className="toast" data-testid="toast">
+          {notice}
+        </p>
+      ) : null}
+      {selected?.kind === 'stall' && selected.stallType && selectedSlot != null ? (
+        <StallCard
+          key={selected.uid}
+          title={`${gameConfig.stallLabels[selected.stallType]} Lv.${selected.level}`}
+          goods={goodsLine(street, selectedSlot)}
+          anchor={screenRect(slotFrame(selectedSlot, selected.stallType), cover)}
+          view={view}
+          upgradeReason={upgradeBlock(street, selectedSlot, gameConfig)}
+          onUpgrade={() => {
+            const result = upgradeStall(street, selectedSlot, gameConfig)
+            setNotice(result.ok ? '' : result.reason ?? '')
+            if (result.ok) onChange({ ...save, street: result.street })
+          }}
+          ichiban={
+            selected.stallType === 'ichiban'
+              ? {
+                  tickets: street.box?.tickets.length ?? 0,
+                  refund: street.box?.paid ? refundAmount(street.box, gameConfig.refundRate) : 0,
+                  buyReason: buyBoxBlock(street, gameConfig),
+                  closeReason: street.box ? null : '現在沒有箱子',
+                  onClose: () => {
+                    const refund = street.box?.paid ? refundAmount(street.box, gameConfig.refundRate) : 0
+                    const result = closeBox(street, gameConfig)
+                    setNotice(result.ok ? (refund > 0 ? `剩下的籤已退回 ${refund} 幣。` : '免費箱沒有退幣。') : result.reason ?? '')
                     if (result.ok) onChange({ ...save, street: result.street })
-                  }}
-                >
-                  {WEATHER_LABEL[weather]}
-                </button>
-              ))}
-            </span>
-          ) : null}
-        </div>
+                  },
+                  onBuy: () => {
+                    const result = buyBox(street, gameConfig)
+                    setNotice(result.ok ? '新的一箱開了。' : result.reason ?? '')
+                    if (result.ok) onChange({ ...save, street: result.street })
+                  },
+                }
+              : null
+          }
+          wish={
+            selected.stallType === 'wish'
+              ? {
+                  reason: wishBlock(street, gameConfig),
+                  onWish: (weather) => {
+                    const result = castWish(street, weather, gameConfig)
+                    if (!result.ok) {
+                      setNotice(result.reason ?? '')
+                      return
+                    }
+                    setNotice(result.street.wishMessage ?? '')
+                    onChange({ ...save, street: result.street })
+                  },
+                }
+              : null
+          }
+        />
       ) : null}
       {tab === 'build' ? (
         <div className="build-dock" data-testid="build-panel">
@@ -319,7 +387,22 @@ export function StreetScreen({
       ) : null}
       {animal ? <AnimalCard species={animal.species} satisfaction={animal.satisfaction} fortune={animal.fortune} /> : null}
       {tab === 'staff' ? (
-        <StaffPanel save={save} onChange={onChange} onNotice={setNotice} onRename={onRename} onImport={onImport} onReset={onReset} />
+        <StaffPanel save={save} onChange={onChange} onNotice={setNotice} onRename={onRename} onImport={onImport} onAskReset={() => setPendingReset(true)} />
+      ) : null}
+      {pendingReset ? (
+        <div className="confirm-layer" role="dialog" data-testid="confirm-new-game">
+          <div className="confirm-card">
+            <p>現在的夜市會清掉，確定要重來嗎？</p>
+            <div className="stall-actions">
+              <button type="button" data-testid="confirm-new-game-yes" onClick={onReset}>
+                確定重來
+              </button>
+              <button type="button" onClick={() => setPendingReset(false)}>
+                先不要
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
       {tab === 'collection' ? (
         <div className="hud-card" data-testid="collection-panel">
@@ -355,6 +438,76 @@ export function StreetScreen({
   )
 }
 
+function TrainButton({
+  save,
+  memberId,
+  onChange,
+  onNotice,
+}: {
+  save: SaveV3
+  memberId: string
+  onChange: (save: SaveV3) => void
+  onNotice: (text: string) => void
+}) {
+  const reason = trainBlock(save.street, memberId, gameConfig)
+  return (
+    <>
+      <button
+        type="button"
+        data-testid={`train-${memberId}`}
+        disabled={reason != null}
+        title={reason ?? undefined}
+        onClick={() => {
+          const result = trainStaff(save.street, memberId, gameConfig)
+          onNotice(result.ok ? '' : result.reason ?? '')
+          if (result.ok) onChange({ ...save, street: result.street })
+        }}
+      >
+        訓練
+      </button>
+      {reason ? (
+        <p className="block-reason" data-testid={`train-reason-${memberId}`}>
+          {reason}
+        </p>
+      ) : null}
+    </>
+  )
+}
+
+function HireButton({
+  save,
+  onChange,
+  onNotice,
+}: {
+  save: SaveV3
+  onChange: (save: SaveV3) => void
+  onNotice: (text: string) => void
+}) {
+  const reason = hireBlock(save.street, gameConfig)
+  return (
+    <>
+      <button
+        type="button"
+        data-testid="hire-staff"
+        disabled={reason != null}
+        title={reason ?? undefined}
+        onClick={() => {
+          const result = hireStaff(save.street, gameConfig)
+          onNotice(result.ok ? '新員工來了。' : result.reason ?? '')
+          if (result.ok) onChange({ ...save, street: result.street })
+        }}
+      >
+        雇用
+      </button>
+      {reason ? (
+        <p className="block-reason" data-testid="hire-reason">
+          {reason}
+        </p>
+      ) : null}
+    </>
+  )
+}
+
 function AnimalCard({ species, satisfaction, fortune }: { species: Species; satisfaction: number; fortune: string | null }) {
   const spec = gameConfig.species.find((item) => item.id === species)
   return (
@@ -369,20 +522,31 @@ function AnimalCard({ species, satisfaction, fortune }: { species: Species; sati
   )
 }
 
+function goodsLine(street: Street, slot: number): string {
+  const place = street.slots[slot]
+  if (!place || place.kind !== 'stall' || !place.stallType) return ''
+  if (place.stallType === 'ichiban') {
+    return street.box ? `這箱還有 ${street.box.tickets.length} 抽` : '現在沒有箱子'
+  }
+  if (place.stallType === 'wish') return '一天可以許一次天氣'
+  const have = street.stock[place.uid] ?? 0
+  return `存貨 ${have} / ${stockCap(place.level, gameConfig)}`
+}
+
 function StaffPanel({
   save,
   onChange,
   onNotice,
   onRename,
   onImport,
-  onReset,
+  onAskReset,
 }: {
   save: SaveV3
   onChange: (save: SaveV3) => void
   onNotice: (text: string) => void
   onRename: (white: string, brown: string) => void
   onImport: (raw: string) => string | null
-  onReset: () => void
+  onAskReset: () => void
 }) {
   const [white, setWhite] = useState(save.whiteName)
   const [brown, setBrown] = useState(save.brownName)
@@ -408,29 +572,10 @@ function StaffPanel({
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              const result = trainStaff(save.street, member.id, gameConfig)
-              onNotice(result.ok ? '' : result.reason ?? '')
-              if (result.ok) onChange({ ...save, street: result.street })
-            }}
-          >
-            訓練
-          </button>
+          <TrainButton save={save} memberId={member.id} onChange={onChange} onNotice={onNotice} />
         </article>
       ))}
-      <button
-        type="button"
-        data-testid="hire-staff"
-        onClick={() => {
-          const result = hireStaff(save.street, gameConfig)
-          onNotice(result.ok ? '新員工來了。' : result.reason ?? '')
-          if (result.ok) onChange({ ...save, street: result.street })
-        }}
-      >
-        雇用
-      </button>
+      <HireButton save={save} onChange={onChange} onNotice={onNotice} />
       <form
         className="rename"
         onSubmit={(event) => {
@@ -478,7 +623,7 @@ function StaffPanel({
             }}
           />
         </label>
-        <button type="button" onClick={onReset}>
+        <button type="button" data-testid="new-game" onClick={onAskReset}>
           新遊戲
         </button>
       </div>

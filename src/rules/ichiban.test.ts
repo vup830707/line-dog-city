@@ -15,7 +15,7 @@ describe('一番賞', () => {
     expect(def.prizes.reduce((sum, prize) => sum + prize.count, 0)).toBe(80)
     const box = createBox(def, createRng(2))
     expect(refundAmount(box, gameConfig.refundRate)).toBe(Math.round(2670 * 0.3))
-    const partial = { ...box, tickets: [{ grade: 'D' as const, figureId: null, label: '卡', unitCost: 15 }], lastPrize: { ...box.lastPrize, awarded: false } }
+    const partial = { ...box, paid: true, tickets: [{ grade: 'D' as const, figureId: null, label: '卡', unitCost: 15 }], lastPrize: { ...box.lastPrize, awarded: false } }
     expect(refundAmount(partial, 0.3)).toBe(Math.round((15 + 200) * 0.3))
     const closed = closeBox(streetWith({ box: partial, money: 10 }), gameConfig)
     expect(closed.street.money).toBe(10 + Math.round(215 * 0.3))
@@ -76,7 +76,7 @@ describe('一番賞', () => {
     expect(left).toBeGreaterThan(0)
     expect(refundAmount(box, gameConfig.refundRate)).toBe(Math.round(left * 0.3))
     expect(refundAmount(box, gameConfig.refundRate)).toBeLessThan(left)
-    const closed = closeBox(streetWith({ box, money: 20 }), gameConfig)
+    const closed = closeBox(streetWith({ box: { ...box, paid: true }, money: 20 }), gameConfig)
     expect(closed.street.money).toBe(20 + Math.round(left * 0.3))
     const spent = {
       ...box,

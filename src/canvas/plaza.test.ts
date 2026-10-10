@@ -18,6 +18,9 @@ import {
   pathPoint,
   propFootprint,
   rankScale,
+  screenRect,
+  slotFrame,
+  spriteScreenRect,
   standPoint,
   footprintsOverlap,
   walkFacing,
@@ -137,6 +140,48 @@ describe('plaza spacing', () => {
         expect(footprintsOverlap(characterFootprint(a), characterFootprint(b))).toBe(false)
       }
     }
+  })
+})
+
+describe('slot frames', () => {
+  it('anchors the pad on the slot and scales it with the stall art', () => {
+    const ice = slotFrame(1, 'ice')
+    const slot = PLAZA_SLOTS[1] as { x: number; y: number }
+    expect(ice.x).toBe(slot.x)
+    expect(ice.y).toBe(slot.y)
+    expect(ice.height).toBeCloseTo(STALL_ART.ice.drawH * rankScale(1))
+    expect(ice.width).toBeCloseTo(ice.height * STALL_ART.ice.aspect)
+    expect(ice.rx).toBeCloseTo(ice.width * 0.34)
+
+    const empty = slotFrame(11, null)
+    expect(empty.height).toBeCloseTo(STALL_ART.ice.drawH * rankScale(11))
+    const wish = slotFrame(5, 'wish')
+    expect(wish.height).toBeCloseTo(STALL_ART.wish.drawH * rankScale(5))
+    expect(wish.width / wish.height).toBeCloseTo(STALL_ART.wish.aspect)
+
+    const cover = { scale: 1, offsetX: 0, offsetY: 0 }
+    const rect = screenRect(ice, cover)
+    expect(rect.left).toBeCloseTo(ice.x - ice.width / 2)
+    expect(rect.top).toBeCloseTo(ice.y - ice.height)
+    expect(rect.width).toBeCloseTo(ice.width)
+
+    const desktop = screenRect(ice, { scale: 1280 / 1920, offsetX: 0, offsetY: 0 })
+    expect(desktop.width).toBeCloseTo(ice.width * (1280 / 1920))
+    expect(desktop.left).toBeCloseTo((ice.x - ice.width / 2) * (1280 / 1920))
+  })
+
+  it('uses the laid-out visitor sprite for the animal hit, not the path slot', () => {
+    const save = createNewGame({ playerDog: 'white', whiteName: '雪球', brownName: '可可', now: 0, seed: 2 }, gameConfig)
+    const sparrow = save.street.visitors.find((visitor) => visitor.species === 'sparrow')
+    const scene = layoutScene(save.street, 0)
+    const sprite = scene.find((item) => item.id === `visitor-${sparrow?.id}`)
+    expect(sprite).toBeTruthy()
+    const rect = spriteScreenRect(sprite!, { scale: 1, offsetX: 0, offsetY: 0 })
+    expect(rect.left).toBeCloseTo(sprite!.x - (sprite!.drawH * sprite!.aspect) / 2)
+    expect(rect.top).toBeCloseTo(sprite!.y - sprite!.drawH)
+    expect(rect.height).toBeCloseTo(sprite!.drawH)
+    const path = pathPoint(sparrow?.position ?? 0)
+    expect(Math.hypot(sprite!.x - path.x, sprite!.y - path.y)).toBeGreaterThan(20)
   })
 })
 

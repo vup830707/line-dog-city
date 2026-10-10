@@ -1,4 +1,4 @@
-import { expectedVisits } from '../rules/ambience'
+import { ambienceScore, expectedVisits } from '../rules/ambience'
 import { createRng } from '../rules/rng'
 import { scheduleArrivals } from '../rules/street'
 import type { DecorType, GameConfig, Placement, SaveV3, Species, StallType, Street, Visitor } from '../rules/types'
@@ -61,9 +61,11 @@ export function createNewGame(
     offlineNote: null,
     lastOfflineTicks: 0,
   }
-  const ambience = street.cleanliness
   street.arrivals = scheduleArrivals(
-    expectedVisits({ ambience, festival: isFestival(street.day, config) }, config),
+    expectedVisits(
+      { ambience: ambienceScore(street, config), cleanliness: street.cleanliness, festival: isFestival(street.day, config) },
+      config,
+    ),
     config.phaseMinutes,
     rng,
   )

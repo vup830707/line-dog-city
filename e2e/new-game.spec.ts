@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 
 test('a new game can place a stall, earn coins, reload, and cap offline time', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 })
-  await page.goto('./')
+  await page.goto('./?debug=1')
   await expect(page).toHaveURL(/\/line-dog-city\//)
   await page.getByTestId('dog-white').click()
   await page.getByLabel('白狗的名字').fill('雪球')
@@ -46,7 +46,7 @@ test('a new game can place a stall, earn coins, reload, and cap offline time', a
 })
 
 test('desktop layouts do not scroll the page sideways', async ({ page }) => {
-  await page.goto('./')
+  await page.goto('./?debug=1')
   for (const viewport of [
     { width: 1920, height: 1080 },
     { width: 1280, height: 720 },
@@ -71,7 +71,7 @@ test('desktop layouts do not scroll the page sideways', async ({ page }) => {
 
 test('the plaza background covers the window at both desktop sizes', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 })
-  await page.goto('./')
+  await page.goto('./?debug=1')
   await page.getByTestId('dog-white').click()
   await page.getByLabel('白狗的名字').fill('雪球')
   await page.getByLabel('咖啡色狗的名字').fill('可可')

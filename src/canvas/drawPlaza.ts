@@ -1,4 +1,4 @@
-import { bobOffset, coverTransform, depthSort, PLAZA_H, PLAZA_W, toScreen, type SceneSprite } from './plaza'
+import { bobOffset, coverTransform, depthSort, PLAZA_H, PLAZA_W, toScreen, type SceneSprite, type SlotFrame } from './plaza'
 
 export function drawPlaza(
   ctx: CanvasRenderingContext2D,
@@ -8,6 +8,7 @@ export function drawPlaza(
   images: ReadonlyMap<string, HTMLImageElement>,
   sprites: readonly SceneSprite[],
   timeMs: number,
+  frames: readonly { frame: SlotFrame; selected: boolean }[] = [],
 ): void {
   const cover = coverTransform(viewW, viewH)
   ctx.clearRect(0, 0, viewW, viewH)
@@ -19,6 +20,25 @@ export function drawPlaza(
   }
 
   ctx.imageSmoothingEnabled = true
+  for (const mark of frames) {
+    const foot = toScreen(mark.frame, cover)
+    ctx.save()
+    ctx.strokeStyle = '#e2b657'
+    ctx.globalAlpha = mark.selected ? 1 : 0.8
+    ctx.lineWidth = mark.selected ? 3 : 2
+    ctx.beginPath()
+    ctx.ellipse(
+      foot.x,
+      foot.y,
+      Math.max(8, mark.frame.rx * cover.scale),
+      Math.max(4, mark.frame.ry * cover.scale),
+      0,
+      0,
+      Math.PI * 2,
+    )
+    ctx.stroke()
+    ctx.restore()
+  }
   for (const sprite of depthSort(sprites)) {
     const foot = toScreen(sprite, cover)
     const height = sprite.drawH * cover.scale

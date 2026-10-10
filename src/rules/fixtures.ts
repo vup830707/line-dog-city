@@ -20,7 +20,7 @@ export function stall(stallType: Placement['stallType'], uid = stallType ?? 'sta
   return { uid, kind: 'stall', stallType, level: 1 }
 }
 
-export function decor(decorType: NonNullable<Placement['decorType']>, uid = decorType): Placement {
+export function decor(decorType: NonNullable<Placement['decorType']>, uid: string = decorType): Placement {
   return { uid, kind: 'decor', decorType, level: 1 }
 }
 

@@ -113,10 +113,7 @@ export function letterFor(input: {
   if (input.satisfaction < input.config.letterAt) return null
   const spec = speciesDef(input.species, input.config)
   if (input.stall !== spec.stall || !input.decor) return null
-  if (input.species === 'hedgehog') {
-    const stalls = input.street.slots.filter((slot) => slot?.kind === 'stall').length
-    if (stalls > 4 || ambienceScore(input.street, input.config) < input.config.ambienceTarget) return null
-  }
+  if (input.species === 'hedgehog' && input.street.phase !== 'late') return null
   if (input.species === 'fox' && input.drewGrade !== 'A' && input.drewGrade !== 'B' && input.drewGrade !== 'C') return null
   if (input.species === 'sparrow' && input.stall !== 'ice' && input.stall !== 'wish') return null
   const topic = spec.topic
