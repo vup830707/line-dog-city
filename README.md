@@ -1,6 +1,6 @@
 # 線條小狗模擬城市
 
-給自己和朋友玩的奇幻夜市經營遊戲。第一版是單人、可離線安裝的 PWA，沒有後端。
+給自己和朋友玩的奇幻夜市。這一版是電腦瀏覽器上的放置經營：小動物自己走進來，金幣拿去佈置街道。單人、可離線安裝的 PWA，沒有後端。
 
 企劃在 [docs/plan.md](docs/plan.md)，這一版怎麼切在 [docs/mvp-implementation.md](docs/mvp-implementation.md)。
 
@@ -13,7 +13,7 @@ npm ci
 npm run dev
 ```
 
-瀏覽器開 `http://127.0.0.1:5173`。正式包：
+瀏覽器開 `http://127.0.0.1:5173`，用整個視窗玩。正式包：
 
 ```bash
 npm run lint

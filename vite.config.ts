@@ -20,7 +20,7 @@ export default defineConfig({
         lang: 'zh-Hant',
         dir: 'ltr',
         display: 'standalone',
-        orientation: 'portrait',
+        orientation: 'any',
         background_color: '#fffaf3',
         theme_color: '#24170f',
         start_url: base,

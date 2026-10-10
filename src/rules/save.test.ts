@@ -1,79 +1,27 @@
 import { describe, expect, it } from 'vitest'
+import { createNewGame } from '../game/newGame'
 import { gameConfig } from '../config'
-import { parseSave, SCHEMA_VERSION, serializeSave } from './save'
-import type { SaveV2 } from './types'
+import { parseSave, serializeSave } from './save'
 
-function sampleSave(overrides: Partial<SaveV2> = {}): SaveV2 {
-  return {
-    schemaVersion: 2,
-    playerDog: 'white',
-    names: { white: '雪球', brown: '可可' },
-    money: 3600,
-    day: 2,
-    slotsUnlocked: 3,
-    placement: ['ice', null, null, null, null, null, null, null],
-    fortuneLevel: 0,
-    cans: { sun: 0, breeze: 0, warm: 0, drop: 0 },
-    collection: { temple: 1 },
-    decorations: ['lantern'],
-    drawPrice: 50,
-    activeBox: null,
-    rivalMemory: { stalls: [], playerPrices: { 'ice:fly': 55 } },
-    ledgerHistory: [],
-    phase: 'prep',
-    rngState: 99,
-    forecast: 'rain',
-    actualWeather: 'hot',
-    trending: ['fly'],
-    presetNext: null,
-    wishUsed: false,
-    wishMessage: null,
-    sim: null,
-    draft: {
-      iceQty: { fly: 4 },
-      icePrices: { fly: 55 },
-      canQty: {},
-      canPrices: {},
-      chargePrice: gameConfig.charger.referencePrice,
-      fortunePrice: gameConfig.fortune.referencePrice,
-      ichibanPrice: gameConfig.ichiban.referencePrice,
-      wishPrice: gameConfig.wish.referencePrice,
-    },
-    ...overrides,
-  }
-}
+describe('save schema', () => {
+  it('round-trips a v3 save and treats v0.3 saves as a new game', () => {
+    const save = createNewGame({ playerDog: 'brown', whiteName: '雪球', brownName: '可可', now: 12, seed: 9 }, gameConfig)
+    const parsed = parseSave(serializeSave(save))
+    expect(parsed.ok).toBe(true)
+    if (parsed.ok) expect(parsed.save).toEqual(save)
 
-describe('save / load', () => {
-  it('round-trips a versioned save', () => {
-    const save = sampleSave()
-    const loaded = parseSave(serializeSave(save))
-    expect(loaded).toEqual(save)
-    expect(loaded.schemaVersion).toBe(SCHEMA_VERSION)
+    const legacy = parseSave({ schemaVersion: 2, whiteName: '雪球', brownName: '可可', money: 9999 })
+    expect(legacy.ok).toBe(false)
+    if (!legacy.ok) expect(legacy.reason).toBe('legacy')
+    const older = parseSave({ schemaVersion: 1, whiteName: '雪球', brownName: '可可' })
+    expect(older.ok).toBe(false)
+    if (!older.ok) expect(older.reason).toBe('legacy')
   })
 
-  it('migrates a v1 save by filling decorations, wish fields, and the new version', () => {
-    const current = sampleSave()
-    const { decorations, wishUsed, presetNext, wishMessage, ...rest } = current
-    void decorations
-    void wishUsed
-    void presetNext
-    void wishMessage
-    const v1 = { ...rest, schemaVersion: 1 }
-    const loaded = parseSave(JSON.stringify(v1))
-    expect(loaded.schemaVersion).toBe(2)
-    expect(loaded.decorations).toEqual([])
-    expect(loaded.wishUsed).toBe(false)
-    expect(loaded.presetNext).toBeNull()
-    expect(loaded.wishMessage).toBeNull()
-    expect(loaded.names).toEqual(current.names)
-    expect(loaded.money).toBe(current.money)
-    expect(loaded.collection).toEqual(current.collection)
-  })
-
-  it('rejects unreadable payloads', () => {
-    expect(() => parseSave('{')).toThrow(/JSON/)
-    expect(() => parseSave('null')).toThrow(/存檔/)
-    expect(() => parseSave({ schemaVersion: 99 })).toThrow(/版本/)
-    expect(() => parseSave({ schemaVersion: 2 })).toThrow(/名字/)
+  it('rejects a broken file without pretending it is an old game', () => {
+    expect(parseSave('not json').ok).toBe(false)
+    const broken = parseSave({ schemaVersion: 3, playerDog: 'white' })
+    expect(broken.ok).toBe(false)
+    if (!broken.ok) expect(broken.reason).toBe('invalid')
   })
 })

@@ -32,8 +32,6 @@ export function createBox(def: BoxDef, rng: Rng): BoxState {
     lastPrize: { ...def.lastPrize, awarded: false },
     draws: 0,
     income: 0,
-    selfIncome: 0,
-    selfDraws: 0,
   }
 }
 
@@ -68,29 +66,29 @@ export function duplicateCoins(grade: Grade, config: GameConfig): number {
   return config.duplicateValue[grade]
 }
 
-export interface SelfDrawResult {
-  box: BoxState
+export interface CustomerDraw {
+  box: BoxState | null
   collection: Record<string, number>
-  decorations: string[]
+  ownedDecor: string[]
   moneyDelta: number
   ticket: Ticket
   converted: number
-  lastPrizeLabel: string | null
+  grade: Grade
 }
 
-/** Player spends the draw price and the stall records the same amount, so cash is unchanged except duplicates. */
-export function selfDraw(input: {
+/** A visitor pays the draw price. Duplicates add coins and do not increase the collection count. */
+export function customerDraw(input: {
   box: BoxState
   collection: Record<string, number>
-  decorations: string[]
+  ownedDecor: string[]
   drawPrice: number
   config: GameConfig
-}): SelfDrawResult {
+}): CustomerDraw {
   const drawn = drawTicket(input.box)
-  let moneyDelta = 0
+  let moneyDelta = input.drawPrice
   let converted = 0
   const collection = { ...input.collection }
-  const decorations = [...input.decorations]
+  const ownedDecor = [...input.ownedDecor]
   const ticket = drawn.ticket
   if (ticket.figureId) {
     const owned = collection[ticket.figureId] ?? 0
@@ -101,21 +99,22 @@ export function selfDraw(input: {
       collection[ticket.figureId] = 1
     }
   }
-  let lastPrizeLabel: string | null = null
   if (drawn.lastPrize) {
-    lastPrizeLabel = drawn.lastPrize.label
-    if (decorations.includes(drawn.lastPrize.id)) {
+    if (ownedDecor.includes(drawn.lastPrize.id)) {
       moneyDelta += input.config.decorationDuplicateValue
       converted += input.config.decorationDuplicateValue
     } else {
-      decorations.push(drawn.lastPrize.id)
+      ownedDecor.push(drawn.lastPrize.id)
     }
   }
-  const box: BoxState = {
-    ...drawn.box,
-    income: drawn.box.income + input.drawPrice,
-    selfIncome: drawn.box.selfIncome + input.drawPrice,
-    selfDraws: drawn.box.selfDraws + 1,
+  const box: BoxState = { ...drawn.box, income: drawn.box.income + input.drawPrice }
+  return {
+    box: box.tickets.length === 0 ? null : box,
+    collection,
+    ownedDecor,
+    moneyDelta,
+    ticket,
+    converted,
+    grade: ticket.grade,
   }
-  return { box, collection, decorations, moneyDelta, ticket, converted, lastPrizeLabel }
 }

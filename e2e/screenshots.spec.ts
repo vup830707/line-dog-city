@@ -3,41 +3,45 @@ import { expect, test } from '@playwright/test'
 
 const dir = '/opt/cursor/artifacts'
 
-test('capture the MVP screens at 390x844', async ({ page }) => {
+test('capture the cozy street at 1440x900', async ({ page }) => {
   test.setTimeout(90_000)
   mkdirSync(dir, { recursive: true })
-  await page.setViewportSize({ width: 390, height: 844 })
+  await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('./')
   await page.getByTestId('dog-white').click()
-  await page.screenshot({ path: `${dir}/opening-character-select.png` })
+  await page.screenshot({ path: `${dir}/title-character-select.png` })
 
   await page.getByLabel('白狗的名字').fill('雪球')
   await page.getByLabel('咖啡色狗的名字').fill('可可')
   await page.getByTestId('start-game').click()
-  await page.getByTestId('slot-0').click()
-  await page.getByTestId('place-ice').click()
-  await page.screenshot({ path: `${dir}/city-stalls.png` })
+  await expect(page.getByTestId('build-panel')).toBeVisible()
+  await page.screenshot({ path: `${dir}/build-panel.png` })
 
-  await page.getByTestId('start-day').click()
-  await expect(page.getByTestId('business-canvas')).toBeVisible()
-  await expect
-    .poll(async () => {
-      const text = await page.getByTestId('tick').innerText()
-      return Number(text.match(/營業中 (\d+)/)?.[1] ?? 0)
-    }, { timeout: 45_000 })
-    .toBeGreaterThanOrEqual(40)
-  await page.screenshot({ path: `${dir}/business-midday.png` })
+  await page.getByTestId('build-ice').dragTo(page.getByTestId('slot-1'))
+  await page.getByTestId('build-lantern').dragTo(page.getByTestId('slot-2'))
+  await page.evaluate(() => window.__puppy?.runTicks(80))
+  await page.getByTestId('build-fortune').dragTo(page.getByTestId('slot-3'))
+  await page.getByTestId('build-can').dragTo(page.getByTestId('slot-5'))
+  await page.getByTestId('build-flower').dragTo(page.getByTestId('slot-0'))
+  await page.getByTestId('build-seat').dragTo(page.getByTestId('slot-6'))
+  await page.evaluate(() => window.__puppy?.spawn('cat'))
+  await expect(page.getByTestId('street-canvas')).toBeVisible()
+  await page.screenshot({ path: `${dir}/street-day.png` })
 
-  await page.getByTestId('fast-forward').click()
-  await expect(page.getByTestId('ledger-income')).toBeVisible()
-  await page.screenshot({ path: `${dir}/ledger.png` })
+  await page.getByTestId('animal-cat').first().click()
+  await expect(page.getByTestId('animal-card')).toBeVisible()
+  await page.screenshot({ path: `${dir}/animal-card.png` })
 
-  await page.getByTestId('nav-collection').click()
-  await expect(page.getByRole('heading', { name: '圖鑑' })).toBeVisible()
+  await page.evaluate(() => window.__puppy?.runTicks(1))
+  await page.getByTestId('tab-letters').click()
+  await expect(page.getByTestId('letter-card').first()).toBeVisible()
+  await page.screenshot({ path: `${dir}/letter.png` })
+
+  await page.getByTestId('tab-collection').click()
+  await expect(page.getByTestId('collection-progress')).toBeVisible()
   await page.screenshot({ path: `${dir}/collection.png` })
 
-  await page.getByTestId('nav-ichiban').click()
-  await page.getByTestId('buy-mini').click()
-  await expect(page.getByTestId('ichiban-box')).toBeVisible()
-  await page.screenshot({ path: `${dir}/ichiban.png` })
+  await page.getByTestId('tab-staff').click()
+  await expect(page.getByTestId('staff-panel')).toBeVisible()
+  await page.screenshot({ path: `${dir}/staff-panel.png` })
 })
