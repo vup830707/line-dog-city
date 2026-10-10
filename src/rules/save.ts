@@ -25,7 +25,7 @@ export function parseSave(raw: unknown): ParseResult {
   }
   const record = data as Record<string, unknown>
   if (record.schemaVersion === 1 || record.schemaVersion === 2) {
-    return { ok: false, reason: 'legacy', message: '這是舊版策略存檔，已改開新的夜市。' }
+    return { ok: false, reason: 'legacy', message: '這是舊版的策略存檔，沒辦法匯入。現在這局夜市還在，沒有被換掉。' }
   }
   if (record.schemaVersion !== SCHEMA_VERSION) {
     return { ok: false, reason: 'invalid', message: '不認得的存檔版本' }

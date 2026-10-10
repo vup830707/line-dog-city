@@ -64,6 +64,8 @@ export function TitleScreen({ hasSave, onBegin }: { hasSave: boolean; onBegin: (
       data-phase={phase}
       style={{ '--title-light': `${lightMs}ms` } as CSSProperties}
     >
+      <div className="title-dock title-dock-unlit" />
+      <div className="title-dock title-dock-lit" />
       <img className="title-bg title-bg-unlit" src={assetMap.title.unlit} alt="" />
       <div className="title-wash" />
       <img className="title-bg title-bg-lit" src={assetMap.title.lit} alt="" />

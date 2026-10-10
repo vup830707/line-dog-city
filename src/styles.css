@@ -37,10 +37,12 @@ p { margin: 0 0 8px; }
 .lede, .fine, .notice { color: #5c4636; }
 
 .title-screen {
+  --title-dock: clamp(132px, 18vh, 176px);
+  --title-bleed: 10px;
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background: #2a2140;
+  background: #5c4e52;
   color: #4a2c12;
 }
 
@@ -55,8 +57,33 @@ p { margin: 0 0 8px; }
 }
 
 .title-bg {
+  top: 0;
+  right: 0;
+  bottom: auto;
+  left: 0;
+  width: 100%;
+  height: calc(100% - var(--title-dock) + var(--title-bleed));
   object-fit: cover;
-  object-position: center 62%;
+  object-position: center bottom;
+  mask-image: linear-gradient(#000 calc(100% - 18px), transparent 100%);
+}
+
+.title-dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--title-dock);
+  pointer-events: none;
+}
+
+.title-dock-unlit {
+  background: linear-gradient(to bottom, #5c4e52 0%, #56484c 48%, #514348 100%);
+}
+
+.title-dock-lit {
+  opacity: 0;
+  background: linear-gradient(to bottom, #4f4042 0%, #4a3b3d 48%, #46383a 100%);
 }
 
 .title-bg-lit,
@@ -79,13 +106,17 @@ p { margin: 0 0 8px; }
   mix-blend-mode: screen;
 }
 
-.title-screen[data-phase="lighting"] .title-bg-unlit { animation: title-unlit-out var(--title-light) linear forwards; }
-.title-screen[data-phase="lighting"] .title-bg-lit { animation: title-lit-in var(--title-light) linear forwards; }
+.title-screen[data-phase="lighting"] .title-bg-unlit,
+.title-screen[data-phase="lighting"] .title-dock-unlit { animation: title-unlit-out var(--title-light) linear forwards; }
+.title-screen[data-phase="lighting"] .title-bg-lit,
+.title-screen[data-phase="lighting"] .title-dock-lit { animation: title-lit-in var(--title-light) linear forwards; }
 .title-screen[data-phase="lighting"] .title-wash { animation: title-wash var(--title-light) linear forwards; }
 .title-screen[data-phase="lighting"] .title-glow { animation: title-glow-in var(--title-light) linear forwards; }
 
-.title-screen[data-phase="lit"] .title-bg-unlit { opacity: 0; }
-.title-screen[data-phase="lit"] .title-bg-lit { opacity: 1; }
+.title-screen[data-phase="lit"] .title-bg-unlit,
+.title-screen[data-phase="lit"] .title-dock-unlit { opacity: 0; }
+.title-screen[data-phase="lit"] .title-bg-lit,
+.title-screen[data-phase="lit"] .title-dock-lit { opacity: 1; }
 .title-screen[data-phase="lit"] .title-wash { opacity: 0; }
 .title-screen[data-phase="lit"] .title-glow { opacity: 0.42; }
 
@@ -121,7 +152,9 @@ p { margin: 0 0 8px; }
   z-index: 2;
   top: 1.6vh;
   left: 50%;
-  width: min(82%, 1040px);
+  display: flex;
+  justify-content: center;
+  width: min(72%, 760px);
   margin: 0;
   transform: translateX(-50%);
   pointer-events: none;
@@ -129,8 +162,11 @@ p { margin: 0 0 8px; }
 
 .title-logo {
   display: block;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   height: auto;
+  max-height: 20vh;
+  object-fit: contain;
   filter: drop-shadow(0 10px 14px rgba(36, 16, 8, 0.22));
 }
 
@@ -138,7 +174,7 @@ p { margin: 0 0 8px; }
   position: absolute;
   z-index: 3;
   left: 50%;
-  bottom: max(16px, 3vh);
+  bottom: max(12px, 1.5vh);
   transform: translateX(-50%);
   display: grid;
   place-items: center;
@@ -152,9 +188,9 @@ p { margin: 0 0 8px; }
     repeating-linear-gradient(90deg, rgba(116, 68, 24, 0.09) 0 2px, transparent 2px 8px),
     linear-gradient(180deg, #f3d7a2 0%, #e2b56a 22%, #d09a4e 58%, #c4883b 100%);
   color: #4a2c12;
-  font-size: clamp(1.7rem, 2.7vw, 2.55rem);
+  font-size: clamp(1.9rem, 3.2vw, 3.15rem);
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   line-height: 1;
   white-space: nowrap;
   text-shadow: 0 1px 0 rgba(255, 244, 220, 0.45);
@@ -200,14 +236,18 @@ p { margin: 0 0 8px; }
 @media (prefers-reduced-motion: reduce) {
   .title-screen[data-phase="lighting"] .title-bg-unlit,
   .title-screen[data-phase="lighting"] .title-bg-lit,
+  .title-screen[data-phase="lighting"] .title-dock-unlit,
+  .title-screen[data-phase="lighting"] .title-dock-lit,
   .title-screen[data-phase="lighting"] .title-wash,
   .title-screen[data-phase="lighting"] .title-glow {
     animation: none;
   }
 
   .title-screen[data-phase="lighting"] .title-bg-unlit,
+  .title-screen[data-phase="lighting"] .title-dock-unlit,
   .title-screen[data-phase="lighting"] .title-wash { opacity: 0; }
-  .title-screen[data-phase="lighting"] .title-bg-lit { opacity: 1; }
+  .title-screen[data-phase="lighting"] .title-bg-lit,
+  .title-screen[data-phase="lighting"] .title-dock-lit { opacity: 1; }
   .title-screen[data-phase="lighting"] .title-glow { opacity: 0.42; }
 }
 
