@@ -13,8 +13,20 @@ let booted: SaveV3 | null | undefined
 
 function loadInitial(): SaveV3 | null {
   if (booted !== undefined) return booted
-  booted = loadGame(localStorage)
-  return booted
+  const loaded = loadGame(localStorage)
+  if (!loaded) {
+    booted = null
+    return null
+  }
+  const applied = applyOffline(loaded.street, Date.now() - loaded.savedAt, gameConfig)
+  if (applied.ticks === 0) {
+    booted = loaded
+    return loaded
+  }
+  const next = { ...loaded, street: applied.street, savedAt: Date.now() }
+  storeGame(localStorage, next)
+  booted = next
+  return next
 }
 
 export function App() {
@@ -28,13 +40,8 @@ export function App() {
   saveRef.current = save
 
   function enterGame() {
-    const current = saveRef.current
     try {
-      if (!current) commit(createNewGame({ now: Date.now() }, gameConfig))
-      else {
-        const applied = applyOffline(current.street, Date.now() - current.savedAt, gameConfig)
-        commit({ ...current, street: applied.street })
-      }
+      if (!saveRef.current) commit(createNewGame({ now: Date.now() }, gameConfig))
       playingRef.current = true
       setPlaying(true)
       setNotice('')
