@@ -18,7 +18,7 @@ function walk(dir, acc = []) {
 }
 
 const files = walk(dist)
-const manifest = files.find((file) => /manifest\.(webmanifest|json)$/.test(file))
+const manifest = files.find((file) => file.endsWith('manifest.webmanifest'))
 const worker = files.find((file) => /(^|\/)(sw|service-worker)\.js$/.test(file))
 
 if (!manifest || !worker) {

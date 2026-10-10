@@ -31,7 +31,7 @@ export const assetMap = {
     stallDuo: { src: duo, size: '200% 200%', position: '0% 0%', label: '老闆與搭檔' },
     stinkyTofu: { src: duo, size: '200% 200%', position: '100% 0%', label: '臭豆腐小狗' },
     ichibanPartner: { src: duo, size: '200% 200%', position: '0% 100%', label: '一番賞搭檔' },
-    balloon: { src: duo, size: '200% 200%', position: '100% 100%', label: '氣球狗（對手）' },
+    balloon: { src: duo, size: '200% 200%', position: '100% 100%', label: '氣球狗裝飾' },
     chicken: { src: figures, size: '400% 100%', position: '0% 0%', label: '雞排小狗' },
     milkTea: { src: figures, size: '400% 100%', position: '33.333% 0%', label: '珍奶小狗' },
     temple: { src: figures, size: '400% 100%', position: '66.666% 0%', label: '廟會小狗' },
@@ -55,9 +55,31 @@ export const assetMap = {
     ichiban: { kind: 'placeholder', id: 'stall-ichiban', accent: '#f0b27a' },
     wish: { kind: 'placeholder', id: 'stall-wish', accent: '#8fd0c4' },
   },
+  animals: {
+    cat: { kind: 'placeholder', id: 'animal-cat', accent: '#e7a0c4' },
+    rabbit: { kind: 'placeholder', id: 'animal-rabbit', accent: '#f4efe6' },
+    hamster: { kind: 'placeholder', id: 'animal-hamster', accent: '#e2b657' },
+    sparrow: { kind: 'placeholder', id: 'animal-sparrow', accent: '#8a5a3a' },
+    otter: { kind: 'placeholder', id: 'animal-otter', accent: '#7eb6e0' },
+    hedgehog: { kind: 'placeholder', id: 'animal-hedgehog', accent: '#c4a484' },
+    fox: { kind: 'placeholder', id: 'animal-fox', accent: '#e07a3d' },
+    bear: { kind: 'placeholder', id: 'animal-bear', accent: '#f7f7f7' },
+  },
+  decor: {
+    lantern: { kind: 'placeholder', id: 'decor-lantern', accent: '#e2b657' },
+    seat: { kind: 'placeholder', id: 'decor-seat', accent: '#8a5a3a' },
+    sign: { kind: 'placeholder', id: 'decor-sign', accent: '#c45c26' },
+    flower: { kind: 'placeholder', id: 'decor-flower', accent: '#e7a0c4' },
+    star: { kind: 'placeholder', id: 'decor-star', accent: '#f0d35a' },
+  },
+  hires: {
+    munia: { kind: 'placeholder', id: 'hire-munia', accent: '#d7c4a3' },
+    ferret: { kind: 'placeholder', id: 'hire-ferret', accent: '#f4efe6' },
+  },
   characters: {
     playerPair: 'stallDuo',
-    rival: 'balloon',
+    white: { kind: 'placeholder', id: 'dog-white', accent: '#fffaf3' },
+    brown: { kind: 'placeholder', id: 'dog-brown', accent: '#8a5a3a' },
   },
   /** Pixel rects for Canvas drawImage, matching the sheets above. */
   canvasCrops: {

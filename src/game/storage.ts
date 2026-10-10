@@ -1,5 +1,5 @@
 import { parseSave, serializeSave } from '../rules/save'
-import type { SaveV2 } from '../rules/types'
+import type { SaveV3 } from '../rules/types'
 
 export const SAVE_KEY = 'puppy-city-save'
 
@@ -9,17 +9,15 @@ export interface KeyValueStore {
   removeItem(key: string): void
 }
 
-export function loadGame(store: KeyValueStore): SaveV2 | null {
+export function loadGame(store: KeyValueStore): SaveV3 | null {
   const raw = store.getItem(SAVE_KEY)
   if (!raw) return null
-  try {
-    return parseSave(raw)
-  } catch {
-    return null
-  }
+  const parsed = parseSave(raw)
+  if (!parsed.ok) return null
+  return parsed.save
 }
 
-export function storeGame(store: KeyValueStore, save: SaveV2): void {
+export function storeGame(store: KeyValueStore, save: SaveV3): void {
   store.setItem(SAVE_KEY, serializeSave(save))
 }
 
