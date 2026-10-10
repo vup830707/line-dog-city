@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { assetMap } from '../assets/assetMap'
 import { gameConfig } from '../config'
 import { assignJob, hireBlock, hireStaff, trainBlock, trainStaff } from '../rules/actions'
+import { restockStaffWarning } from '../rules/staff'
 import { isWishPondUnlocked, ownedCount } from '../rules/collection'
 import { ambienceScore } from '../rules/ambience'
 import type { Job, SaveV3, Weather } from '../rules/types'
@@ -90,7 +91,7 @@ export function PhoneOverlay({
         data-testid="phone"
         role="dialog"
         aria-label="手機"
-        style={{ height: `${gameConfig.phoneHeightRatio * 100}%` }}
+        style={{ ['--phone-ratio' as string]: String(gameConfig.phoneHeightRatio) }}
         onClick={(event) => event.stopPropagation()}
         onAnimationEnd={() => {
           if (closing) onClosed()
@@ -174,6 +175,11 @@ function StaffApp({
 }) {
   return (
     <div className="phone-panel" data-testid="staff-panel">
+      {restockStaffWarning(save.street) ? (
+        <p className="restock-warning" data-testid="restock-warning">
+          {restockStaffWarning(save.street)}
+        </p>
+      ) : null}
       {save.street.staff.map((member) => (
         <article key={member.id} data-testid={`staff-${member.id}`}>
           <h3>

@@ -22,6 +22,11 @@ test('the charm opens every phone app and the night market keeps running', async
   await page.getByTestId('phone-charm').click()
   await expect(page.getByTestId('phone')).toBeVisible()
   await expect(page.getByTestId('phone-app-build')).toBeVisible()
+  await expectPhoneTargets(page)
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expectPhoneTargets(page)
+  await page.setViewportSize({ width: 1280, height: 720 })
   for (const app of ['staff', 'collection', 'letters', 'settings', 'market'] as const) {
     await page.getByTestId(`phone-app-${app}`).click()
     await expect(page.getByTestId(panelFor(app))).toBeVisible()
@@ -149,6 +154,20 @@ async function startGame(page: Page) {
   await expect(page.getByTestId('title-start')).toHaveText('開始營業')
   await openMarket(page)
   await expect(page.getByTestId('street-metrics')).toHaveAttribute('data-art-ready', '1')
+}
+
+async function expectPhoneTargets(page: Page) {
+  await phoneSettled(page)
+  for (const id of ['phone-app-build', 'phone-app-staff', 'phone-home']) {
+    const box = await page.getByTestId(id).boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.width).toBeGreaterThanOrEqual(44)
+    expect(box!.height).toBeGreaterThanOrEqual(44)
+  }
+  const font = await page.getByTestId('phone-app-build').evaluate((el) => Number.parseFloat(getComputedStyle(el).fontSize))
+  const status = await page.getByTestId('phone-status').evaluate((el) => Number.parseFloat(getComputedStyle(el).fontSize))
+  expect(font).toBeGreaterThanOrEqual(14)
+  expect(status).toBeGreaterThanOrEqual(14)
 }
 
 async function shot(page: Page, name: string) {

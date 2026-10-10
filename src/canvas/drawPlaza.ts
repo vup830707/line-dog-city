@@ -1,5 +1,5 @@
 import { glowAlpha } from './fx'
-import { bobOffset, coverTransform, depthSort, PLAZA_H, PLAZA_W, toScreen, type SceneSprite, type SlotFrame } from './plaza'
+import { bobOffset, coverTransform, depthSort, glowRadii, PLAZA_H, PLAZA_W, toScreen, type SceneSprite, type SlotFrame } from './plaza'
 
 export function drawPlaza(
   ctx: CanvasRenderingContext2D,
@@ -59,11 +59,12 @@ function drawSlotMark(
   timeMs: number,
 ): void {
   const foot = toScreen(mark.frame, cover)
-  const rx = Math.max(8, mark.frame.rx * cover.scale)
-  const ry = Math.max(4, mark.frame.ry * cover.scale)
+  const pad = glowRadii(mark.frame, cover.scale)
+  const rx = mark.glow ? pad.rx : pad.rx / 1.25
+  const ry = mark.glow ? pad.ry : pad.ry / 2.6
   ctx.save()
   ctx.beginPath()
-  ctx.ellipse(foot.x, foot.y, mark.glow ? rx * 1.25 : rx, mark.glow ? ry * 2.6 : ry, 0, 0, Math.PI * 2)
+  ctx.ellipse(foot.x, foot.y, rx, ry, 0, 0, Math.PI * 2)
   if (mark.glow) {
     const alpha = glowAlpha(timeMs)
     ctx.fillStyle = `rgba(255, 206, 64, ${0.62 * alpha})`

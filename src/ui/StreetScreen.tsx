@@ -10,7 +10,7 @@ import {
   layoutScene,
   PLAZA_SLOTS,
   screenRect,
-  clearOfDock,
+  glowSlotHit,
   slotFrame,
   slotHitRect,
   spriteScreenRect,
@@ -32,7 +32,7 @@ import {
 import { buildOffers } from '../rules/build'
 import { refundAmount } from '../rules/ichiban'
 import { parseSave } from '../rules/save'
-import { stockCap } from '../rules/staff'
+import { emptyShelfHint, stockCap } from '../rules/staff'
 import type { SaveV3, Species, Street } from '../rules/types'
 import { renameDogs } from '../game/newGame'
 import { BuildStrip } from './BuildStrip'
@@ -376,9 +376,9 @@ export function StreetScreen({
       {PLAZA_SLOTS.map((_, index) => {
         const place = street.slots[index]
         const stallType = place?.kind === 'stall' ? place.stallType : null
-        const foot = slotHitRect(slotFrame(index, stallType), cover)
+        const frame = slotFrame(index, stallType)
         const glowing = glowSlots.includes(index)
-        const rect = glowing ? clearOfDock(foot, view.h - 120) : foot
+        const rect = glowing ? glowSlotHit(frame, cover, view.w, view.h) : slotHitRect(frame, cover)
         return (
           <button
             key={index}
@@ -441,6 +441,11 @@ export function StreetScreen({
       {notice ? (
         <p className="toast" data-testid="toast">
           {notice}
+        </p>
+      ) : null}
+      {emptyShelfHint(street) ? (
+        <p className={notice ? 'restock-hint below-toast' : 'restock-hint'} data-testid="restock-hint">
+          {emptyShelfHint(street)}
         </p>
       ) : null}
       {!buildMode && selected?.kind === 'stall' && selected.stallType && selectedSlot != null ? (
