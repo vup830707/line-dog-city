@@ -4,6 +4,7 @@ import { expect, test } from '@playwright/test'
 const dir = '/opt/cursor/artifacts'
 
 test('capture the MVP screens at 390x844', async ({ page }) => {
+  test.setTimeout(90_000)
   mkdirSync(dir, { recursive: true })
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
@@ -19,7 +20,12 @@ test('capture the MVP screens at 390x844', async ({ page }) => {
 
   await page.getByTestId('start-day').click()
   await expect(page.getByTestId('business-canvas')).toBeVisible()
-  await expect(page.getByTestId('tick')).not.toHaveText(/營業中 0 \//, { timeout: 8_000 })
+  await expect
+    .poll(async () => {
+      const text = await page.getByTestId('tick').innerText()
+      return Number(text.match(/營業中 (\d+)/)?.[1] ?? 0)
+    }, { timeout: 45_000 })
+    .toBeGreaterThanOrEqual(40)
   await page.screenshot({ path: `${dir}/business-midday.png` })
 
   await page.getByTestId('fast-forward').click()
