@@ -1,7 +1,7 @@
 {
  "game": "動物夜市",
  "style": "2.5D",
- "generated_count": 32,
+ "generated_count": 37,
  "missing": [],
  "assets": [
   {
@@ -451,6 +451,76 @@
    ],
    "tileable_x": false,
    "source": "_raw/sheets25/bg-plaza.jpg"
+  },
+  {
+   "path": "title/bg-unlit.jpg",
+   "kind": "title",
+   "name": "bg-unlit",
+   "width": 1280,
+   "height": 720,
+   "anchor": "center",
+   "anchor_px": [
+    640,
+    360
+   ],
+   "tileable_x": false,
+   "source": "uploads/title"
+  },
+  {
+   "path": "title/bg-lit.jpg",
+   "kind": "title",
+   "name": "bg-lit",
+   "width": 1280,
+   "height": 720,
+   "anchor": "center",
+   "anchor_px": [
+    640,
+    360
+   ],
+   "tileable_x": false,
+   "source": "uploads/title"
+  },
+  {
+   "path": "title/ground-unlit.jpg",
+   "kind": "title",
+   "name": "ground-unlit",
+   "width": 1280,
+   "height": 640,
+   "anchor": "top-center",
+   "anchor_px": [
+    640,
+    0
+   ],
+   "tileable_x": true,
+   "source": "title/bg-unlit.jpg"
+  },
+  {
+   "path": "title/ground-lit.jpg",
+   "kind": "title",
+   "name": "ground-lit",
+   "width": 1280,
+   "height": 640,
+   "anchor": "top-center",
+   "anchor_px": [
+    640,
+    0
+   ],
+   "tileable_x": true,
+   "source": "title/bg-lit.jpg"
+  },
+  {
+   "path": "title/logo.png",
+   "kind": "title",
+   "name": "logo",
+   "width": 1212,
+   "height": 330,
+   "anchor": "center",
+   "anchor_px": [
+    606,
+    165
+   ],
+   "tileable_x": false,
+   "source": "uploads/title"
   }
  ]
 }

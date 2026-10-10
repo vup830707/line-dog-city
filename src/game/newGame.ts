@@ -4,6 +4,10 @@ import { scheduleArrivals } from '../rules/street'
 import type { DecorType, GameConfig, Placement, SaveV3, Species, StallType, Street, Visitor } from '../rules/types'
 import { isFestival, rollWeather } from '../rules/weather'
 
+export const DEFAULT_WHITE_NAME = '小白'
+export const DEFAULT_BROWN_NAME = '可可'
+export const DEFAULT_PLAYER_DOG = 'white' as const
+
 export function cleanName(value: string): string | null {
   const name = value.trim()
   if (name.length < 1 || name.length > 8) return null
@@ -20,13 +24,14 @@ function hashSeed(text: string): number {
 }
 
 export function createNewGame(
-  input: { playerDog: 'white' | 'brown'; whiteName: string; brownName: string; now?: number; seed?: number },
+  input: { playerDog?: 'white' | 'brown'; whiteName?: string; brownName?: string; now?: number; seed?: number } = {},
   config: GameConfig,
 ): SaveV3 {
-  const whiteName = cleanName(input.whiteName)
-  const brownName = cleanName(input.brownName)
+  const playerDog = input.playerDog ?? DEFAULT_PLAYER_DOG
+  const whiteName = cleanName(input.whiteName ?? DEFAULT_WHITE_NAME)
+  const brownName = cleanName(input.brownName ?? DEFAULT_BROWN_NAME)
   if (!whiteName || !brownName) throw new Error('名字要 1 到 8 個字')
-  const rng = createRng(input.seed ?? hashSeed(`${input.playerDog}|${whiteName}|${brownName}`))
+  const rng = createRng(input.seed ?? hashSeed(`${playerDog}|${whiteName}|${brownName}|${input.now ?? 0}`))
   const weather = rollWeather(rng)
   const first = config.flavors[Math.floor(rng.next() * config.flavors.length)]?.id ?? 'fly'
   const opening = openingPlaza(config)
@@ -72,7 +77,7 @@ export function createNewGame(
   street.rngState = rng.getState()
   return {
     schemaVersion: 3,
-    playerDog: input.playerDog,
+    playerDog,
     whiteName,
     brownName,
     savedAt: input.now ?? 0,

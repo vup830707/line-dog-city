@@ -145,6 +145,7 @@ export interface GameConfig {
   cleanlinessWeight: number
   levelPriceMultiplier: number[]
   saveEveryTicks: number
+  titleLightMs: number
   ichibanIdleTicks: number
   walkSpeed: number
   restockCostRatio: number

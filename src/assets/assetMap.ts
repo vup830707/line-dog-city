@@ -81,6 +81,13 @@ export const assetMap = {
     white: { kind: 'placeholder', id: 'dog-white', accent: '#fffaf3' },
     brown: { kind: 'placeholder', id: 'dog-brown', accent: '#8a5a3a' },
   },
+  title: {
+    unlit: `${root}assets/art25/title/bg-unlit.jpg`,
+    lit: `${root}assets/art25/title/bg-lit.jpg`,
+    logo: `${root}assets/art25/title/logo.png`,
+    groundUnlit: `${root}assets/art25/title/ground-unlit.jpg`,
+    groundLit: `${root}assets/art25/title/ground-lit.jpg`,
+  },
   /** Pixel rects for Canvas drawImage, matching the sheets above. */
   canvasCrops: {
     stallDuo: { sx: 0, sy: 0, sw: 640, sh: 360 },

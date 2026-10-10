@@ -52,7 +52,7 @@ describe('save schema', () => {
     expect(parsed.ok).toBe(false)
     if (!parsed.ok) {
       expect(parsed.reason).toBe('legacy')
-      expect(parsed.message).toContain('新')
+      expect(parsed.message).toBe('這是舊版的策略存檔，沒辦法匯入。現在這局夜市還在，沒有被換掉。')
     }
     const store = memory()
     store.setItem(SAVE_KEY, JSON.stringify(v03))
