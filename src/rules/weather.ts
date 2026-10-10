@@ -24,3 +24,9 @@ export function rollWeather(rng: Rng): Weather {
 export function resolveWish(rate: number, desired: Weather, natural: Weather, roll: number): Weather {
   return roll < rate ? desired : natural
 }
+
+/** Tomorrow's weather is only known after a wish writes `pendingWeather`. */
+export function forecastLine(pending: Weather | null, labels: Record<Weather, string>): string {
+  if (!pending) return '明晚預報：還沒揭曉'
+  return `明晚預報：${labels[pending]}`
+}

@@ -40,4 +40,22 @@ describe('asset map', () => {
       expect(assetMap.decor[decor as keyof typeof assetMap.decor]).toBeDefined()
     }
   })
+
+  it('registers the phone sprites as files the PWA can precache', () => {
+    const urls = [
+      assetMap.phone.charm,
+      assetMap.phone.frame,
+      assetMap.phone.letterPaper,
+      assetMap.phone.coin,
+      ...Object.values(assetMap.phone.apps),
+      ...Object.values(assetMap.phone.weather),
+    ]
+    for (const url of urls) {
+      expect(url).toContain('/assets/phone/')
+      const file = url.slice(url.indexOf('assets/phone/'))
+      expect(existsSync(`public/${file}`)).toBe(true)
+    }
+    expect(assetMap.phone.screen.top).toBeGreaterThan(0)
+    expect(assetMap.phone.screen.left).toBeGreaterThan(0)
+  })
 })

@@ -19,6 +19,7 @@ import {
   propFootprint,
   rankScale,
   screenRect,
+  clearOfDock,
   slotFrame,
   slotHitRect,
   spriteScreenRect,
@@ -145,6 +146,14 @@ describe('plaza spacing', () => {
 })
 
 describe('slot frames', () => {
+  it('lifts a foot pad that would sit under the build strip', () => {
+    const covered = { left: 40, top: 600, width: 36, height: 40 }
+    const lifted = clearOfDock(covered, 590)
+    expect(lifted.top + lifted.height).toBeLessThanOrEqual(590)
+    const clear = { left: 40, top: 200, width: 36, height: 40 }
+    expect(clearOfDock(clear, 590)).toEqual(clear)
+  })
+
   it('anchors the pad on the slot and scales it with the stall art', () => {
     const ice = slotFrame(1, 'ice')
     const slot = PLAZA_SLOTS[1] as { x: number; y: number }

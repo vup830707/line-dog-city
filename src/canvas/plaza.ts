@@ -107,6 +107,21 @@ export function slotFrame(index: number, stallType?: StallType | null): SlotFram
   }
 }
 
+/**
+ * Keep a build target clickable when the bottom card strip covers the foot pad.
+ * Slots that already sit above the strip stay on their feet.
+ */
+export function clearOfDock(rect: ScreenRect, dockTop: number): ScreenRect {
+  const center = rect.top + rect.height / 2
+  if (center < dockTop) return rect
+  return {
+    left: rect.left,
+    top: Math.max(8, dockTop - 48),
+    width: Math.max(rect.width, 44),
+    height: 40,
+  }
+}
+
 /** Click pad on the stall's feet. Tall sprite boxes overlap the next rank. */
 export function slotHitRect(frame: SlotFrame, cover: CoverTransform): ScreenRect {
   const foot = toScreen(frame, cover)

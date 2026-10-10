@@ -88,6 +88,31 @@ export const assetMap = {
     groundUnlit: `${root}assets/art25/title/ground-unlit.jpg`,
     groundLit: `${root}assets/art25/title/ground-lit.jpg`,
   },
+  phone: {
+    charm: `${root}assets/phone/charm.png`,
+    frame: `${root}assets/phone/frame.png`,
+    letterPaper: `${root}assets/phone/letter-paper.png`,
+    coin: `${root}assets/phone/coin.png`,
+    apps: {
+      build: `${root}assets/phone/app-build.png`,
+      staff: `${root}assets/phone/app-staff.png`,
+      collection: `${root}assets/phone/app-collection.png`,
+      letters: `${root}assets/phone/app-letters.png`,
+      settings: `${root}assets/phone/app-settings.png`,
+      market: `${root}assets/phone/app-market.png`,
+    },
+    weather: {
+      sunny: `${root}assets/phone/weather-sunny.png`,
+      hot: `${root}assets/phone/weather-hot.png`,
+      cold: `${root}assets/phone/weather-cold.png`,
+      rain: `${root}assets/phone/weather-rain.png`,
+    },
+    /**
+     * Usable screen inside frame.png, as fractions of the frame.
+     * Inset past the rounded bezel so icons and labels stay on the glass.
+     */
+    screen: { left: 62 / 288, top: 76 / 425, right: 62 / 288, bottom: 98 / 425 },
+  },
   /** Pixel rects for Canvas drawImage, matching the sheets above. */
   canvasCrops: {
     stallDuo: { sx: 0, sy: 0, sw: 640, sh: 360 },

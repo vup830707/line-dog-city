@@ -70,7 +70,7 @@ export function App() {
       booted = stamped
       ticksSinceSave.current = 0
     }
-    if (debugHooksEnabled(window.location.search)) {
+    if (debugHooksEnabled(window.location.search, import.meta.env.MODE)) {
       window.__puppy = {
         pause() {
           pauseRef.current = true
@@ -92,6 +92,14 @@ export function App() {
           booted = next
           storeGame(localStorage, next)
           setSave(next)
+        },
+        clearSlot(index: number) {
+          const current = saveRef.current
+          if (!current || index < 0 || index >= current.street.slots.length) return
+          pauseRef.current = true
+          const slots = current.street.slots.slice()
+          slots[index] = null
+          commit({ ...current, street: { ...current.street, slots } })
         },
         spawn(species: string) {
           const current = saveRef.current

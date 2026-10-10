@@ -45,6 +45,25 @@ if (!workerSource.includes(`${base}index.html`) || !workerSource.includes(`${bas
 for (const asset of ['assets/art25/title/bg-unlit.jpg', 'assets/art25/title/bg-lit.jpg', 'assets/art25/title/logo.png', 'assets/art25/title/ground-unlit.jpg', 'assets/art25/title/ground-lit.jpg']) {
   if (!workerSource.includes(asset)) problems.push(`service worker is missing ${asset}`)
 }
+const phoneAssets = [
+  'charm.png',
+  'frame.png',
+  'app-build.png',
+  'app-staff.png',
+  'app-collection.png',
+  'app-letters.png',
+  'app-settings.png',
+  'app-market.png',
+  'letter-paper.png',
+  'coin.png',
+  'weather-sunny.png',
+  'weather-hot.png',
+  'weather-cold.png',
+  'weather-rain.png',
+]
+for (const name of phoneAssets) {
+  if (!workerSource.includes(`assets/phone/${name}`)) problems.push(`service worker is missing assets/phone/${name}`)
+}
 
 if (problems.length > 0) {
   console.error('PWA path check failed.')
