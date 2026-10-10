@@ -1,0 +1,185 @@
+{
+  "dayTicks": 90,
+  "tickMs": 800,
+  "priceExponent": 1.5,
+  "startingMoney": 3600,
+  "startingSlots": 3,
+  "maxSlots": 8,
+  "slotCosts": [0, 0, 0, 600, 1000, 1500, 2200, 3000],
+  "forecastAccuracy": 0.8,
+  "baseCrowd": 40,
+  "marketWeather": { "sunny": 1, "hot": 1, "cold": 0.9, "rain": 0.6 },
+  "weekendFactor": 1.3,
+  "festivalFactor": 1.8,
+  "festivals": [
+    { "day": 15, "name": "元宵" },
+    { "day": 22, "name": "中秋" },
+    { "day": 30, "name": "跨年" }
+  ],
+  "calendarLength": 30,
+  "visitScale": 0.5,
+  "visitMin": 0.05,
+  "visitMax": 0.85,
+  "attractBonus": 0.15,
+  "boostMultiplier": 1.2,
+  "boostDuration": 10,
+  "boostCooldown": 15,
+  "rivalStockFactor": 1.1,
+  "rivalUndercut": 5,
+  "rivalFloorMultiplier": 1.2,
+  "rivalSoldOutMarkup": 1.1,
+  "rivalOverstockDiscount": 0.85,
+  "rivalOverstockRatio": 0.5,
+  "wishSuccessRate": 0.6,
+  "duplicateValue": { "A": 180, "B": 45, "C": 15, "D": 0 },
+  "decorationDuplicateValue": 60,
+  "refundRate": 0.3,
+  "stallLabels": {
+    "ice": "夢境冰淇淋",
+    "can": "天氣罐頭",
+    "charge": "心情充電站",
+    "fortune": "AI 算命攤",
+    "ichiban": "一番賞",
+    "wish": "流星許願池"
+  },
+  "iceCream": {
+    "cost": 20,
+    "priceMin": 45,
+    "priceMax": 65,
+    "referencePrice": 55,
+    "serveTicks": 4,
+    "queueMax": 8,
+    "maxFlavors": 3,
+    "trendingBoost": 1.5,
+    "otherFactor": 0.8,
+    "tipChance": 0.2,
+    "tipRate": 0.3,
+    "stallMultiplier": 1,
+    "weather": { "sunny": 1.1, "hot": 1.4, "cold": 0.6, "rain": 0.7 },
+    "flavors": [
+      { "id": "fly", "name": "飛起來" },
+      { "id": "exam", "name": "考試遲到" },
+      { "id": "dogs", "name": "被狗狗包圍" },
+      { "id": "tooth", "name": "掉牙" },
+      { "id": "bus", "name": "追公車" },
+      { "id": "swim", "name": "游泳" }
+    ]
+  },
+  "cans": {
+    "cost": 15,
+    "priceMin": 35,
+    "priceMax": 55,
+    "referencePrice": 45,
+    "serveTicks": 3,
+    "queueMax": 8,
+    "warehouseCap": 40,
+    "matchFactor": 1.8,
+    "otherFactor": 0.5,
+    "sunnyMatchPenalty": 0.75,
+    "stallMultiplier": 1,
+    "types": [
+      { "id": "sun", "name": "晴天" },
+      { "id": "breeze", "name": "微風" },
+      { "id": "warm", "name": "暖陽" },
+      { "id": "drop", "name": "雨滴" }
+    ],
+    "match": { "rain": "sun", "hot": "breeze", "cold": "warm", "sunny": "drop" }
+  },
+  "charger": {
+    "electricCost": 3,
+    "priceMin": 15,
+    "priceMax": 35,
+    "referencePrice": 25,
+    "serveTicks": 15,
+    "capacity": 4,
+    "queueMax": 4,
+    "adjacentBonus": 1.2,
+    "otherBonus": 1.05,
+    "stallMultiplier": 1,
+    "weather": { "sunny": 1, "hot": 1, "cold": 1, "rain": 1.3 }
+  },
+  "fortune": {
+    "priceMin": 60,
+    "priceMax": 100,
+    "referencePrice": 80,
+    "variableCost": 5,
+    "patience": 20,
+    "queueMax": 12,
+    "stallMultiplier": 1.6,
+    "weather": { "sunny": 1, "hot": 1, "cold": 1, "rain": 1.2 },
+    "levels": [
+      { "level": 1, "upgradeCost": 1200, "perMinute": 6, "dailyElectric": 50 },
+      { "level": 2, "upgradeCost": 1500, "perMinute": 10, "dailyElectric": 100 },
+      { "level": 3, "upgradeCost": 4000, "perMinute": 15, "dailyElectric": 180 }
+    ]
+  },
+  "ichiban": {
+    "priceMin": 45,
+    "priceMax": 70,
+    "referencePrice": 50,
+    "serveTicks": 5,
+    "queueMax": 8,
+    "weather": { "sunny": 1, "hot": 1, "cold": 1, "rain": 0.9 },
+    "factorAPresent": 1.5,
+    "factorAGone": 1,
+    "factorABGone": 0.6,
+    "lastStretchAt": 10,
+    "lastStretchFactor": 1.2,
+    "boxes": [
+      {
+        "id": "set1",
+        "name": "線條小狗模擬城市 第一彈",
+        "wholesale": 2670,
+        "lastPrize": { "id": "lantern", "label": "夜市燈籠", "unitCost": 200 },
+        "prizes": [
+          { "grade": "A", "figureId": "temple", "label": "廟會小狗", "count": 1, "unitCost": 600 },
+          { "grade": "B", "figureId": "dreamIce", "label": "夢境冰淇淋小狗", "count": 1, "unitCost": 150 },
+          { "grade": "B", "figureId": "starCap", "label": "星空睡帽小狗", "count": 1, "unitCost": 150 },
+          { "grade": "B", "figureId": "weatherCan", "label": "天氣罐頭小狗", "count": 1, "unitCost": 150 },
+          { "grade": "C", "figureId": "pajama", "label": "睡衣小狗", "count": 2, "unitCost": 50 },
+          { "grade": "C", "figureId": "chargeTail", "label": "充電尾巴小狗", "count": 2, "unitCost": 50 },
+          { "grade": "C", "figureId": "milkTea", "label": "珍奶小狗", "count": 2, "unitCost": 50 },
+          { "grade": "C", "figureId": "chicken", "label": "雞排小狗", "count": 2, "unitCost": 50 },
+          { "grade": "D", "figureId": null, "label": "貼紙小卡", "count": 68, "unitCost": 15 }
+        ]
+      },
+      {
+        "id": "mini",
+        "name": "迷你夜市",
+        "wholesale": 1160,
+        "lastPrize": { "id": "lantern", "label": "夜市燈籠", "unitCost": 80 },
+        "prizes": [
+          { "grade": "A", "figureId": "temple", "label": "廟會小狗", "count": 1, "unitCost": 400 },
+          { "grade": "B", "figureId": "dreamIce", "label": "夢境冰淇淋小狗", "count": 1, "unitCost": 80 },
+          { "grade": "B", "figureId": "starCap", "label": "星空睡帽小狗", "count": 1, "unitCost": 80 },
+          { "grade": "B", "figureId": "weatherCan", "label": "天氣罐頭小狗", "count": 1, "unitCost": 80 },
+          { "grade": "C", "figureId": "pajama", "label": "睡衣小狗", "count": 1, "unitCost": 30 },
+          { "grade": "C", "figureId": "chargeTail", "label": "充電尾巴小狗", "count": 1, "unitCost": 30 },
+          { "grade": "C", "figureId": "milkTea", "label": "珍奶小狗", "count": 1, "unitCost": 30 },
+          { "grade": "C", "figureId": "chicken", "label": "雞排小狗", "count": 1, "unitCost": 30 },
+          { "grade": "D", "figureId": null, "label": "貼紙小卡", "count": 32, "unitCost": 10 }
+        ]
+      }
+    ]
+  },
+  "wish": {
+    "priceMin": 30,
+    "priceMax": 60,
+    "referencePrice": 45,
+    "serveTicks": 6,
+    "queueMax": 6,
+    "cost": 0,
+    "stallMultiplier": 1.2,
+    "weather": { "sunny": 1.3, "hot": 1, "cold": 1, "rain": 0.5 }
+  },
+  "figures": [
+    { "id": "temple", "name": "廟會小狗", "grade": "A", "blurb": "神明帽與令旗，第一彈的 A 賞。" },
+    { "id": "dreamIce", "name": "夢境冰淇淋小狗", "grade": "B", "blurb": "捧著會融化的夢。" },
+    { "id": "starCap", "name": "星空睡帽小狗", "grade": "B", "blurb": "睡帽上縫了夜市的星星。" },
+    { "id": "weatherCan", "name": "天氣罐頭小狗", "grade": "B", "blurb": "把晴天收進罐子裡。" },
+    { "id": "pajama", "name": "睡衣小狗", "grade": "C", "blurb": "睡帽加布娃娃吊飾。" },
+    { "id": "chargeTail", "name": "充電尾巴小狗", "grade": "C", "blurb": "尾巴插著電線，心情發亮。" },
+    { "id": "milkTea", "name": "珍奶小狗", "grade": "C", "blurb": "珍珠奶茶沒有吸管也喝得完。" },
+    { "id": "chicken", "name": "雞排小狗", "grade": "C", "blurb": "頭巾綁好，紙袋裝著炸物。" }
+  ]
+}
