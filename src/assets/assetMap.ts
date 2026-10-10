@@ -17,8 +17,9 @@ export interface PlaceholderArt {
 
 export type ArtRef = { kind: 'sprite'; sprite: Sprite } | PlaceholderArt
 
-const duo = '/assets/concept-duo.jpg'
-const figures = '/assets/concept-white.jpg'
+const root = import.meta.env.BASE_URL
+const duo = `${root}assets/concept-duo.jpg`
+const figures = `${root}assets/concept-white.jpg`
 
 export const assetMap = {
   note: '概念圖裁切與佔位。換上 AI 成圖時，只改這個檔的 src／size／position。',
