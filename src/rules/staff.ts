@@ -18,6 +18,16 @@ export function someoneGreets(street: Street): boolean {
   return street.staff.some((member) => member.job === 'greet')
 }
 
+/** Higher greet levels add a larger satisfaction bump. Level 0 means nobody is greeting. */
+export function greetPower(level: number, config: GameConfig): number {
+  if (level <= 0) return 0
+  return config.satisfaction.greet * level
+}
+
+export function greetLevel(street: Street): number {
+  return street.staff.reduce((best, member) => (member.job === 'greet' ? Math.max(best, member.level) : best), 0)
+}
+
 /** Restock and clean. Neither spends coins; empty shelves simply wait. */
 export function applyStaff(street: Street, config: GameConfig): Street {
   let cleanliness = street.cleanliness

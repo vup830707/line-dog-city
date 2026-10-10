@@ -4,7 +4,7 @@ import { decorNearby, letterFor, pickSpecies, satisfactionOf, speciesDef } from 
 import { openBox } from './actions'
 import { customerDraw } from './ichiban'
 import { createRng, sampleCount } from './rng'
-import { applyStaff, someoneGreets, stockCap } from './staff'
+import { applyStaff, greetLevel, stockCap } from './staff'
 import { isFestival, nextPhase, rollWeather } from './weather'
 import type { GameConfig, Grade, Species, Street, Visitor } from './types'
 
@@ -104,7 +104,8 @@ function shop(street: Street, visitor: Visitor, config: GameConfig, rng: ReturnT
     liked,
     decor,
     cleanliness: street.cleanliness,
-    greet: someoneGreets(street),
+    greet: false,
+    greetLevel: greetLevel(street),
     config,
   })
   const letter = letterFor({

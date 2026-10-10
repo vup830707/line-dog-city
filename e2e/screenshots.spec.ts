@@ -26,7 +26,13 @@ test('capture the cozy street at 1440x900', async ({ page }) => {
   await page.getByTestId('build-seat').dragTo(page.getByTestId('slot-6'))
   await page.evaluate(() => window.__puppy?.spawn('cat'))
   await expect(page.getByTestId('street-canvas')).toBeVisible()
+  await expect.poll(async () => page.getByTestId('street-metrics').getAttribute('data-scene-height')).not.toBeNull()
   await page.screenshot({ path: `${dir}/street-day.png` })
+
+  await page.setViewportSize({ width: 1280, height: 720 })
+  await expect.poll(async () => page.getByTestId('street-canvas').boundingBox().then((box) => box?.height ?? 0)).toBeGreaterThan(400)
+  await page.screenshot({ path: `${dir}/street-1280.png` })
+  await page.setViewportSize({ width: 1440, height: 900 })
 
   await page.getByTestId('animal-cat').first().click()
   await expect(page.getByTestId('animal-card')).toBeVisible()

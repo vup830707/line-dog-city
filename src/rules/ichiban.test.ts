@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { gameConfig } from '../config'
 import { createRng } from './rng'
-import { boxWholesale, createBox, customerDraw, refundAmount } from './ichiban'
+import { boxWholesale, createBox, customerDraw, duplicateCoins, refundAmount } from './ichiban'
 import { closeBox } from './actions'
 import { runTicks } from './street'
 import { stall, streetWith } from './fixtures'
@@ -52,5 +52,60 @@ describe('一番賞', () => {
     expect(done.box?.tickets).toHaveLength(80)
     expect(done.money).toBe(800)
     expect(runTicks(start, config, 2).box).toBeNull()
+  })
+
+  it('waits out the configured slow pace before a free restock', () => {
+    expect(gameConfig.ichibanRestockTicks).toBe(40)
+    const slots = streetWith().slots.slice()
+    slots[4] = stall('ichiban', 'ichiban')
+    const config = { ...gameConfig, phaseMinutes: 10_000 }
+    const start = streetWith({ slots, money: 800, box: null, boxRestock: 0, arrivals: [], staff: [] })
+    const early = runTicks(start, config, gameConfig.ichibanRestockTicks - 1)
+    expect(early.box).toBeNull()
+    expect(early.money).toBe(800)
+    const done = runTicks(start, config, gameConfig.ichibanRestockTicks)
+    expect(done.box).not.toBeNull()
+    expect(done.box?.tickets).toHaveLength(80)
+    expect(done.money).toBe(800)
+  })
+
+  it('refunds 30 percent of the unsold wholesale and nothing more', () => {
+    expect(gameConfig.refundRate).toBe(0.3)
+    const box = createBox(def, createRng(4))
+    const left = box.tickets.reduce((sum, ticket) => sum + ticket.unitCost, 0) + box.lastPrize.unitCost
+    expect(left).toBeGreaterThan(0)
+    expect(refundAmount(box, gameConfig.refundRate)).toBe(Math.round(left * 0.3))
+    expect(refundAmount(box, gameConfig.refundRate)).toBeLessThan(left)
+    const closed = closeBox(streetWith({ box, money: 20 }), gameConfig)
+    expect(closed.street.money).toBe(20 + Math.round(left * 0.3))
+    const spent = {
+      ...box,
+      tickets: [],
+      lastPrize: { ...box.lastPrize, awarded: true },
+    }
+    expect(refundAmount(spent, gameConfig.refundRate)).toBe(0)
+  })
+
+  it('turns a duplicate of each grade into that grade’s coins', () => {
+    const expected = { A: 180, B: 45, C: 15, D: 0 } as const
+    for (const grade of ['A', 'B', 'C', 'D'] as const) {
+      expect(duplicateCoins(grade, gameConfig)).toBe(expected[grade])
+      const box = {
+        ...createBox(def, createRng(1)),
+        tickets: [{ grade, figureId: 'temple', label: grade, unitCost: 10 }],
+        lastPrize: { ...createBox(def, createRng(1)).lastPrize, awarded: true },
+      }
+      const drawn = customerDraw({
+        box,
+        collection: { temple: 1 },
+        ownedDecor: [box.lastPrize.id],
+        drawPrice: 50,
+        config: gameConfig,
+      })
+      expect(drawn.grade).toBe(grade)
+      expect(drawn.converted).toBe(expected[grade])
+      expect(drawn.collection.temple).toBe(1)
+      expect(drawn.moneyDelta).toBe(50 + expected[grade])
+    }
   })
 })

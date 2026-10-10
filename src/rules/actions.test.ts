@@ -57,4 +57,29 @@ describe('upgrades and placement', () => {
     expect(castWish({ ...base, rngState: failSeed }, 'rain', gameConfig).street.pendingWeather).not.toBe('rain')
     expect(castWish({ ...base, wishUsed: true }, 'rain', gameConfig).ok).toBe(false)
   })
+
+  it('lands on the configured wish success rate across a seeded stream', () => {
+    const ids = gameConfig.figures.map((figure) => figure.id)
+    const slots = streetWith().slots.slice()
+    slots[0] = { uid: 'wish', kind: 'stall', stallType: 'wish', level: 1 }
+    const base = streetWith({ slots, collection: ownedSet(ids), wishUsed: false })
+    const trials = 400
+    let hits = 0
+    let rngState = 7
+    for (let i = 0; i < trials; i++) {
+      const rng = createRng(rngState)
+      const natural = rollWeather(rng)
+      const roll = rng.next()
+      const result = castWish({ ...base, rngState, wishUsed: false }, 'cold', gameConfig)
+      expect(result.ok).toBe(true)
+      expect(result.street.pendingWeather).toBe(resolveWish(gameConfig.wishSuccessRate, 'cold', natural, roll))
+      expect(result.street.rngState).toBe(rng.getState())
+      if (roll < gameConfig.wishSuccessRate) hits += 1
+      rngState = result.street.rngState
+    }
+    const rate = hits / trials
+    expect(gameConfig.wishSuccessRate).toBe(0.6)
+    expect(rate).toBeGreaterThan(0.52)
+    expect(rate).toBeLessThan(0.68)
+  })
 })

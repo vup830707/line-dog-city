@@ -88,6 +88,7 @@ export function satisfactionOf(input: {
   decor: boolean
   cleanliness: number
   greet: boolean
+  greetLevel?: number
   config: GameConfig
 }): number {
   const weights = input.config.satisfaction
@@ -95,7 +96,8 @@ export function satisfactionOf(input: {
   if (input.liked) score += weights.liked
   if (input.decor) score += weights.decor
   if (input.cleanliness >= weights.cleanAt) score += weights.clean
-  if (input.greet) score += weights.greet
+  const level = input.greetLevel != null ? input.greetLevel : input.greet ? 1 : 0
+  if (level > 0) score += weights.greet * level
   return score
 }
 

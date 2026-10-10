@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { assetMap } from '../assets/assetMap'
-import { drawStreet, SLOT_W, STREET_H } from '../canvas/drawStreet'
+import { drawStreet, layoutStreet } from '../canvas/drawStreet'
 import { gameConfig } from '../config'
 import { assignJob, castWish, closeBox, hireStaff, placeItem, trainStaff, upgradeStall } from '../rules/actions'
 import { isWishPondUnlocked, ownedCount } from '../rules/collection'
@@ -28,6 +28,9 @@ export function StreetScreen({
   onReset: () => void
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+  const panRef = useRef<{ x: number; left: number } | null>(null)
+  const [viewHeight, setViewHeight] = useState(640)
   const [tab, setTab] = useState<Tab>('build')
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
   const [selectedAnimal, setSelectedAnimal] = useState<string | null>(null)
@@ -38,23 +41,32 @@ export function StreetScreen({
   const festival = festivalName(street.day, gameConfig)
   const selected = selectedSlot != null ? street.slots[selectedSlot] : null
   const animal = street.visitors.find((visitor) => visitor.id === selectedAnimal) ?? null
+  const layout = useMemo(() => layoutStreet(viewHeight), [viewHeight])
+  const sceneWidth = gameConfig.streetSlots * layout.slotW
+
+  useLayoutEffect(() => {
+    const el = scrollerRef.current
+    if (!el) return
+    const apply = () => setViewHeight(Math.max(360, Math.floor(el.clientHeight)))
+    apply()
+    const observer = new ResizeObserver(apply)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const draw = () => {
-      const dpr = window.devicePixelRatio || 1
-      canvas.width = Math.floor(gameConfig.streetSlots * SLOT_W * dpr)
-      canvas.height = Math.floor(STREET_H * dpr)
-      canvas.style.width = `${gameConfig.streetSlots * SLOT_W}px`
-      canvas.style.height = `${STREET_H}px`
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      drawStreet(ctx, street, gameConfig)
-    }
-    draw()
-  }, [street])
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = Math.floor(sceneWidth * dpr)
+    canvas.height = Math.floor(layout.height * dpr)
+    canvas.style.width = `${sceneWidth}px`
+    canvas.style.height = `${layout.height}px`
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    drawStreet(ctx, street, gameConfig, layout)
+  }, [street, layout, sceneWidth])
 
   function dropOn(slot: number, raw: string) {
     let payload: DragPayload
@@ -95,8 +107,44 @@ export function StreetScreen({
             {street.offlineNote}
           </p>
         ) : null}
-        <div className="street-scroll">
-          <div className="street-stage" style={{ width: gameConfig.streetSlots * SLOT_W, height: STREET_H }}>
+        <div
+          className="street-scroll"
+          data-testid="street-scroll"
+          ref={scrollerRef}
+          onWheel={(event) => {
+            const el = event.currentTarget
+            if (el.scrollWidth <= el.clientWidth + 1) return
+            if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return
+            el.scrollLeft += event.deltaY
+          }}
+          onPointerDown={(event) => {
+            if (event.button !== 0) return
+            const target = event.target
+            if (target instanceof Element && target.closest('button')) return
+            panRef.current = { x: event.clientX, left: event.currentTarget.scrollLeft }
+            event.currentTarget.setPointerCapture(event.pointerId)
+          }}
+          onPointerMove={(event) => {
+            const pan = panRef.current
+            if (!pan) return
+            event.currentTarget.scrollLeft = pan.left - (event.clientX - pan.x)
+          }}
+          onPointerUp={() => {
+            panRef.current = null
+          }}
+          onPointerCancel={() => {
+            panRef.current = null
+          }}
+        >
+          <div
+            className="street-stage"
+            data-testid="street-metrics"
+            data-ground-y={layout.groundY}
+            data-scene-height={layout.height}
+            data-slot-w={layout.slotW}
+            data-animal-r={layout.animalR}
+            style={{ width: sceneWidth, height: layout.height }}
+          >
             <canvas ref={canvasRef} data-testid="street-canvas" />
             {street.slots.map((place, index) => (
               <button
@@ -104,7 +152,13 @@ export function StreetScreen({
                 type="button"
                 data-testid={`slot-${index}`}
                 className={selectedSlot === index ? 'slot-hit selected' : 'slot-hit'}
-                style={{ left: index * SLOT_W, width: SLOT_W }}
+                style={{
+                  left: index * layout.slotW,
+                  width: layout.slotW,
+                  top: layout.stallTop,
+                  height: layout.stallH,
+                  fontSize: layout.font,
+                }}
                 onClick={() => setSelectedSlot(index)}
                 onDragOver={(event) => {
                   event.preventDefault()
@@ -124,7 +178,12 @@ export function StreetScreen({
                 type="button"
                 data-testid={`animal-${visitor.species}`}
                 className="animal-hit"
-                style={{ left: visitor.position * SLOT_W + 30 }}
+                style={{
+                  left: visitor.position * layout.slotW + layout.slotW / 2 - layout.animalR,
+                  top: layout.animalY - layout.animalR,
+                  width: layout.animalR * 2,
+                  height: layout.animalR * 2,
+                }}
                 onClick={() => {
                   setSelectedAnimal(visitor.id)
                   setTab('build')

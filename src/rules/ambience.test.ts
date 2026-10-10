@@ -27,4 +27,30 @@ describe('ambience', () => {
     expect(festival).toBeCloseTo(calm * gameConfig.festivalBonus)
     expect(festival).toBeGreaterThan(calm)
   })
+
+  it('holds the floor just under it, the target on the line, and the cap just over it', () => {
+    const target = gameConfig.ambienceTarget
+    const floorLine = target * gameConfig.ambienceFloor
+    const capLine = target * gameConfig.ambienceCap
+    expect(visitFactor(0, gameConfig)).toBe(gameConfig.ambienceFloor)
+    expect(visitFactor(floorLine - 0.01, gameConfig)).toBe(gameConfig.ambienceFloor)
+    expect(visitFactor(floorLine, gameConfig)).toBeCloseTo(gameConfig.ambienceFloor)
+    expect(visitFactor(floorLine + 0.5, gameConfig)).toBeCloseTo((floorLine + 0.5) / target)
+    expect(visitFactor(floorLine + 0.5, gameConfig)).toBeGreaterThan(gameConfig.ambienceFloor)
+    expect(visitFactor(floorLine + 0.5, gameConfig)).toBeLessThan(1)
+    expect(visitFactor(target - 0.01, gameConfig)).toBeCloseTo((target - 0.01) / target)
+    expect(visitFactor(target - 0.01, gameConfig)).toBeLessThan(1)
+    expect(visitFactor(target, gameConfig)).toBe(1)
+    expect(visitFactor(target + 0.5, gameConfig)).toBeCloseTo((target + 0.5) / target)
+    expect(visitFactor(target + 0.5, gameConfig)).toBeGreaterThan(1)
+    expect(visitFactor(target + 0.5, gameConfig)).toBeLessThan(gameConfig.ambienceCap)
+    expect(visitFactor(capLine, gameConfig)).toBe(gameConfig.ambienceCap)
+    expect(visitFactor(capLine + 80, gameConfig)).toBe(gameConfig.ambienceCap)
+
+    expect(expectedVisits({ ambience: 0, festival: false }, gameConfig)).toBe(gameConfig.baseVisitsPerPhase * gameConfig.ambienceFloor)
+    expect(expectedVisits({ ambience: target, festival: false }, gameConfig)).toBe(gameConfig.baseVisitsPerPhase)
+    expect(expectedVisits({ ambience: capLine + 80, festival: false }, gameConfig)).toBe(
+      gameConfig.baseVisitsPerPhase * gameConfig.ambienceCap,
+    )
+  })
 })
