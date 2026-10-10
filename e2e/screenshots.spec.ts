@@ -7,7 +7,7 @@ test('capture the MVP screens at 390x844', async ({ page }) => {
   test.setTimeout(90_000)
   mkdirSync(dir, { recursive: true })
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/')
+  await page.goto('./')
   await page.getByTestId('dog-white').click()
   await page.screenshot({ path: `${dir}/opening-character-select.png` })
 

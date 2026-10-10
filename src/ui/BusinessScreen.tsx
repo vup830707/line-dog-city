@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { assetMap } from '../assets/assetMap'
 import { drawBusiness, type Rect } from '../canvas/drawBusiness'
 import { gameConfig } from '../config'
 import { peekPassers } from '../rules/business'
@@ -25,8 +26,8 @@ export function BusinessScreen({
   useEffect(() => {
     const duo = new Image()
     const figures = new Image()
-    duo.src = '/assets/concept-duo.jpg'
-    figures.src = '/assets/concept-white.jpg'
+    duo.src = assetMap.sheets.duo
+    figures.src = assetMap.sheets.figures
     duo.onload = () => setImages((current) => ({ ...current, duo }))
     figures.onload = () => setImages((current) => ({ ...current, figures }))
   }, [])

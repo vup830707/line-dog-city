@@ -1,5 +1,6 @@
-import { existsSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { publicBase } from './public-base.mjs'
 
 const dist = 'dist'
 if (!existsSync(dist)) {
@@ -28,4 +29,24 @@ if (!manifest || !worker) {
   process.exit(1)
 }
 
-console.log(`PWA ok: ${manifest}, ${worker}`)
+const base = publicBase()
+const manifestJson = JSON.parse(readFileSync(manifest, 'utf8'))
+const workerSource = readFileSync(worker, 'utf8')
+const problems = []
+
+if (manifestJson.start_url !== base) problems.push(`start_url ${manifestJson.start_url} !== ${base}`)
+if (manifestJson.scope !== base) problems.push(`scope ${manifestJson.scope} !== ${base}`)
+for (const icon of manifestJson.icons ?? []) {
+  if (!String(icon.src).startsWith(base)) problems.push(`icon ${icon.src} is outside ${base}`)
+}
+if (!workerSource.includes(`${base}index.html`) || !workerSource.includes(`${base}assets/`)) {
+  problems.push(`service worker is missing ${base} asset paths`)
+}
+
+if (problems.length > 0) {
+  console.error('PWA path check failed.')
+  for (const problem of problems) console.error(problem)
+  process.exit(1)
+}
+
+console.log(`PWA ok: ${manifest}, ${worker} (base ${base})`)

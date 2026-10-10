@@ -34,15 +34,17 @@ npm run test:e2e
 
 存檔在瀏覽器的 `localStorage`（鍵名 `puppy-city-save`，目前是第 2 版）。設定裡可以匯出、匯入 JSON。
 
-## 免費靜態空間（私人倉庫）
+## 線上
 
-這一版沒有接上任何托管。下面都是免費方案，私人 GitHub 倉庫也可以用前三個。
+公開站：https://vup830707.github.io/line-dog-city/
 
-| 方案 | 適合 | 限制 |
-|---|---|---|
-| Cloudflare Pages | 私人倉庫、免費額度大方、自帶 HTTPS | 要有 Cloudflare 帳號；建置指令用 `npm run build`，輸出目錄 `dist` |
-| Vercel | 和 Vite 很合，預覽每個 commit | 免費方案有商業使用與頻寬上限；私人倉庫可以，但要登入 Vercel |
-| Netlify | 同上，拖曳 `dist` 也能先試 | 免費方案有頻寬與建置分鐘數；表格單等功能這遊戲用不到 |
-| GitHub Pages | 不用再註冊別的服務 | 免費版通常要公開倉庫才好用；私人倉庫的 Pages 依方案可能要付費，所以若預算是零，要嘛把倉庫改成公開，要嘛用上面三個 |
+推上 `main` 會跑 [`.github/workflows/pages.yml`](.github/workflows/pages.yml)：`npm ci`、單元測試、再用 `VITE_BASE=/line-dog-city/` 執行 `npm run build`，把 `dist` 部署到 GitHub Pages。Actions 頁也可以手動跑同一個 workflow。端到端測試只在本機跑，不進 CI。
 
-都是靜態檔，不需要伺服器。PWA 的 service worker 需要 HTTPS（本機 `localhost` 除外），這四個都有。
+本機開發不要設 `VITE_BASE`，站點在根路徑。要預覽跟線上一樣的子路徑：
+
+```bash
+VITE_BASE=/line-dog-city/ npm run build
+npx vite preview --host 127.0.0.1 --port 4173 --base /line-dog-city/
+```
+
+瀏覽器開 `http://127.0.0.1:4173/line-dog-city/`。`npm run test:e2e` 也是用這組指令。
