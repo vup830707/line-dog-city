@@ -14,8 +14,8 @@ export default defineConfig({
       injectRegister: null,
       includeAssets: ['favicon.svg', 'icons/*.png', 'assets/*.jpg'],
       manifest: {
-        name: '線條小狗模擬城市',
-        short_name: '小狗夜市',
+        name: '動物夜市',
+        short_name: '動物夜市',
         description: '在奇幻夜市經營攤位的單人小遊戲',
         lang: 'zh-Hant',
         dir: 'ltr',

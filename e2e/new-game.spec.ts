@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { openMarket } from './openMarket'
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -15,11 +16,9 @@ test('a new game can place a stall, earn coins, reload, and cap offline time', a
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto('./?debug=1')
   await expect(page).toHaveURL(/\/line-dog-city\//)
-  await page.getByTestId('dog-white').click()
-  await page.getByLabel('白狗的名字').fill('雪球')
-  await page.getByLabel('咖啡色狗的名字').fill('可可')
-  await page.getByTestId('start-game').click()
-  await expect(page.getByTestId('player-name')).toHaveText('雪球')
+  await expect(page.getByTestId('title-start')).toHaveText('開始營業')
+  await openMarket(page)
+  await expect(page.getByTestId('player-name')).toHaveText('小白')
 
   const before = Number((await page.getByTestId('money').innerText()).replace(/[^\d]/g, ''))
   await page.getByTestId('tab-build').click()
@@ -33,12 +32,16 @@ test('a new game can place a stall, earn coins, reload, and cap offline time', a
   expect(earned).toBeGreaterThan(before)
 
   await page.reload()
-  await expect(page.getByTestId('player-name')).toHaveText('雪球')
+  await expect(page.getByTestId('title-start')).toHaveText('繼續營業')
+  await openMarket(page)
+  await expect(page.getByTestId('player-name')).toHaveText('小白')
   await expect(page.getByTestId('money')).toHaveText(`${earned} 幣`)
   await expect(page.getByText('可可')).toBeVisible()
 
   await page.evaluate(() => window.__puppy?.rewindClock(10 * 60 * 60 * 1000))
   await page.reload()
+  await expect(page.getByTestId('title-start')).toHaveText('繼續營業')
+  await openMarket(page)
   await expect(page.getByTestId('offline-note')).toContainText('8 小時')
   await expect(page.getByTestId('offline-note')).toHaveAttribute('data-offline-ticks', '28800')
   const afterOffline = Number((await page.getByTestId('money').innerText()).replace(/[^\d]/g, ''))
@@ -52,12 +55,10 @@ test('desktop layouts do not scroll the page sideways', async ({ page }) => {
     { width: 1280, height: 720 },
   ]) {
     await page.setViewportSize(viewport)
-    await page.getByTestId('dog-white').click()
+    await expect(page.getByTestId('title-start')).toBeVisible()
     expect(await overflows(page)).toBe(false)
   }
-  await page.getByLabel('白狗的名字').fill('雪球')
-  await page.getByLabel('咖啡色狗的名字').fill('可可')
-  await page.getByTestId('start-game').click()
+  await openMarket(page)
   await page.getByTestId('tab-build').click()
   await page.getByTestId('build-sign').dragTo(page.getByTestId('slot-12'))
   for (const viewport of [
@@ -72,10 +73,7 @@ test('desktop layouts do not scroll the page sideways', async ({ page }) => {
 test('the plaza background covers the window at both desktop sizes', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto('./?debug=1')
-  await page.getByTestId('dog-white').click()
-  await page.getByLabel('白狗的名字').fill('雪球')
-  await page.getByLabel('咖啡色狗的名字').fill('可可')
-  await page.getByTestId('start-game').click()
+  await openMarket(page)
   await page.getByTestId('tab-build').click()
   await page.getByTestId('build-sign').dragTo(page.getByTestId('slot-12'))
   await page.evaluate(() => window.__puppy?.spawn('cat'))
@@ -102,6 +100,19 @@ test('the plaza background covers the window at both desktop sizes', async ({ pa
     expect(metrics.near).toBeGreaterThan(metrics.far)
     expect(await overflows(page)).toBe(false)
   }
+})
+
+test('Enter and Space both leave the title for the street', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 })
+  await page.goto('./?debug=1')
+  await page.keyboard.press('Enter')
+  await expect(page.getByTestId('street-canvas')).toBeVisible()
+
+  await page.evaluate(() => localStorage.clear())
+  await page.goto('./?debug=1')
+  await page.keyboard.press('Space')
+  await expect(page.getByTestId('street-canvas')).toBeVisible()
+  expect(await overflows(page)).toBe(false)
 })
 
 function overflows(page: import('@playwright/test').Page) {

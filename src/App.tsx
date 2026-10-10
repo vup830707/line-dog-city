@@ -13,25 +13,36 @@ let booted: SaveV3 | null | undefined
 
 function loadInitial(): SaveV3 | null {
   if (booted !== undefined) return booted
-  const loaded = loadGame(localStorage)
-  if (!loaded) {
-    booted = null
-    return null
-  }
-  const applied = applyOffline(loaded.street, Date.now() - loaded.savedAt, gameConfig)
-  const next = { ...loaded, street: applied.street, savedAt: Date.now() }
-  if (applied.ticks > 0) storeGame(localStorage, next)
-  booted = next
-  return next
+  booted = loadGame(localStorage)
+  return booted
 }
 
 export function App() {
   const [save, setSave] = useState<SaveV3 | null>(loadInitial)
+  const [playing, setPlaying] = useState(false)
   const [notice, setNotice] = useState('')
   const saveRef = useRef(save)
   const pauseRef = useRef(false)
+  const playingRef = useRef(false)
   const ticksSinceSave = useRef(0)
   saveRef.current = save
+
+  function enterGame() {
+    const current = saveRef.current
+    try {
+      if (!current) commit(createNewGame({ now: Date.now() }, gameConfig))
+      else {
+        const applied = applyOffline(current.street, Date.now() - current.savedAt, gameConfig)
+        commit({ ...current, street: applied.street })
+      }
+      playingRef.current = true
+      setPlaying(true)
+      setNotice('')
+    } catch (error) {
+      playingRef.current = false
+      setNotice(error instanceof Error ? error.message : '沒辦法開始')
+    }
+  }
 
   function commit(next: SaveV3 | null) {
     booted = next
@@ -44,7 +55,7 @@ export function App() {
   useEffect(() => {
     const persist = () => {
       const current = saveRef.current
-      if (!current) return
+      if (!current || !playingRef.current) return
       // A paused debug session may have rewound savedAt. Reloading fires pagehide, and stamping "now" would erase that.
       const stamped = pauseRef.current ? current : { ...current, savedAt: Date.now() }
       storeGame(localStorage, stamped)
@@ -94,7 +105,7 @@ export function App() {
     }
     window.addEventListener('pagehide', persist)
     const id = window.setInterval(() => {
-      if (pauseRef.current) return
+      if (pauseRef.current || !playingRef.current) return
       const current = saveRef.current
       if (!current) return
       ticksSinceSave.current += 1
@@ -119,18 +130,12 @@ export function App() {
     }
   }, [])
 
-  if (!save) {
+  if (!playing || !save) {
     return (
-      <TitleScreen
-        onStart={(input) => {
-          try {
-            commit(createNewGame({ ...input, now: Date.now() }, gameConfig))
-            setNotice('')
-          } catch (error) {
-            setNotice(error instanceof Error ? error.message : '沒辦法開始')
-          }
-        }}
-      />
+      <>
+        {notice ? <p className="notice banner">{notice}</p> : null}
+        <TitleScreen hasSave={save != null} onBegin={enterGame} />
+      </>
     )
   }
 
@@ -150,7 +155,11 @@ export function App() {
           if (result.save) commit({ ...result.save, savedAt: Date.now() })
           return result.message
         }}
-        onReset={() => commit(null)}
+        onReset={() => {
+          playingRef.current = false
+          setPlaying(false)
+          commit(null)
+        }}
       />
     </>
   )
