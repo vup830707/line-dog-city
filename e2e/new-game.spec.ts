@@ -110,11 +110,11 @@ test('the street scene fills the window and the slots scroll sideways', async ({
     await page.mouse.wheel(0, 520)
     await expect.poll(async () => scroll.evaluate((el) => el.scrollLeft)).toBeGreaterThan(before + 40)
     const wheeled = await scroll.evaluate((el) => el.scrollLeft)
-    await page.mouse.move(box!.x + Math.min(280, box!.width - 20), box!.y + box!.height - 36)
+    await page.mouse.move(box!.x + Math.min(320, box!.width - 20), box!.y + box!.height - 36)
     await page.mouse.down()
-    await page.mouse.move(box!.x + 20, box!.y + box!.height - 36, { steps: 8 })
+    await page.mouse.move(box!.x + 30, box!.y + box!.height - 36, { steps: 8 })
     await page.mouse.up()
-    await expect.poll(async () => scroll.evaluate((el) => el.scrollLeft)).toBeLessThan(wheeled - 20)
+    await expect.poll(async () => scroll.evaluate((el) => el.scrollLeft)).toBeGreaterThan(wheeled + 20)
   }
 })
 
