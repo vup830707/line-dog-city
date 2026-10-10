@@ -62,11 +62,11 @@ export function App() {
         storeGame(localStorage, next)
         setSave(next)
       },
-      spawn(species: Species) {
+      spawn(species: string) {
         const current = saveRef.current
         if (!current) return
         pauseRef.current = true
-        const street = spawnVisitor(current.street, gameConfig, species)
+        const street = spawnVisitor(current.street, gameConfig, species as Species)
         const visitor = street.visitors[street.visitors.length - 1]
         const visitors = visitor
           ? street.visitors.map((item) => (item.id === visitor.id ? { ...item, position: item.target } : item))
