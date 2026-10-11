@@ -374,6 +374,12 @@ export const WALK_ACTORS: Record<string, { file: string; width: number; height: 
   sparrow: { file: 'duck', width: 396, height: 512, foot: 500 },
   'white-puppy': { file: 'white-puppy', width: 374, height: 512, foot: 500 },
   'brown-puppy': { file: 'brown-puppy', width: 430, height: 512, foot: 500 },
+  hedgehog: { file: 'hedgehog', width: 370, height: 512, foot: 500 },
+  otter: { file: 'otter', width: 414, height: 512, foot: 500 },
+  bear: { file: 'raccoon', width: 400, height: 512, foot: 500 },
+  fox: { file: 'red-panda', width: 424, height: 512, foot: 500 },
+  ferret: { file: 'ferret', width: 450, height: 512, foot: 500 },
+  munia: { file: 'munia', width: 456, height: 512, foot: 500 },
 }
 
 function actorPiece(base: ArtPiece, actorId: string): ArtPiece {
