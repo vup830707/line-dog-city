@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { createNewGame } from '../game/newGame'
 import { gameConfig } from '../config'
-import { ambienceScore, expectedVisits, visitFactor } from './ambience'
+import { ambienceScore, expectedVisits, visitAmbience, visitFactor, visitLiveliness } from './ambience'
 import { decor, stall, streetWith } from './fixtures'
+import { accrueBustle, visitCapFor } from './market'
 
 describe('ambience', () => {
   it('counts decor and stall looks, and keeps cleanliness out of the bustle score', () => {
@@ -55,5 +57,21 @@ describe('ambience', () => {
     expect(expectedVisits({ ambience: capLine + 80, festival: false }, gameConfig)).toBe(
       gameConfig.baseVisitsPerPhase * gameConfig.ambienceCap,
     )
+  })
+
+  it('adds visit liveliness per market level and keeps it out of bustleXp', () => {
+    const opening = createNewGame({ playerDog: 'white', whiteName: '雪球', brownName: '可可', now: 0, seed: 1 }, gameConfig)
+    const score = ambienceScore(opening.street, gameConfig)
+    const step = gameConfig.visitLivelinessPerLevel
+    expect(visitLiveliness(1, gameConfig)).toBe(0)
+    expect(visitLiveliness(4, gameConfig)).toBe(3 * step)
+    expect(visitAmbience(score, 1, gameConfig)).toBe(score)
+    expect(visitAmbience(score, 4, gameConfig)).toBe(score + 3 * step)
+    const dirtyFloor = visitFactor(visitAmbience(score, 1, gameConfig), gameConfig, 0, visitCapFor(1, gameConfig))
+    const dirtyGrown = visitFactor(visitAmbience(score, 4, gameConfig), gameConfig, 0, visitCapFor(4, gameConfig))
+    expect(dirtyFloor).toBe(gameConfig.ambienceFloor)
+    expect(dirtyGrown).toBeGreaterThan(gameConfig.ambienceFloor)
+    const grown = accrueBustle({ ...opening.street, phaseTick: gameConfig.phaseMinutes }, gameConfig)
+    expect(grown.bustleXp).toBe(score)
   })
 })

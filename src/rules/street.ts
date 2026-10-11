@@ -1,9 +1,9 @@
 import { FORTUNE_LINES } from '../content/fortunes'
-import { ambienceScore, expectedVisits } from './ambience'
+import { ambienceScore, expectedVisits, visitAmbience } from './ambience'
 import { decorNearby, letterFor, pickSpecies, satisfactionOf, speciesDef } from './animals'
-import { openBox } from './actions'
+import { eligibleSlots, openBox, placeItem } from './actions'
+import { accrueBustle, stallMarketLevel, visitCapFor } from './market'
 import { customerDraw } from './ichiban'
-import { accrueBustle, visitCapFor } from './market'
 import { chooseProduct, ichibanRestockFor, productNet, rollLimitedProduct } from './products'
 import { createRng, sampleCount } from './rng'
 import { applyStaff, greetLevel, stockCap } from './staff'
@@ -281,7 +281,7 @@ function advancePhase(street: Street, config: GameConfig, rng: ReturnType<typeof
   const arrivals = scheduleArrivals(
     expectedVisits(
       {
-        ambience: ambienceScore(draft, config),
+        ambience: visitAmbience(ambienceScore(draft, config), draft.marketLevel, config),
         cleanliness: draft.cleanliness,
         festival: isFestival(day, config),
         visitCap: visitCapFor(draft.marketLevel, config),
@@ -291,7 +291,33 @@ function advancePhase(street: Street, config: GameConfig, rng: ReturnType<typeof
     config.phaseMinutes,
     rng,
   )
-  return { ...draft, pendingWeather, wishUsed, wishMessage, trending, arrivals, phaseTick: 0 }
+  return { ...grantIchiban(draft, config), pendingWeather, wishUsed, wishMessage, trending, arrivals, phaseTick: 0 }
+}
+
+/** Reaching the ichiban level opens the booth on an empty slot, without charging coins. */
+function grantIchiban(street: Street, config: GameConfig): Street {
+  const needed = stallMarketLevel('ichiban', config)
+  if (needed == null || street.marketLevel < needed) return street
+  if (street.slots.some((slot) => slot?.stallType === 'ichiban')) return street
+  const open = eligibleSlots(
+    { ...street, money: street.money + config.placeCost.ichiban },
+    { kind: 'stall', stallType: 'ichiban' },
+    config,
+  )
+  const slot = open.find((index) => index !== 4) ?? open[0]
+  if (slot == null) return street
+  const placed = placeItem(
+    { ...street, money: street.money + config.placeCost.ichiban },
+    slot,
+    { kind: 'stall', stallType: 'ichiban' },
+    config,
+  )
+  if (!placed.ok) return street
+  return {
+    ...placed.street,
+    money: street.money,
+    pendingToasts: [...placed.street.pendingToasts, '一番賞開張了！'],
+  }
 }
 
 function noteIchibanIdle(street: Street, ticketsBefore: number | null): Street {

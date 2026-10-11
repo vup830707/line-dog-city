@@ -81,15 +81,12 @@ describe('economy regressions', () => {
     const slots = streetWith().slots.slice()
     slots[1] = iceAt(1)
     slots[0] = decor('lantern', 'lantern-a')
-    slots[2] = decor('lantern', 'lantern-b')
-    slots[3] = decor('lantern', 'lantern-c')
-    slots[4] = decor('lantern', 'lantern-d')
-    slots[5] = decor('lantern', 'lantern-e')
-    slots[6] = decor('lantern', 'lantern-f')
-    const level5 = gameConfig.marketLevels.find((row) => row.level === 5)?.bustleXp ?? 0
-    const base = { slots, phaseTick: gameConfig.phaseMinutes, staff: [], arrivals: [] as number[], visitors: [], marketLevel: 5, bustleXp: level5 }
-    const clean = streetTick(streetWith({ ...base, cleanliness: 100 }), gameConfig)
-    const dirty = streetTick(streetWith({ ...base, cleanliness: 0 }), gameConfig)
+    slots[3] = decor('lantern', 'lantern-b')
+    const level2 = gameConfig.marketLevels.find((row) => row.level === 2)?.bustleXp ?? 0
+    const base = { slots, phaseTick: gameConfig.phaseMinutes, staff: [], arrivals: [] as number[], visitors: [], marketLevel: 2, bustleXp: level2 }
+    const wide = { ...gameConfig, baseVisitsPerPhase: 80 }
+    const clean = streetTick(streetWith({ ...base, cleanliness: 100 }), wide)
+    const dirty = streetTick(streetWith({ ...base, cleanliness: 0 }), wide)
     expect(clean.arrivals.length).toBeGreaterThan(dirty.arrivals.length)
   })
 

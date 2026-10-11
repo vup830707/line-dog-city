@@ -27,13 +27,18 @@ test('a new game can place a stall, earn coins, reload, and cap offline time', a
   await expect(page.getByTestId('slot-1')).not.toHaveText('2')
 
   await page.evaluate(() => window.__puppy?.runTicks(40))
-  const earned = Number((await page.getByTestId('money').innerText()).replace(/[^\d]/g, ''))
+  const earned = await page.evaluate(() => {
+    const raw = localStorage.getItem('puppy-city-save')
+    return Number(JSON.parse(raw ?? '{}').street?.money ?? 0)
+  })
   expect(earned).toBeGreaterThan(before)
+  await expect(page.getByTestId('money')).toHaveText(`${earned} 幣`)
 
-  await page.evaluate(() => window.__puppy?.pause())
+  await page.evaluate(() => window.__puppy?.rewindClock(0))
   await page.reload()
   await expect(page.getByTestId('title-start')).toHaveText('繼續營業')
   await openMarket(page)
+  await page.evaluate(() => window.__puppy?.pause())
   await expect(page.getByTestId('money')).toHaveText(`${earned} 幣`)
   await expectDogNames(page, '小白', '可可')
 

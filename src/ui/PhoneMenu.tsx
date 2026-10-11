@@ -485,7 +485,12 @@ function MarketApp({ save }: { save: SaveV3 }) {
   const span = next ? Math.max(1, next.bustleXp - row.bustleXp) : 1
   const gained = Math.max(0, save.street.bustleXp - row.bustleXp)
   const ratio = next ? Math.min(1, gained / span) : 1
-  const unlocks = next ? [...next.stalls.map((id) => gameConfig.stallLabels[id]), ...next.decors.map((id) => gameConfig.decorLabels[id])] : []
+  const unlocks = next
+    ? [
+        ...next.stalls.filter((id) => !save.street.slots.some((slot) => slot?.stallType === id)).map((id) => gameConfig.stallLabels[id]),
+        ...next.decors.map((id) => gameConfig.decorLabels[id]),
+      ]
+    : []
   return (
     <div className="phone-panel" data-testid="market-panel">
       <p data-testid="market-level">夜市 Lv.{save.street.marketLevel}</p>

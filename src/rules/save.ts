@@ -1,5 +1,6 @@
 import { gameConfig } from '../config'
 import { inferMarketLevel } from './market'
+import { productsFor } from './products'
 import type { BoxState, SaveV4, Species, Street, Ticket } from './types'
 
 export const SCHEMA_VERSION = 4
@@ -80,18 +81,28 @@ function withGrowth(street: Street, migrate: boolean): Street {
   const floor = gameConfig.marketLevels.find((row) => row.level === level)?.bustleXp ?? 0
   const bustleXp = migrate ? Math.max(street.bustleXp ?? 0, floor) : (street.bustleXp ?? floor)
   const trending = (street.trending ?? []).filter((id) => knownProduct(id))
+  const seenProducts = migrate ? productsAlreadyForSale(street) : (street.seenProducts ?? [])
   return {
     ...street,
     marketLevel: level,
     bustleXp,
     seenSpecies,
-    seenProducts: street.seenProducts ?? [],
+    seenProducts,
     ackedSpecies: migrate ? seenSpecies : (street.ackedSpecies ?? seenSpecies),
     pendingToasts: street.pendingToasts ?? [],
     levelUpBanner: street.levelUpBanner ?? null,
     speciesSatisfaction: street.speciesSatisfaction ?? {},
     trending: trending.length > 0 ? trending.slice(0, 1) : ['vanilla'],
   }
+}
+
+function productsAlreadyForSale(street: Street): string[] {
+  const ids = new Set<string>(street.seenProducts ?? [])
+  for (const place of street.slots ?? []) {
+    if (!place?.stallType) continue
+    for (const product of productsFor(place.stallType, place.level ?? 1, gameConfig)) ids.add(product.id)
+  }
+  return [...ids]
 }
 
 function catalogTicket(ticket: Ticket): Ticket | null {

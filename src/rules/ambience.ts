@@ -18,6 +18,18 @@ export function cleanFactor(cleanliness: number, config: GameConfig): number {
   return 1 - weight + weight * clamped
 }
 
+/** Extra visit liveliness from the market level. It does not feed bustleXp. */
+export function visitLiveliness(level: number, config: GameConfig): number {
+  const step = config.visitLivelinessPerLevel
+  if (!Number.isFinite(step) || step <= 0) return 0
+  return Math.max(0, level - 1) * step
+}
+
+/** Bustle score plus the level bonus used only for the visit rate. */
+export function visitAmbience(score: number, level: number, config: GameConfig): number {
+  return score + visitLiveliness(level, config)
+}
+
 /** Floor at an empty street, 1 at the target, capped by the market's visitCap (or the global cap). */
 export function visitFactor(ambience: number, config: GameConfig, cleanliness = 100, visitCap = config.ambienceCap): number {
   if (config.ambienceTarget <= 0) return visitCap

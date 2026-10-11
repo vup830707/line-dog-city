@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { createNewGame } from '../game/newGame'
 import { gameConfig } from '../config'
 import { ownedSet, stall, streetWith } from './fixtures'
 import { canPlace, eligibleSlots, placeBlock, placeItem } from './actions'
@@ -41,6 +42,26 @@ describe('build offers', () => {
     )
     expect(open.find((card) => card.id === 'wish')?.locked).toBe(false)
     expect(open.find((card) => card.id === 'star')?.affordable).toBe(true)
+  })
+
+  it('does not lock a stall the opening already placed', () => {
+    const save = createNewGame({ playerDog: 'white', whiteName: '雪球', brownName: '可可', now: 0, seed: 1 }, gameConfig)
+    const offers = buildOffers(save.street, gameConfig)
+    const charge = offers.find((card) => card.id === 'charge')
+    expect(charge?.placed).toBe(true)
+    expect(charge?.locked).toBe(false)
+    expect(charge?.lockReason).toBeNull()
+    const ichiban = offers.find((card) => card.id === 'ichiban')
+    expect(ichiban?.placed).toBe(false)
+    expect(ichiban?.locked).toBe(true)
+    expect(ichiban?.lockReason).toBe('夜市 Lv.2')
+    expect(offers.find((card) => card.id === 'flower')?.lockReason).toBe('夜市 Lv.3')
+    expect(offers.find((card) => card.id === 'seat')?.cost).toBe(gameConfig.decorCost.seat)
+    expect(offers.find((card) => card.id === 'lantern')?.cost).toBe(gameConfig.decorCost.lantern)
+    const withSign = save.street.slots.slice()
+    withSign[3] = { uid: 'sign-1', kind: 'decor', decorType: 'sign', level: 1 }
+    const second = buildOffers(streetWith({ money: 20000, slots: withSign, marketLevel: 2 }), gameConfig).find((card) => card.id === 'sign')
+    expect(second?.cost).toBe(gameConfig.decorNextCost.sign)
   })
 
   it('does not offer a second copy of a stall that is already on the plaza', () => {

@@ -5,19 +5,21 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { gameConfig } from '../src/config'
 import { createNewGame } from '../src/game/newGame'
-import { eligibleSlots, hireStaff, placeItem, upgradeStall, type PlaceItem } from '../src/rules/actions'
+import { eligibleSlots, hireStaff, placeItem, trainStaff, upgradeStall, type PlaceItem } from '../src/rules/actions'
 import { buildOffers } from '../src/rules/build'
 import { ownedCount } from '../src/rules/collection'
-import { isSpeciesUnlocked } from '../src/rules/animals'
+import { decorNearby, isSpeciesUnlocked } from '../src/rules/animals'
 import { ambienceScore } from '../src/rules/ambience'
 import { streetTick } from '../src/rules/street'
 import type { Species, Street } from '../src/rules/types'
 
 const SEEDS = Number(process.env.SEEDS ?? 32)
 const PLAY_HOURS = Number(process.env.HOURS ?? 12)
-const IDLE_HOURS = Number(process.env.IDLE_HOURS ?? 30)
+const IDLE_HOURS = Number(process.env.IDLE_HOURS ?? 72)
 const LONG_HOURS = Number(process.env.LONG_HOURS ?? PLAY_HOURS)
 const TICKS_PER_HOUR = 3600
+const PURCHASE_BUCKETS = 12
+const BUCKET_TICKS = 600
 const FIGURES = gameConfig.figures.map((figure) => figure.id)
 const SPECIES: Species[] = ['cat', 'rabbit', 'hamster', 'sparrow', 'otter', 'hedgehog', 'fox', 'bear']
 
@@ -29,6 +31,12 @@ function median(values: number[]): number | null {
 
 function hourOf(tick: number): number {
   return Math.round((tick / TICKS_PER_HOUR) * 10) / 10
+}
+
+/** Slot 4 sits in front of the opening bench. Otherwise use the empty slot beside a seat. */
+function fortuneSlot(street: Street, slots: number[]): number | undefined {
+  if (slots.includes(4)) return 4
+  return [...slots].sort((a, b) => Number(decorNearby(street, b, 'seat')) - Number(decorNearby(street, a, 'seat')) || a - b)[0]
 }
 
 function decorCount(street: Street, decorType: string): number {
@@ -48,7 +56,7 @@ function nextBuy(street: Street): { cost: number; apply: (street: Street) => Str
           : null
     if (!item) continue
     const slots = eligibleSlots(street, item, gameConfig)
-    const slot = offer.stallType === 'fortune' ? (slots.includes(4) ? 4 : slots[0]) : slots[0]
+    const slot = offer.stallType === 'fortune' ? fortuneSlot(street, slots) : slots[0]
     if (slot == null) continue
     options.push({
       cost: offer.cost,
@@ -72,6 +80,18 @@ function nextBuy(street: Street): { cost: number; apply: (street: Street) => Str
       },
     })
   })
+  for (const member of street.staff) {
+    if (member.level >= gameConfig.maxStaffLevel) continue
+    const cost = gameConfig.levelCost[member.level - 1]
+    if (cost == null) continue
+    options.push({
+      cost,
+      apply: (current) => {
+        const trained = trainStaff(current, member.id, gameConfig)
+        return trained.ok ? trained.street : current
+      },
+    })
+  }
   const hired = street.staff.filter((member) => member.kind === 'hire').length
   const hireCost = gameConfig.hireCost[hired]
   if (hired < gameConfig.maxHires && hireCost != null) {
@@ -98,6 +118,9 @@ function simulate(seed: number, play: boolean, hours: number) {
   let maxQuietToLv5 = 0
   let gapCost = 0
   const ambienceAt: Record<number, number> = {}
+  const purchases = Array.from({ length: PURCHASE_BUCKETS }, () => 0)
+  const levelMoney: Record<number, { tick: number; money: number }> = { 1: { tick: 0, money: street.money } }
+  const levelRate: Record<number, number> = {}
   const limit = hours * TICKS_PER_HOUR
   for (const species of SPECIES) {
     if (isSpeciesUnlocked(species, street, gameConfig)) animals[species] = 0
@@ -105,7 +128,14 @@ function simulate(seed: number, play: boolean, hours: number) {
   for (let tick = 0; tick < limit; tick += 1) {
     if (play && tick % 30 === 0) {
       const buy = nextBuy(street)
-      if (buy && street.money >= buy.cost) street = buy.apply(street)
+      if (buy && street.money >= buy.cost) {
+        const bought = buy.apply(street)
+        if (bought !== street) {
+          street = bought
+          const bucket = Math.floor(tick / BUCKET_TICKS)
+          if (bucket < purchases.length) purchases[bucket] += 1
+        }
+      }
     }
     const buy = nextBuy(street)
     if (play && levels[5] == null) {
@@ -126,6 +156,11 @@ function simulate(seed: number, play: boolean, hours: number) {
       if (levels[level] == null) {
         levels[level] = street.tick
         ambienceAt[level] = ambienceScore(street, gameConfig)
+        const previous = levelMoney[level - 1]
+        if (previous && levelRate[level - 1] == null && street.tick > previous.tick) {
+          levelRate[level - 1] = ((street.money - previous.money) / (street.tick - previous.tick)) * TICKS_PER_HOUR
+        }
+        levelMoney[level] = { tick: street.tick, money: street.money }
       }
     }
     for (const species of SPECIES) {
@@ -133,6 +168,10 @@ function simulate(seed: number, play: boolean, hours: number) {
     }
     if (collectionTick == null && ownedCount(street.collection, FIGURES) >= FIGURES.length) collectionTick = street.tick
     if ((tick + 1) % TICKS_PER_HOUR === 0) money.push(street.money)
+  }
+  const sitting = levelMoney[street.marketLevel]
+  if (sitting && levelRate[street.marketLevel] == null && street.tick > sitting.tick) {
+    levelRate[street.marketLevel] = ((street.money - sitting.money) / (street.tick - sitting.tick)) * TICKS_PER_HOUR
   }
   return {
     seed,
@@ -144,6 +183,8 @@ function simulate(seed: number, play: boolean, hours: number) {
     maxQuietToLv5,
     gapCost,
     ambienceAt,
+    purchases,
+    levelRate,
     letters: street.letters.map((letter) => letter.species),
     finalMoney: street.money,
     finalLevel: street.marketLevel,
@@ -180,6 +221,18 @@ const report = {
   })),
   collectionMedianHour: median(longPlay.map((row) => (row.collectionTick == null ? -1 : hourOf(row.collectionTick)))),
   collectionSeeds: longPlay.filter((row) => row.collectionTick != null).length,
+  idleCollectionMedianHour: median(idle.map((row) => (row.collectionTick == null ? -1 : hourOf(row.collectionTick)))),
+  idleCollectionSeeds: idle.filter((row) => row.collectionTick != null).length,
+  purchasesPer10Min: Array.from({ length: PURCHASE_BUCKETS }, (_, bucket) => median(play.map((row) => row.purchases[bucket] ?? 0)) ?? 0),
+  idleIncomePerHourAtLevel: [1, 2, 3, 4, 5].map((level) => ({
+    level,
+    income: median(idle.map((row) => row.levelRate[level] ?? -1)),
+  })),
+  idleMoneyAt: {
+    h1: median(idle.map((row) => (row.money.length > 1 ? row.money[1] ?? -1 : -1))),
+    h12: median(idle.map((row) => (row.money.length > 12 ? row.money[12] ?? -1 : -1))),
+    h72: median(idle.map((row) => (row.money.length > 72 ? row.money[72] ?? -1 : -1))),
+  },
   maxUnaffordableMinutesFirst2h: median(play.map((row) => row.maxQuietEarly / 60)),
   maxUnaffordableMinutesToLv5: median(play.map((row) => (row.levels[5] == null ? -1 : row.maxQuietToLv5 / 60))),
   gapCostMedian: median(play.map((row) => row.gapCost)),

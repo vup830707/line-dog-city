@@ -33,8 +33,14 @@ export function placeBlock(street: Street, slot: number, item: PlaceItem, config
   if (item.decorType === 'star' && !isWishPondUnlocked(street.collection, figures)) {
     return '許願池解鎖後才買得到星星'
   }
-  if (street.money < config.decorCost[item.decorType]) return '金幣不夠'
+  if (street.money < decorPrice(street, item.decorType, config)) return '金幣不夠'
   return null
+}
+
+/** The first copy uses decorCost. Another copy of the same kind uses decorNextCost. */
+export function decorPrice(street: Street, decor: DecorType, config: GameConfig): number {
+  const owned = street.slots.filter((slot) => slot?.decorType === decor).length
+  return owned >= 1 ? config.decorNextCost[decor] : config.decorCost[decor]
 }
 
 export function canPlace(street: Street, slot: number, item: PlaceItem, config: GameConfig): boolean {
@@ -62,7 +68,7 @@ export function placeItem(street: Street, slot: number, item: PlaceItem, config:
     if (item.stallType !== 'ichiban') stock[uid] = stockCap(1, config)
     return { ok: true, street: { ...street, money: street.money - cost, slots, stock } }
   }
-  const cost = config.decorCost[item.decorType]
+  const cost = decorPrice(street, item.decorType, config)
   const slots = street.slots.slice()
   slots[slot] = { uid: `${item.decorType}-${street.tick}-${slot}`, kind: 'decor', decorType: item.decorType, level: 1 }
   return { ok: true, street: { ...street, money: street.money - cost, slots } }

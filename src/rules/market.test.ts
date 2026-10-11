@@ -81,6 +81,10 @@ describe('market level', () => {
     const next = streetTick(start, gameConfig)
     expect(next.marketLevel).toBe(2)
     expect(next.levelUpBanner).toBe(2)
+    expect(next.money).toBeGreaterThanOrEqual(start.money)
+    expect(next.slots.some((slot) => slot?.stallType === 'ichiban')).toBe(true)
+    expect(next.slots[4]?.stallType).not.toBe('ichiban')
+    expect(next.pendingToasts).toContain('一番賞開張了！')
   })
 
   it('infers the lowest level that still contains everything already placed', () => {
@@ -88,7 +92,19 @@ describe('market level', () => {
     slots[1] = stall('ichiban', 'ichiban')
     slots[4] = decor('star', 'star-a')
     const withIchiban = streetWith({ slots, bustleXp: 0, marketLevel: 1 })
-    expect(inferMarketLevel(withIchiban, gameConfig)).toBe(4)
+    expect(inferMarketLevel(withIchiban, gameConfig)).toBe(2)
+
+    const classic = streetWith().slots.slice()
+    classic[0] = decor('lantern', 'lantern-0')
+    classic[1] = stall('ice', 'ice')
+    classic[2] = stall('can', 'can')
+    classic[3] = decor('seat', 'seat')
+    classic[4] = stall('fortune', 'fortune')
+    classic[5] = stall('ichiban', 'ichiban')
+    classic[6] = decor('lantern', 'lantern-6')
+    classic[7] = decor('flower', 'flower')
+    classic[8] = stall('charge', 'charge')
+    expect(inferMarketLevel(streetWith({ slots: classic }), gameConfig)).toBe(4)
 
     const early = streetWith().slots.slice()
     early[1] = stall('ice', 'ice')

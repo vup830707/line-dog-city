@@ -1,4 +1,5 @@
 import { isWishPondUnlocked } from './collection'
+import { decorPrice } from './actions'
 import { decorMarketLevel, stallMarketLevel } from './market'
 import { productsFor } from './products'
 import type { DecorType, GameConfig, StallType, Street } from './types'
@@ -70,10 +71,10 @@ export function buildOffers(street: Street, config: GameConfig): BuildOffer[] {
   const look = config.lookByLevel[0] ?? 0
   const stalls = STALLS.map((stallType) => {
     const needed = stallMarketLevel(stallType, config)
-    const levelLocked = needed != null && street.marketLevel < needed
-    const setLocked = stallType === 'wish' && !setReady
-    const locked = levelLocked || setLocked
     const placed = street.slots.some((place) => place?.stallType === stallType)
+    const levelLocked = !placed && needed != null && street.marketLevel < needed
+    const setLocked = !placed && stallType === 'wish' && !setReady
+    const locked = levelLocked || setLocked
     const lockReason = levelLocked ? `夜市 Lv.${needed}` : setLocked ? setReason : null
     return offer({
       id: stallType,
@@ -99,7 +100,7 @@ export function buildOffers(street: Street, config: GameConfig): BuildOffer[] {
       kind: 'decor',
       decorType,
       name: config.decorLabels[decorType],
-      cost: config.decorCost[decorType],
+      cost: decorPrice(street, decorType, config),
       effect: `熱鬧度 +${config.decorScore[decorType]}`,
       locked,
       placed: false,

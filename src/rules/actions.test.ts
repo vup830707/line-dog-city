@@ -31,7 +31,9 @@ describe('upgrades and placement', () => {
     expect(second.street.staff.at(-1)?.hireSpecies).toBe('ferret')
     expect(second.street.staff.filter((member) => member.kind === 'hire')).toHaveLength(2)
     expect(hireStaff(second.street, gameConfig).ok).toBe(false)
-    const trained = trainStaff(second.street, 'dog-white', gameConfig)
+    const payable = { ...second.street, money: gameConfig.levelCost[0] ?? 0 }
+    const trained = trainStaff(payable, 'dog-white', gameConfig)
+    expect(trained.ok).toBe(true)
     expect(trained.street.staff[0]?.level).toBe(2)
   })
 

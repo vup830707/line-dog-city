@@ -177,6 +177,8 @@ export interface GameConfig {
   streetSlots: number
   baseVisitsPerPhase: number
   ambienceFloor: number
+  /** Added to visit liveliness per market level above 1. Not part of bustleXp. */
+  visitLivelinessPerLevel: number
   ambienceCap: number
   ambienceTarget: number
   cleanDropPerPhase: number
@@ -223,6 +225,8 @@ export interface GameConfig {
   placeCost: Record<StallType, number>
   upgradeCost: Record<StallType, number[]>
   decorCost: Record<DecorType, number>
+  /** Price of a decoration after the player already owns one of that kind. */
+  decorNextCost: Record<DecorType, number>
   decorScore: Record<DecorType, number>
   lookByLevel: number[]
   stockPerLevel: number

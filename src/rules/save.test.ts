@@ -206,14 +206,65 @@ describe('save schema', () => {
     expect(parsed.save.street.slots[5]?.level).toBe(2)
     expect(parsed.save.street.slots[5]?.stallType).toBe('ichiban')
     expect(parsed.save.street.slots[10]?.decorType).toBe('star')
-    expect(parsed.save.street.marketLevel).toBe(4)
-    expect(parsed.save.street.bustleXp).toBe(gameConfig.marketLevels.find((row) => row.level === 4)?.bustleXp)
+    expect(parsed.save.street.marketLevel).toBe(3)
+    expect(parsed.save.street.bustleXp).toBe(gameConfig.marketLevels.find((row) => row.level === 3)?.bustleXp)
+    expect(parsed.save.street.seenProducts).toEqual(
+      expect.arrayContaining(['vanilla', 'strawberry', 'chocolate', 'sunny', 'quick', 'starlight', 'dream', 'slip', 'draw']),
+    )
+    for (const id of ['sundae', 'breeze', 'warm', 'raindrop', 'portrait', 'chart']) {
+      expect(parsed.save.street.seenProducts).not.toContain(id)
+    }
     expect(parsed.save.street.seenSpecies).toContain('cat')
     expect(parsed.save.street.seenSpecies).toContain('rabbit')
     expect(parsed.save.street.staff.find((member) => member.dog === 'white')?.name).toBe('雪球')
     expect(parsed.save.street.staff.find((member) => member.dog === 'brown')?.name).toBe('豆豆')
     expect(Number.isFinite(parsed.save.savedAt)).toBe(true)
     expect(offlineTickCount(Date.now() - parsed.save.savedAt, gameConfig)).toBe(0)
+  })
+
+  it('keeps a classic v3 opening at Lv4 and a slot past the plaza at Lv5', () => {
+    const fresh = createNewGame({ playerDog: 'white', whiteName: '雪球', brownName: '可可', now: 10, seed: 2 }, gameConfig)
+    const classic: (Placement | null)[] = Array.from({ length: gameConfig.streetSlots }, () => null)
+    classic[0] = { uid: 'lantern-0', kind: 'decor', decorType: 'lantern', level: 1 }
+    classic[1] = { uid: 'ice-1', kind: 'stall', stallType: 'ice', level: 1 }
+    classic[2] = { uid: 'can-2', kind: 'stall', stallType: 'can', level: 1 }
+    classic[3] = { uid: 'seat-3', kind: 'decor', decorType: 'seat', level: 1 }
+    classic[4] = { uid: 'fortune-4', kind: 'stall', stallType: 'fortune', level: 1 }
+    classic[5] = { uid: 'ichi-5', kind: 'stall', stallType: 'ichiban', level: 1 }
+    classic[6] = { uid: 'lantern-6', kind: 'decor', decorType: 'lantern', level: 1 }
+    classic[7] = { uid: 'flower-7', kind: 'decor', decorType: 'flower', level: 1 }
+    classic[8] = { uid: 'charge-8', kind: 'stall', stallType: 'charge', level: 1 }
+    const opened = parseSave({
+      schemaVersion: 3,
+      playerDog: 'white',
+      whiteName: '雪球',
+      brownName: '可可',
+      savedAt: 10,
+      street: withoutGrowth(fresh.street, classic),
+    })
+    expect(opened.ok).toBe(true)
+    if (!opened.ok) return
+    expect(opened.save.street.marketLevel).toBe(4)
+    expect(opened.save.street.bustleXp).toBe(gameConfig.marketLevels.find((row) => row.level === 4)?.bustleXp)
+    expect(opened.save.street.slots.map((slot) => slot?.uid ?? null)).toEqual(classic.map((slot) => slot?.uid ?? null))
+    expect(opened.save.street.seenProducts).toEqual(expect.arrayContaining(['vanilla', 'sunny', 'slip', 'draw', 'quick']))
+    expect(opened.save.street.seenProducts).not.toContain('strawberry')
+
+    const heavy = classic.slice()
+    heavy[9] = { uid: 'sign-9', kind: 'decor', decorType: 'sign', level: 1 }
+    const crowded = parseSave({
+      schemaVersion: 3,
+      playerDog: 'white',
+      whiteName: '雪球',
+      brownName: '可可',
+      savedAt: 10,
+      street: withoutGrowth(fresh.street, heavy),
+    })
+    expect(crowded.ok).toBe(true)
+    if (!crowded.ok) return
+    expect(crowded.save.street.marketLevel).toBe(5)
+    expect(crowded.save.street.bustleXp).toBe(gameConfig.marketLevels.find((row) => row.level === 5)?.bustleXp)
+    expect(crowded.save.street.slots[9]?.uid).toBe('sign-9')
   })
 
   it('does not move objects already placed in a v3 save', () => {
