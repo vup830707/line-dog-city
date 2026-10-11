@@ -198,7 +198,7 @@ describe('walk frames', () => {
       hamster: { frontFacesRight: false, backFacesRight: true },
       sparrow: { frontFacesRight: false, backFacesRight: false },
       'white-puppy': { frontFacesRight: false, backFacesRight: false },
-      'brown-puppy': { frontFacesRight: true, backFacesRight: false },
+      'brown-puppy': { frontFacesRight: true, backFacesRight: true },
       hedgehog: { frontFacesRight: true, backFacesRight: true },
       otter: { frontFacesRight: false, backFacesRight: true },
       bear: { frontFacesRight: false, backFacesRight: true },

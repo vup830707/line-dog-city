@@ -515,7 +515,7 @@ export const WALK_ACTORS: Record<string, { file: string; width: number; height: 
   hamster: { file: 'hamster', width: 404, height: 512, foot: 500, frontFacesRight: false, backFacesRight: true },
   sparrow: { file: 'duck', width: 396, height: 512, foot: 500, frontFacesRight: false, backFacesRight: false },
   'white-puppy': { file: 'white-puppy', width: 374, height: 512, foot: 500, frontFacesRight: false, backFacesRight: false },
-  'brown-puppy': { file: 'brown-puppy', width: 430, height: 512, foot: 500, frontFacesRight: true, backFacesRight: false },
+  'brown-puppy': { file: 'brown-puppy', width: 370, height: 512, foot: 500, frontFacesRight: true, backFacesRight: true },
   hedgehog: { file: 'hedgehog', width: 370, height: 512, foot: 500, frontFacesRight: true, backFacesRight: true },
   otter: { file: 'otter', width: 414, height: 512, foot: 500, frontFacesRight: false, backFacesRight: true },
   bear: { file: 'raccoon', width: 400, height: 512, foot: 500, frontFacesRight: false, backFacesRight: true },
