@@ -8,6 +8,7 @@ import { createBox } from './ichiban'
 import { createRng } from './rng'
 import { applyStaff } from './staff'
 import { runTicks, streetTick } from './street'
+import { visitCapFor } from './market'
 import { decor, stall, streetWith, visitor } from './fixtures'
 import type { Placement } from './types'
 
@@ -49,13 +50,14 @@ describe('economy regressions', () => {
     const bareSlots = streetWith().slots.slice()
     bareSlots[1] = iceAt(1)
     const dressedSlots = bareSlots.slice()
-    dressedSlots[0] = decor('lantern')
-    dressedSlots[2] = decor('flower')
-    dressedSlots[3] = decor('sign')
-    dressedSlots[4] = decor('seat')
-    dressedSlots[6] = decor('star')
+    dressedSlots[0] = decor('lantern', 'lantern-a')
+    dressedSlots[2] = decor('lantern', 'lantern-b')
+    dressedSlots[3] = decor('lantern', 'lantern-c')
+    dressedSlots[4] = decor('lantern', 'lantern-d')
+    dressedSlots[6] = decor('lantern', 'lantern-e')
     const upgradedSlots = dressedSlots.slice()
     upgradedSlots[1] = iceAt(3)
+    const level5 = gameConfig.marketLevels.find((row) => row.level === 5)?.bustleXp ?? 0
     const base = {
       cleanliness: 100,
       phaseTick: gameConfig.phaseMinutes,
@@ -63,24 +65,29 @@ describe('economy regressions', () => {
       arrivals: [] as number[],
       visitors: [],
       marketLevel: 5,
-      bustleXp: 10_000,
+      bustleXp: level5,
     }
     const bare = streetTick(streetWith({ ...base, slots: bareSlots }), gameConfig)
     const dressed = streetTick(streetWith({ ...base, slots: dressedSlots }), gameConfig)
-    const upgraded = streetTick(streetWith({ ...base, slots: upgradedSlots }), gameConfig)
+    const cap = visitCapFor(5, gameConfig)
+    const factor = (slots: (Placement | null)[]) =>
+      visitFactor(ambienceScore(streetWith({ slots }), gameConfig), gameConfig, 100, cap)
+    expect(factor(dressedSlots)).toBeGreaterThan(factor(bareSlots))
+    expect(factor(upgradedSlots)).toBeGreaterThan(factor(dressedSlots))
     expect(dressed.arrivals.length).toBeGreaterThan(bare.arrivals.length)
-    expect(upgraded.arrivals.length).toBeGreaterThan(dressed.arrivals.length)
   })
 
   it('lets a dirty street draw fewer visitors than the same stalls when it is clean', () => {
     const slots = streetWith().slots.slice()
     slots[1] = iceAt(1)
-    slots[0] = decor('flower')
-    slots[2] = decor('star', 'star-a')
-    slots[3] = decor('star', 'star-b')
-    slots[4] = decor('star', 'star-c')
-    slots[5] = decor('star', 'star-d')
-    const base = { slots, phaseTick: gameConfig.phaseMinutes, staff: [], arrivals: [] as number[], visitors: [], marketLevel: 5, bustleXp: 10_000 }
+    slots[0] = decor('lantern', 'lantern-a')
+    slots[2] = decor('lantern', 'lantern-b')
+    slots[3] = decor('lantern', 'lantern-c')
+    slots[4] = decor('lantern', 'lantern-d')
+    slots[5] = decor('lantern', 'lantern-e')
+    slots[6] = decor('lantern', 'lantern-f')
+    const level5 = gameConfig.marketLevels.find((row) => row.level === 5)?.bustleXp ?? 0
+    const base = { slots, phaseTick: gameConfig.phaseMinutes, staff: [], arrivals: [] as number[], visitors: [], marketLevel: 5, bustleXp: level5 }
     const clean = streetTick(streetWith({ ...base, cleanliness: 100 }), gameConfig)
     const dirty = streetTick(streetWith({ ...base, cleanliness: 0 }), gameConfig)
     expect(clean.arrivals.length).toBeGreaterThan(dirty.arrivals.length)
@@ -107,7 +114,7 @@ describe('economy regressions', () => {
     expect(lv1).toBeGreaterThan(0)
     expect(lv2).toBeGreaterThan(lv1)
     expect(lv3).toBeGreaterThan(lv2)
-    expect(gameConfig.products.ice.find((item) => item.level === 3)?.price).toBe(90)
+    expect(gameConfig.products.ice.find((item) => item.id === 'sundae')?.price).toBe(62)
   })
 
   it('lets a hedgehog write after shopping at a late-night fortune stall beside a bench, even with more than four stalls', () => {

@@ -12,25 +12,28 @@ import {
 import { streetTick } from './street'
 
 describe('market level', () => {
-  it('follows the plan thresholds, slots, unlocks, and visit caps', () => {
+  it('follows the configured thresholds, slots, unlocks, and visit caps', () => {
+    const xp = gameConfig.marketLevels.map((row) => row.bustleXp)
+    expect(xp[0]).toBe(0)
+    for (let index = 1; index < xp.length; index += 1) expect(xp[index]).toBeGreaterThan(xp[index - 1] ?? 0)
     const lv1 = marketLevelFor(0, gameConfig)
     expect(lv1.level).toBe(1)
-    expect(lv1.visitCap).toBe(1.2)
+    expect(lv1.visitCap).toBe(gameConfig.marketLevels[0]?.visitCap)
     expect(lv1.slots).toBe(8)
     expect(openSlotIndexes(1, gameConfig)).toHaveLength(8)
-    expect(marketLevelFor(599, gameConfig).level).toBe(1)
-    expect(marketLevelFor(600, gameConfig).level).toBe(2)
-    expect(visitCapFor(2, gameConfig)).toBe(1.5)
+    expect(marketLevelFor((xp[1] ?? 1) - 1, gameConfig).level).toBe(1)
+    expect(marketLevelFor(xp[1] ?? 0, gameConfig).level).toBe(2)
+    expect(visitCapFor(2, gameConfig)).toBe(gameConfig.marketLevels[1]?.visitCap)
     expect(openSlotIndexes(2, gameConfig)).toHaveLength(10)
-    expect(marketLevelFor(2000, gameConfig).level).toBe(3)
-    expect(visitCapFor(3, gameConfig)).toBe(1.8)
-    expect(marketLevelFor(5000, gameConfig).level).toBe(4)
-    expect(visitCapFor(4, gameConfig)).toBe(2.1)
-    expect(marketLevelFor(9999, gameConfig).level).toBe(4)
-    expect(marketLevelFor(10000, gameConfig).level).toBe(5)
-    expect(visitCapFor(5, gameConfig)).toBe(2.5)
+    expect(marketLevelFor(xp[2] ?? 0, gameConfig).level).toBe(3)
+    expect(visitCapFor(3, gameConfig)).toBe(gameConfig.marketLevels[2]?.visitCap)
+    expect(marketLevelFor((xp[3] ?? 1) - 1, gameConfig).level).toBe(3)
+    expect(marketLevelFor(xp[3] ?? 0, gameConfig).level).toBe(4)
+    expect(visitCapFor(4, gameConfig)).toBe(gameConfig.marketLevels[3]?.visitCap)
+    expect(marketLevelFor((xp[4] ?? 1) - 1, gameConfig).level).toBe(4)
+    expect(marketLevelFor(xp[4] ?? 0, gameConfig).level).toBe(5)
+    expect(visitCapFor(5, gameConfig)).toBe(gameConfig.marketLevels[4]?.visitCap)
     expect(openSlotIndexes(5, gameConfig)).toHaveLength(16)
-    expect(gameConfig.marketLevels.map((row) => row.bustleXp)).toEqual([0, 600, 2000, 5000, 10000])
   })
 
   it('keeps the near-bottom slots closed until the plaza is fully open', () => {
@@ -45,9 +48,10 @@ describe('market level', () => {
     const slots = streetWith().slots.slice()
     slots[1] = stall('ice', 'ice')
     slots[2] = decor('lantern')
+    const gain = (gameConfig.lookByLevel[0] ?? 0) + gameConfig.decorScore.lantern
     const start = streetWith({
       slots,
-      bustleXp: 590,
+      bustleXp: (gameConfig.marketLevels[1]?.bustleXp ?? 0) - gain,
       marketLevel: 1,
       phaseTick: gameConfig.phaseMinutes,
       staff: [],
@@ -55,7 +59,7 @@ describe('market level', () => {
       visitors: [],
     })
     const next = accrueBustle(start, gameConfig)
-    expect(next.bustleXp).toBe(590 + (gameConfig.lookByLevel[0] ?? 0) + gameConfig.decorScore.lantern)
+    expect(next.bustleXp).toBe(gameConfig.marketLevels[1]?.bustleXp)
     expect(next.marketLevel).toBe(2)
     expect(next.levelUpBanner).toBe(2)
     expect(next.pendingToasts).toContain('夜市升到 Lv.2！')
@@ -67,7 +71,7 @@ describe('market level', () => {
     slots[2] = decor('lantern')
     const start = streetWith({
       slots,
-      bustleXp: 590,
+      bustleXp: (gameConfig.marketLevels[1]?.bustleXp ?? 0) - ((gameConfig.lookByLevel[0] ?? 0) + gameConfig.decorScore.lantern),
       marketLevel: 1,
       phaseTick: gameConfig.phaseMinutes,
       staff: [],

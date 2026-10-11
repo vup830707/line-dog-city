@@ -9,12 +9,14 @@ import { eligibleSlots, hireStaff, placeItem, upgradeStall, type PlaceItem } fro
 import { buildOffers } from '../src/rules/build'
 import { ownedCount } from '../src/rules/collection'
 import { isSpeciesUnlocked } from '../src/rules/animals'
+import { ambienceScore } from '../src/rules/ambience'
 import { streetTick } from '../src/rules/street'
 import type { Species, Street } from '../src/rules/types'
 
-const SEEDS = 32
-const HOURS = 12
-const LONG_HOURS = 72
+const SEEDS = Number(process.env.SEEDS ?? 32)
+const PLAY_HOURS = Number(process.env.HOURS ?? 12)
+const IDLE_HOURS = Number(process.env.IDLE_HOURS ?? 30)
+const LONG_HOURS = Number(process.env.LONG_HOURS ?? PLAY_HOURS)
 const TICKS_PER_HOUR = 3600
 const FIGURES = gameConfig.figures.map((figure) => figure.id)
 const SPECIES: Species[] = ['cat', 'rabbit', 'hamster', 'sparrow', 'otter', 'hedgehog', 'fox', 'bear']
@@ -92,7 +94,10 @@ function simulate(seed: number, play: boolean, hours: number) {
   const animals: Partial<Record<Species, number>> = {}
   let collectionTick: number | null = null
   let quiet = 0
-  let maxQuiet = 0
+  let maxQuietEarly = 0
+  let maxQuietToLv5 = 0
+  let gapCost = 0
+  const ambienceAt: Record<number, number> = {}
   const limit = hours * TICKS_PER_HOUR
   for (const species of SPECIES) {
     if (isSpeciesUnlocked(species, street, gameConfig)) animals[species] = 0
@@ -103,14 +108,26 @@ function simulate(seed: number, play: boolean, hours: number) {
       if (buy && street.money >= buy.cost) street = buy.apply(street)
     }
     const buy = nextBuy(street)
-    if (tick < 2 * TICKS_PER_HOUR && play) {
+    if (play && levels[5] == null) {
       if (buy && street.money < buy.cost) {
         quiet += 1
-        maxQuiet = Math.max(maxQuiet, quiet)
+        if (tick < 2 * TICKS_PER_HOUR && quiet >= maxQuietEarly) {
+          maxQuietEarly = quiet
+          gapCost = buy.cost
+        }
+        if (quiet >= maxQuietToLv5) {
+          maxQuietToLv5 = quiet
+          gapCost = buy.cost
+        }
       } else quiet = 0
     }
     street = streetTick(street, gameConfig)
-    if (street.marketLevel > 1 && levels[street.marketLevel] == null) levels[street.marketLevel] = street.tick
+    for (let level = 2; level <= street.marketLevel; level += 1) {
+      if (levels[level] == null) {
+        levels[level] = street.tick
+        ambienceAt[level] = ambienceScore(street, gameConfig)
+      }
+    }
     for (const species of SPECIES) {
       if (animals[species] == null && isSpeciesUnlocked(species, street, gameConfig)) animals[species] = street.tick
     }
@@ -123,19 +140,27 @@ function simulate(seed: number, play: boolean, hours: number) {
     levels,
     animals,
     collectionTick,
-    maxQuiet,
+    maxQuietEarly,
+    maxQuietToLv5,
+    gapCost,
+    ambienceAt,
     letters: street.letters.map((letter) => letter.species),
     finalMoney: street.money,
     finalLevel: street.marketLevel,
   }
 }
 
-const idle = Array.from({ length: SEEDS }, (_, index) => simulate(index + 1, false, HOURS))
-const play = Array.from({ length: SEEDS }, (_, index) => simulate(index + 1, true, HOURS))
-const longPlay = Array.from({ length: SEEDS }, (_, index) => simulate(index + 1, true, LONG_HOURS))
+const idle = Array.from({ length: SEEDS }, (_, index) => simulate(index + 1, false, IDLE_HOURS))
+const play = Array.from({ length: SEEDS }, (_, index) => simulate(index + 1, true, PLAY_HOURS))
+const longPlay =
+  LONG_HOURS === PLAY_HOURS
+    ? play
+    : LONG_HOURS > 0
+      ? Array.from({ length: SEEDS }, (_, index) => simulate(index + 1, true, LONG_HOURS))
+      : play
 
 function curve(rows: ReturnType<typeof simulate>[]): number[] {
-  const hours = rows[0]?.money.length ?? 0
+  const hours = Math.min(13, rows[0]?.money.length ?? 0)
   return Array.from({ length: hours }, (_, hour) => median(rows.map((row) => row.money[hour] ?? 0)) ?? 0)
 }
 
@@ -155,7 +180,13 @@ const report = {
   })),
   collectionMedianHour: median(longPlay.map((row) => (row.collectionTick == null ? -1 : hourOf(row.collectionTick)))),
   collectionSeeds: longPlay.filter((row) => row.collectionTick != null).length,
-  maxUnaffordableMinutes: median(play.map((row) => row.maxQuiet / 60)),
+  maxUnaffordableMinutesFirst2h: median(play.map((row) => row.maxQuietEarly / 60)),
+  maxUnaffordableMinutesToLv5: median(play.map((row) => (row.levels[5] == null ? -1 : row.maxQuietToLv5 / 60))),
+  gapCostMedian: median(play.map((row) => row.gapCost)),
+  playAmbienceAtLevel: [2, 3, 4, 5].map((level) => ({
+    level,
+    ambience: median(play.map((row) => row.ambienceAt[level] ?? -1)),
+  })),
   hedgehogLetters: play.filter((row) => row.letters.includes('hedgehog')).length,
   idleFinalLevel: median(idle.map((row) => row.finalLevel)),
   playFinalLevel: median(play.map((row) => row.finalLevel)),

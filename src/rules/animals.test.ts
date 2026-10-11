@@ -62,14 +62,16 @@ describe('animal preferences', () => {
     expect(speciesWeight('fox', locked, gameConfig)).toBe(0)
   })
 
-  it('opens the raccoon when the wish pond is placed and bustle reaches 80', () => {
+  it('opens the raccoon when the wish pond is placed and bustle reaches the threshold', () => {
+    const unlock = gameConfig.species.find((item) => item.id === 'bear')?.unlock
+    const line = unlock?.kind === 'wishAmbience' ? unlock.ambience : 0
     const slots = streetWith().slots.slice()
-    slots[8] = stall('wish', 'wish')
-    for (let i = 0; i < 7; i += 1) slots[i] = decor('star', `star-${i}`)
+    slots[15] = stall('wish', 'wish')
+    for (let i = 0; i < 8; i += 1) slots[i] = decor('lantern', `lantern-${i}`)
     const ready = streetWith({ slots, cleanliness: 0 })
     const noStall = streetWith({ cleanliness: 100 })
     const quiet = streetWith({ slots: [stall('wish', 'wish')], cleanliness: 100 })
-    expect(ambienceScore(ready, gameConfig)).toBeGreaterThanOrEqual(80)
+    expect(ambienceScore(ready, gameConfig)).toBeGreaterThanOrEqual(line)
     expect(bearCanVisit(ready, gameConfig)).toBe(true)
     expect(speciesWeight('bear', ready, gameConfig)).toBeGreaterThan(0)
     expect(bearCanVisit(noStall, gameConfig)).toBe(false)
@@ -171,8 +173,8 @@ describe('animal preferences', () => {
 
   it('triggers the raccoon from the wish pond and bustle, without asking for the figure set again', () => {
     const slots = streetWith().slots.slice()
-    slots[8] = stall('wish', 'wish')
-    for (let i = 0; i < 7; i += 1) slots[i] = decor('star', `star-${i}`)
+    slots[15] = stall('wish', 'wish')
+    for (let i = 0; i < 8; i += 1) slots[i] = decor('lantern', `lantern-${i}`)
     const ready = streetWith({ slots, collection: {}, cleanliness: 0 })
     expect(bearCanVisit(ready, gameConfig)).toBe(true)
     expect(speciesWeight('bear', ready, gameConfig)).toBeGreaterThan(0)

@@ -12,28 +12,28 @@ function scripted(values: number[]): Rng {
 }
 
 describe('products', () => {
-  it('unlocks the plan prices at each stall level', () => {
+  it('unlocks the tuned prices at each stall level', () => {
     expect(productsFor('ice', 1, gameConfig).map((item) => item.name)).toEqual(['香草'])
     expect(productsFor('ice', 2, gameConfig).map((item) => [item.name, item.price])).toEqual([
       ['香草', 40],
-      ['草莓', 55],
-      ['巧克力', 55],
+      ['草莓', 48],
+      ['巧克力', 48],
     ])
-    expect(productsFor('ice', 3, gameConfig).map((item) => item.price)).toEqual([40, 55, 55, 90])
-    expect(productsFor('can', 3, gameConfig).map((item) => item.price)).toEqual([30, 40, 40, 65])
-    expect(productsFor('charge', 3, gameConfig).map((item) => item.price)).toEqual([20, 30, 50])
-    expect(productsFor('fortune', 3, gameConfig).map((item) => item.price)).toEqual([60, 85, 130])
-    expect(productsFor('wish', 3, gameConfig).map((item) => item.price)).toEqual([30, 45, 75])
+    expect(productsFor('ice', 3, gameConfig).map((item) => item.price)).toEqual([40, 48, 48, 62])
+    expect(productsFor('can', 3, gameConfig).map((item) => item.price)).toEqual([30, 36, 36, 48])
+    expect(productsFor('charge', 3, gameConfig).map((item) => item.price)).toEqual([20, 26, 36])
+    expect(productsFor('fortune', 3, gameConfig).map((item) => item.price)).toEqual([60, 70, 84])
+    expect(productsFor('wish', 3, gameConfig).map((item) => item.price)).toEqual([30, 38, 50])
     expect(productsFor('ichiban', 3, gameConfig)).toEqual([
       expect.objectContaining({ id: 'draw', name: '一抽', price: 50, level: 1 }),
     ])
     expect(productsFor('skewer', 1, gameConfig).map((item) => item.price)).toEqual([35])
-    expect(productsFor('skewer', 3, gameConfig).map((item) => item.price)).toEqual([35, 50, 80])
+    expect(productsFor('skewer', 3, gameConfig).map((item) => item.price)).toEqual([35, 44, 58])
     expect(gameConfig.topProductChance).toBe(0.6)
-    expect(gameConfig.favoriteBonus).toBe(1.2)
+    expect(gameConfig.favoriteBonus).toBe(1.1)
     expect(gameConfig.tipRate).toBe(0.1)
-    expect(gameConfig.spendMultiplier).toEqual({ common: 1, uncommon: 1.3, rare: 1.8 })
-    expect(gameConfig.chargeBonus).toBe(1.2)
+    expect(gameConfig.spendMultiplier).toEqual({ common: 1, uncommon: 1.15, rare: 1.3 })
+    expect(gameConfig.chargeBonus).toBe(1.1)
     expect(gameConfig).not.toHaveProperty('levelPriceMultiplier')
   })
 
@@ -63,13 +63,13 @@ describe('products', () => {
     const plain = productNet({ price: 40, config: gameConfig, rarity: 'common', favorite: false, charged: false, tip: false })
     expect(plain).toBe(24)
     const rare = productNet({ price: 40, config: gameConfig, rarity: 'rare', favorite: false, charged: false, tip: false })
-    expect(rare).toBe(43)
+    expect(rare).toBe(31)
     const loved = productNet({ price: 40, config: gameConfig, rarity: 'rare', favorite: true, charged: false, tip: false })
-    expect(loved).toBe(52)
+    expect(loved).toBe(34)
     const charged = productNet({ price: 40, config: gameConfig, rarity: 'rare', favorite: true, charged: true, tip: false })
-    expect(charged).toBe(62)
+    expect(charged).toBe(37)
     const tipped = productNet({ price: 40, config: gameConfig, rarity: 'rare', favorite: true, charged: true, tip: true })
-    expect(tipped).toBe(68)
+    expect(tipped).toBe(41)
     const draw = productNet({
       price: 50,
       config: gameConfig,

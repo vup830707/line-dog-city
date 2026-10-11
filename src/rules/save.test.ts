@@ -207,7 +207,7 @@ describe('save schema', () => {
     expect(parsed.save.street.slots[5]?.stallType).toBe('ichiban')
     expect(parsed.save.street.slots[10]?.decorType).toBe('star')
     expect(parsed.save.street.marketLevel).toBe(4)
-    expect(parsed.save.street.bustleXp).toBe(5000)
+    expect(parsed.save.street.bustleXp).toBe(gameConfig.marketLevels.find((row) => row.level === 4)?.bustleXp)
     expect(parsed.save.street.seenSpecies).toContain('cat')
     expect(parsed.save.street.seenSpecies).toContain('rabbit')
     expect(parsed.save.street.staff.find((member) => member.dog === 'white')?.name).toBe('雪球')
