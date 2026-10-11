@@ -1,7 +1,7 @@
 import { gameConfig } from '../config'
 import type { Phase, Weather } from '../rules/types'
 import { glowAlpha } from './fx'
-import { bobOffset, coverTransform, depthSort, FESTIVAL_LIGHTS, glowRadii, PLAZA_H, PLAZA_W, toScreen, type CoverTransform, type SceneSprite, type SlotFrame } from './plaza'
+import { bobOffset, coverTransform, depthSort, FESTIVAL_LIGHTS, garlandTiles, glowRadii, PLAZA_H, PLAZA_W, toScreen, type CoverTransform, type SceneSprite, type SlotFrame } from './plaza'
 
 export interface PlazaMood {
   weather: Weather
@@ -103,33 +103,37 @@ export function drawPlaza(
 
 function drawGarland(ctx: CanvasRenderingContext2D, image: HTMLImageElement | undefined, cover: CoverTransform): void {
   if (!image || image.naturalWidth <= 0) return
-  const width = PLAZA_W * cover.scale * 0.78
-  const height = width * (image.naturalHeight / image.naturalWidth)
-  const x = cover.offsetX + (PLAZA_W * cover.scale - width) / 2
-  const y = cover.offsetY + PLAZA_H * cover.scale * 0.06
-  ctx.drawImage(image, x, y, width, height)
+  const tiles = garlandTiles(image.naturalWidth, image.naturalHeight)
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(cover.offsetX, cover.offsetY, PLAZA_W * cover.scale, PLAZA_H * cover.scale)
+  ctx.clip()
+  for (const tile of tiles) {
+    ctx.drawImage(
+      image,
+      cover.offsetX + tile.x * cover.scale,
+      cover.offsetY + tile.y * cover.scale,
+      tile.w * cover.scale,
+      tile.h * cover.scale,
+    )
+  }
+  ctx.restore()
 }
 
 function drawRain(ctx: CanvasRenderingContext2D, viewW: number, viewH: number, timeMs: number, reduce: boolean): void {
-  const count = reduce ? 10 : 64
-  const length = reduce ? 22 : 36
+  const count = reduce ? 10 : 48
+  const length = reduce ? 12 : 14
   ctx.save()
+  ctx.strokeStyle = 'rgba(226, 234, 244, 0.3)'
+  ctx.lineWidth = 1
   ctx.lineCap = 'round'
   for (let i = 0; i < count; i += 1) {
     const x = (i * 137) % Math.max(1, viewW)
     const lane = (i * 89) % Math.max(1, viewH)
-    const y = reduce ? lane : (lane + timeMs * (0.28 + (i % 5) * 0.05)) % (viewH + length)
-    ctx.strokeStyle = 'rgba(170, 196, 224, 0.4)'
-    ctx.lineWidth = reduce ? 2.6 : 2.4
+    const y = reduce ? lane : (lane + timeMs * (0.22 + (i % 5) * 0.03)) % (viewH + length)
     ctx.beginPath()
     ctx.moveTo(x, y)
-    ctx.lineTo(x - 8, y + length)
-    ctx.stroke()
-    ctx.strokeStyle = 'rgba(246, 250, 255, 0.92)'
-    ctx.lineWidth = reduce ? 1.2 : 1.15
-    ctx.beginPath()
-    ctx.moveTo(x, y)
-    ctx.lineTo(x - 8, y + length)
+    ctx.lineTo(x - 3, y + length)
     ctx.stroke()
   }
   ctx.restore()

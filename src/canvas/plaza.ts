@@ -591,6 +591,32 @@ export const FESTIVAL_LIGHTS: Record<string, string> = {
   跨年: 'assets/art25/festival/newyear-lights.png',
 }
 
+/**
+ * Festival lights share the painted back-lantern band (about y=70–180 on the 1920 plaza)
+ * and stop above the stall roofs. One 元宵 lantern body is ~60px in its 790px sheet, so
+ * this height draws that body at about 37 plaza pixels — the size of those painted lanterns.
+ */
+export const GARLAND_TOP = 78
+export const GARLAND_HEIGHT = 124
+
+export interface GarlandTile {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/** Repeat a garland across the plaza. Coordinates are plaza pixels and pan with the camera. */
+export function garlandTiles(imageWidth: number, imageHeight: number, plazaWidth = PLAZA_W): GarlandTile[] {
+  if (imageWidth <= 0 || imageHeight <= 0 || plazaWidth <= 0) return []
+  const h = GARLAND_HEIGHT
+  const w = h * (imageWidth / imageHeight)
+  if (w <= 0) return []
+  const tiles: GarlandTile[] = []
+  for (let x = 0; x < plazaWidth; x += w) tiles.push({ x, y: GARLAND_TOP, w, h })
+  return tiles
+}
+
 /** Right of centre, in front of the offer card that sits on the left. */
 export const MERCHANT_STAND = { x: 1120, y: 800 }
 

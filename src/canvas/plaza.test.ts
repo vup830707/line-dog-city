@@ -12,6 +12,9 @@ import {
   bobOffset,
   characterFootprint,
   coverTransform,
+  GARLAND_HEIGHT,
+  GARLAND_TOP,
+  garlandTiles,
   plazaTransform,
   clampPan,
   panRange,
@@ -443,6 +446,32 @@ describe('walking poses', () => {
     sample!.facing = { facing: 'front', mirror: true }
     const scene = layoutScene(street, 200, { pose })
     expect(scene.find((sprite) => sprite.id === 'visitor-open-2')?.src).toMatch(/hamster-back-/)
+  })
+
+  it('tiles festival lights across the plaza at the size of the back lanterns', () => {
+    const tiles = garlandTiles(790, 203)
+    expect(tiles.length).toBeGreaterThan(1)
+    expect(tiles[0]?.y).toBe(GARLAND_TOP)
+    expect(tiles[0]?.h).toBe(GARLAND_HEIGHT)
+    expect(GARLAND_TOP + GARLAND_HEIGHT).toBeLessThanOrEqual(210)
+    const span = (tiles.at(-1)?.x ?? 0) + (tiles.at(-1)?.w ?? 0)
+    expect(span).toBeGreaterThanOrEqual(PLAZA_W)
+    expect(tiles[0]?.x).toBe(0)
+    // The 元宵 sheet's lantern body is about 60px of 790. On a phone that stays near the painted lanterns, not a 100px cover.
+    const body = 60 / 790
+    for (const [viewW, viewH, maxPx] of [
+      [390, 844, 45],
+      [844, 390, 30],
+      [1440, 900, 45],
+    ] as const) {
+      const screen = (tiles[0]?.w ?? 0) * body * coverTransform(viewW, viewH).scale
+      expect(screen).toBeGreaterThan(12)
+      expect(screen).toBeLessThan(maxPx)
+    }
+    const still = plazaTransform(390, 844, false)
+    const panned = plazaTransform(390, 844, false, { x: 40, y: 0 })
+    const at = (cover: typeof still) => cover.offsetX + (tiles[0]?.x ?? 0) * cover.scale
+    expect(at(panned) - at(still)).toBeCloseTo(panned.offsetX - still.offsetX)
   })
 
   it('bobs only while walking, in time with a step, and returns to the baseline', () => {
