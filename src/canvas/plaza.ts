@@ -316,12 +316,16 @@ export function clearOfDock(rect: ScreenRect, dockTop: number): ScreenRect {
   }
 }
 
+/** Empty pads stay finger-sized on short landscape screens. */
+const MIN_SLOT_HIT = 44
+
 /** Click pad on the stall's feet. Tall sprite boxes overlap the next rank. */
 export function slotHitRect(frame: SlotFrame, cover: CoverTransform): ScreenRect {
   const foot = toScreen(frame, cover)
   const width = frame.rx * 2 * cover.scale
-  const above = frame.height * 0.2 * cover.scale
+  let above = frame.height * 0.2 * cover.scale
   const below = 8 * cover.scale
+  if (above + below < MIN_SLOT_HIT) above += MIN_SLOT_HIT - (above + below)
   return {
     left: foot.x - width / 2,
     top: foot.y - above,

@@ -328,6 +328,18 @@ describe('plaza camera pan', () => {
     expect(spriteTo.left + spriteTo.width / 2).toBeCloseTo(sprite!.x * moved.scale + moved.offsetX, 4)
   })
 
+  it('keeps landscape slot hits at least 44px tall and leaves desktop pads alone', () => {
+    const desktopCover = coverTransform(1280, 720)
+    const desktopFrame = slotFrame(11, null)
+    const desktop = slotHitRect(desktopFrame, desktopCover)
+    expect(desktop.height).toBeCloseTo(desktopFrame.height * 0.2 * desktopCover.scale + 8 * desktopCover.scale)
+    expect(desktop.height).toBeGreaterThanOrEqual(44)
+    const phone = coverTransform(844, 390)
+    for (let index = 0; index < PLAZA_SLOTS.length; index += 1) {
+      expect(slotHitRect(slotFrame(index, null), phone).height).toBeGreaterThanOrEqual(44)
+    }
+  })
+
   it('pans just enough to reveal an off-screen slot and leaves a visible one alone', () => {
     const centered = { x: 0, y: 0 }
     expect(panToShowSlots(390, 844, centered, [3], false)).toEqual(centered)

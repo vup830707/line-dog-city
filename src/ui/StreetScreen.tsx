@@ -56,7 +56,9 @@ import { WEATHER_LABEL } from './labels'
 const artRoot = import.meta.env.BASE_URL
 const SEEN_LETTERS = 'puppy-seen-letter-ids'
 const REDUCE_MOTION = 'puppy-reduce-motion'
-const PAN_IGNORE = '.hud, .phone, .phone-scrim, .phone-charm, .build-strip, .stall-card, .animal-card, .offline-note, .level-banner, .confirm-layer, .toast, .restock-hint'
+const PAN_IGNORE = '.hud, .phone, .phone-scrim, .phone-charm, .phone-badge, .build-strip, .stall-card, .animal-card, .offline-note, .level-banner, .confirm-layer, .toast, .restock-hint'
+/** A mouse drag emits its click immediately. A touch drag does not, so ignore only that same-gesture click. */
+const CLICK_SUPPRESS_MS = 300
 
 function plazaGestureTarget(target: EventTarget | null): boolean {
   return target instanceof Element && !target.closest(PAN_IGNORE)
@@ -134,7 +136,7 @@ export function StreetScreen({
     vx: number
     vy: number
   } | null>(null)
-  const suppressClickRef = useRef(false)
+  const suppressClickUntilRef = useRef(0)
   const coastRef = useRef(0)
   const easeRef = useRef(0)
   const pannedOnceRef = useRef(false)
@@ -532,6 +534,7 @@ export function StreetScreen({
   }
 
   function onPlazaPointerDown(event: ReactPointerEvent) {
+    suppressClickUntilRef.current = 0
     if (!event.isPrimary || event.button !== 0) return
     const range = panRange(viewRef.current.w, viewRef.current.h)
     if (range.maxX === 0 && range.minX === 0 && range.maxY === 0 && range.minY === 0) return
@@ -577,18 +580,30 @@ export function StreetScreen({
     event.preventDefault()
   }
 
-  function onPlazaPointerUp(event: ReactPointerEvent) {
+  function endPlazaDrag(event: ReactPointerEvent, suppressClick: boolean) {
     const drag = dragRef.current
     if (!drag || drag.id !== event.pointerId) return
     dragRef.current = null
     if (!drag.moved) return
-    suppressClickRef.current = true
+    if (suppressClick) suppressClickUntilRef.current = performance.now() + CLICK_SUPPRESS_MS
     coast(drag.vx, drag.vy)
   }
 
+  function onPlazaPointerUp(event: ReactPointerEvent) {
+    endPlazaDrag(event, true)
+  }
+
+  function onPlazaPointerCancel(event: ReactPointerEvent) {
+    endPlazaDrag(event, false)
+  }
+
   function onPlazaClickCapture(event: ReactMouseEvent) {
-    if (!suppressClickRef.current) return
-    suppressClickRef.current = false
+    const until = suppressClickUntilRef.current
+    if (until === 0 || performance.now() > until) {
+      suppressClickUntilRef.current = 0
+      return
+    }
+    suppressClickUntilRef.current = 0
     event.preventDefault()
     event.stopPropagation()
   }
@@ -612,7 +627,7 @@ export function StreetScreen({
       onPointerDown={onPlazaPointerDown}
       onPointerMove={onPlazaPointerMove}
       onPointerUp={onPlazaPointerUp}
-      onPointerCancel={onPlazaPointerUp}
+      onPointerCancel={onPlazaPointerCancel}
       onClickCapture={onPlazaClickCapture}
       onContextMenu={(event) => {
         if (!buildMode) return
@@ -637,6 +652,16 @@ export function StreetScreen({
       ) : null}
       {cameraRange.maxX > 0 && pan.x > cameraRange.minX + 1 ? (
         <div className={pannedOnce ? 'pan-hint pan-hint-right' : 'pan-hint pan-hint-right is-fresh'} data-testid="pan-hint-right" aria-hidden="true">
+          <span className="pan-chevron" />
+        </div>
+      ) : null}
+      {cameraRange.maxY > 0 && pan.y < cameraRange.maxY - 1 ? (
+        <div className={pannedOnce ? 'pan-hint pan-hint-up' : 'pan-hint pan-hint-up is-fresh'} data-testid="pan-hint-up" aria-hidden="true">
+          <span className="pan-chevron" />
+        </div>
+      ) : null}
+      {cameraRange.maxY > 0 && pan.y > cameraRange.minY + 1 ? (
+        <div className={pannedOnce ? 'pan-hint pan-hint-down' : 'pan-hint pan-hint-down is-fresh'} data-testid="pan-hint-down" aria-hidden="true">
           <span className="pan-chevron" />
         </div>
       ) : null}
