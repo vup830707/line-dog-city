@@ -1,6 +1,7 @@
 import { gameConfig } from '../config'
 import type { Phase, Weather } from '../rules/types'
 import { glowAlpha } from './fx'
+import { plazaTint } from './light'
 import { bobOffset, coverTransform, depthSort, FESTIVAL_LIGHTS, garlandTiles, glowRadii, PLAZA_H, PLAZA_W, toScreen, type CoverTransform, type SceneSprite, type SlotFrame } from './plaza'
 
 export interface PlazaMood {
@@ -11,31 +12,15 @@ export interface PlazaMood {
   showRain: boolean
 }
 
-export function plazaTint(weather: Weather, phase: Phase): string {
-  const tint: Record<Weather, Record<Phase, string>> = {
-    sunny: {
-      dusk: 'rgba(255, 196, 140, 0.18)',
-      mid: 'rgba(176, 196, 255, 0.1)',
-      late: 'rgba(70, 90, 160, 0.16)',
-    },
-    hot: {
-      dusk: 'rgba(255, 150, 90, 0.24)',
-      mid: 'rgba(255, 120, 80, 0.18)',
-      late: 'rgba(190, 80, 60, 0.16)',
-    },
-    cold: {
-      dusk: 'rgba(170, 200, 230, 0.22)',
-      mid: 'rgba(120, 160, 210, 0.2)',
-      late: 'rgba(70, 100, 160, 0.24)',
-    },
-    rain: {
-      dusk: 'rgba(70, 96, 132, 0.34)',
-      mid: 'rgba(48, 72, 112, 0.4)',
-      late: 'rgba(28, 44, 78, 0.48)',
-    },
-  }
-  return tint[weather][phase]
+/** Render-only light sample. Omitted callers snap to the phase tint. */
+export interface PlazaLight {
+  tint: string
+  garlandAlpha: number
+  garlandId: string | null
+  rainAlpha: number
 }
+
+export { plazaTint }
 
 export function drawPlaza(
   ctx: CanvasRenderingContext2D,
@@ -49,6 +34,7 @@ export function drawPlaza(
   spark: { x: number; y: number; t: number } | null = null,
   cover: CoverTransform = coverTransform(viewW, viewH),
   mood: PlazaMood | null = null,
+  light: PlazaLight | null = null,
 ): void {
   ctx.clearRect(0, 0, viewW, viewH)
   if (background) {
@@ -59,7 +45,7 @@ export function drawPlaza(
   }
   if (mood) {
     ctx.save()
-    ctx.fillStyle = plazaTint(mood.showRain ? 'rain' : mood.weather, mood.phase)
+    ctx.fillStyle = light?.tint ?? plazaTint(mood.showRain ? 'rain' : mood.weather, mood.phase)
     ctx.fillRect(0, 0, viewW, viewH)
     ctx.restore()
   }
@@ -96,8 +82,21 @@ export function drawPlaza(
   for (const mark of frames) {
     if (mark.glow) drawSlotMark(ctx, mark, cover, timeMs)
   }
-  if (mood?.festival) drawGarland(ctx, images.get(FESTIVAL_LIGHTS[mood.festival] ?? ''), cover)
-  if (mood?.showRain) drawRain(ctx, viewW, viewH, timeMs, mood.reduceMotion)
+  const garlandId = light ? light.garlandId : (mood?.festival ?? null)
+  const garlandAlpha = light ? light.garlandAlpha : garlandId ? 1 : 0
+  if (garlandId && garlandAlpha > 0.001) {
+    ctx.save()
+    ctx.globalAlpha = garlandAlpha
+    drawGarland(ctx, images.get(FESTIVAL_LIGHTS[garlandId] ?? ''), cover)
+    ctx.restore()
+  }
+  const rainAlpha = light ? light.rainAlpha : mood?.showRain ? 1 : 0
+  if (mood && rainAlpha > 0.001) {
+    ctx.save()
+    ctx.globalAlpha = rainAlpha
+    drawRain(ctx, viewW, viewH, timeMs, mood.reduceMotion)
+    ctx.restore()
+  }
   if (spark) drawSpark(ctx, spark)
 }
 

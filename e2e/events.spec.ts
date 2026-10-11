@@ -24,7 +24,7 @@ test('a night event announces itself with a toast', async ({ page }) => {
 })
 
 test('capture rain, festival lights, the merchant, and affinity', async ({ page }) => {
-  test.setTimeout(120_000)
+  test.setTimeout(180_000)
   await shotScene(page, 'rain', async () => {
     await page.evaluate(() => window.__puppy?.showEvent('rain'))
     await expect(page.getByTestId('street-metrics')).toHaveAttribute('data-weather', 'rain')
@@ -60,7 +60,8 @@ async function shotScene(page: Page, name: string, prepare: () => Promise<void>)
   await page.setViewportSize({ width: 390, height: 844 })
   await start(page)
   await prepare()
-  await page.waitForTimeout(400)
+  // Tint, garland, and rain ease in. Wait out the longer fade before the shot.
+  await page.waitForTimeout(4800)
   await saveScreenshot(page, `${dir}/${file}-390x844.png`)
   await page.setViewportSize({ width: 844, height: 390 })
   await page.waitForTimeout(400)
