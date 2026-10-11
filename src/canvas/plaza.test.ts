@@ -27,6 +27,7 @@ import {
   spriteScreenRect,
   standPoint,
   footprintsOverlap,
+  facingFromStep,
   walkFacing,
 } from './plaza'
 
@@ -283,6 +284,46 @@ describe('walking poses', () => {
     expect(walkFacing(-6, 1).facing).toBe('front')
     expect(walkFacing(10, 0)).toEqual({ facing: 'front', mirror: false })
     expect(walkFacing(-10, 0)).toEqual({ facing: 'front', mirror: true })
+  })
+
+  it('keeps the last facing while standing or taking a tiny step', () => {
+    const held = { facing: 'back' as const, mirror: true }
+    expect(facingFromStep(0.1, -0.2, true, held)).toEqual(held)
+    expect(facingFromStep(0.7, -4.9, false, held)).toEqual(held)
+    expect(facingFromStep(0.7, -4.9, true, { facing: 'front', mirror: true })).toEqual({ facing: 'back', mirror: true })
+  })
+
+  it('selects back frames when staff walk up-screen, even if the path tangent points sideways', () => {
+    const street = createNewGame({ seed: 1, now: 1 }, gameConfig).street
+    const pose = new Map()
+    const at = (x: number, y: number) => ({ x, y, walking: true, faceX: 8, faceY: 1 })
+    const motion = (whiteY: number, brownY: number, whiteX = 600) => ({
+      pose,
+      staffAt: {
+        'dog-white': at(whiteX, whiteY),
+        'dog-brown': at(740, brownY),
+      },
+    })
+    layoutScene(street, 0, motion(800, 820))
+    const scene = layoutScene(street, 200, motion(795.1, 818.4, 600.7))
+    const white = scene.find((sprite) => sprite.id === 'staff-dog-white')
+    const brown = scene.find((sprite) => sprite.id === 'staff-dog-brown')
+    expect(white?.src).toMatch(/white-puppy-back-/)
+    expect(white?.mirror).toBe(true)
+    expect(brown?.src).toMatch(/brown-puppy-back-/)
+    expect(walkFacing(8, 1)).toEqual({ facing: 'front', mirror: false })
+  })
+
+  it('selects back frames when a walking visitor steps up-screen', () => {
+    const street = createNewGame({ seed: 1, now: 1 }, gameConfig).street
+    const pose = new Map()
+    layoutScene(street, 0, { pose })
+    const sample = pose.get('visitor-open-2')
+    expect(sample).toBeTruthy()
+    sample!.y += 6
+    sample!.facing = { facing: 'front', mirror: true }
+    const scene = layoutScene(street, 200, { pose })
+    expect(scene.find((sprite) => sprite.id === 'visitor-open-2')?.src).toMatch(/hamster-back-/)
   })
 
   it('bobs only while walking, in time with a step, and returns to the baseline', () => {

@@ -303,10 +303,35 @@ export function walkFacing(dx: number, dy: number): Facing {
   if (dx === 0 && dy === 0) return { facing: 'front', mirror: false }
   if (Math.abs(dy) >= Math.abs(dx)) {
     if (dy >= 0) return { facing: 'front', mirror: dx < 0 }
+    // Back sheets lean the other way, so a step to screen-right is mirrored.
     return { facing: 'back', mirror: dx > 0 }
   }
   if (dx >= 0) return { facing: 'front', mirror: false }
   return { facing: 'front', mirror: true }
+}
+
+/** A step shorter than this does not change which way someone is facing. */
+export const FACING_DEAD_ZONE = 0.5
+
+/** Flipping front/back takes a clearer step than merely continuing. */
+const FACING_COMMIT = 1
+
+/**
+ * Face from the rendered step, not the path tangent.
+ * dy < 0 (up-screen, away from the camera) uses back frames; dy > 0 uses front.
+ * Mirror follows dx. A character who has stopped, or whose step is inside the
+ * dead zone, keeps the facing they already had.
+ */
+export function facingFromStep(dx: number, dy: number, moving: boolean, held: Facing): Facing {
+  if (!moving || Math.hypot(dx, dy) < FACING_DEAD_ZONE) return held
+  const next = walkFacing(dx, dy)
+  if (next.facing === held.facing) {
+    if (next.mirror !== held.mirror && Math.abs(dx) < FACING_DEAD_ZONE) return held
+    return next
+  }
+  const along = Math.abs(dy) >= Math.abs(dx) ? Math.abs(dy) : Math.abs(dx)
+  if (along < FACING_COMMIT) return held
+  return next
 }
 
 /** Step bob, re-exported so callers keep importing it from the plaza. */
@@ -579,12 +604,20 @@ export interface StaffPlacement {
   faceY: number
 }
 
+export interface PoseSample {
+  x: number
+  y: number
+  facing: Facing
+}
+
 export interface SceneMotion {
   alpha?: number
   previous?: Street | null
   reduceMotion?: boolean
   leavingFrom?: ReadonlyMap<string, number>
   staffAt?: Readonly<Record<string, StaffPlacement>>
+  /** Last rendered foot and facing. The painter keeps this across frames. */
+  pose?: Map<string, PoseSample>
 }
 
 function puppyArt(dog: 'white' | 'brown', job: Job, facing: Facing, moving: boolean): ArtPiece {
@@ -770,6 +803,7 @@ export function layoutScene(street: Street, timeMs = 0, motion?: SceneMotion): S
   const ordersNow = queueOrders(street.visitors, leaving)
   const ordersPrev = previous ? queueOrders(previous.visitors, leaving) : ordersNow
   const people: SceneSprite[] = []
+  const poseIntent = new Map<string, { art: ArtPiece; fallback: Facing; glance: 'left' | 'right' | null }>()
   street.visitors.forEach((visitor, index) => {
     const here = poseFor(visitor, ordersNow.get(visitor.id) ?? 0, leaving, walkLane(street.visitors, visitor, leaving))
     const prevVisitor = previous?.visitors.find((item) => item.id === visitor.id)
@@ -800,6 +834,7 @@ export function layoutScene(street: Street, timeMs = 0, motion?: SceneMotion): S
     const art = ANIMAL_ART[visitor.species]
     const frame = selectArtFrame(art, facing.facing, timeMs, walking, gameConfig.walkFps)
     const sheet: ArtPiece = { ...art, src: frame.src, aspect: frame.aspect }
+    poseIntent.set(`visitor-${visitor.id}`, { art, fallback: facing, glance: glide.glance })
     const traveled = leaveTraveled(here.mode, here.progress, here.slot)
     const showGoods = Boolean(visitor.productId) && (here.mode === 'stand' || traveled < 1.05)
     const bubble = showGoods && visitor.productId ? PRODUCT_SRC[visitor.productId] : undefined
@@ -829,6 +864,7 @@ export function layoutScene(street: Street, timeMs = 0, motion?: SceneMotion): S
         : puppyArt(member.dog === 'brown' ? 'brown' : 'white', member.job, facing, walking)
     const frame = selectArtFrame(art, facing.facing, timeMs, walking, gameConfig.walkFps)
     const sheet: ArtPiece = { ...art, src: frame.src, aspect: frame.aspect }
+    poseIntent.set(`staff-${member.id}`, { art, fallback: facing, glance: null })
     people.push({
       ...sprite(`staff-${member.id}`, sheet, point, {
         shadow: true,
@@ -879,7 +915,37 @@ export function layoutScene(street: Street, timeMs = 0, motion?: SceneMotion): S
     person.bob = !reduce
   }
 
+  commitPoses(people, poseIntent, motion?.pose, timeMs)
   return depthSort([...props, ...overlays, ...people])
+}
+
+function commitPoses(
+  people: readonly SceneSprite[],
+  intent: ReadonlyMap<string, { art: ArtPiece; fallback: Facing; glance: 'left' | 'right' | null }>,
+  memory: Map<string, PoseSample> | undefined,
+  timeMs: number,
+) {
+  const live = new Set<string>()
+  for (const person of people) {
+    const plan = intent.get(person.id)
+    if (!plan) continue
+    live.add(person.id)
+    const prev = memory?.get(person.id)
+    const facing = prev
+      ? facingFromStep(person.x - prev.x, person.y - prev.y, person.bob, prev.facing)
+      : plan.fallback
+    const frame = selectArtFrame(plan.art, facing.facing, timeMs, person.bob, gameConfig.walkFps)
+    person.src = frame.src
+    person.aspect = frame.aspect
+    if (plan.glance === 'left') person.mirror = true
+    else if (plan.glance === 'right') person.mirror = false
+    else person.mirror = facing.mirror
+    memory?.set(person.id, { x: person.x, y: person.y, facing })
+  }
+  if (!memory) return
+  for (const id of memory.keys()) {
+    if (!live.has(id)) memory.delete(id)
+  }
 }
 
 function peopleAt(street: Street, timeMs: number, leaving: ReadonlyMap<string, number> | undefined, reduce: boolean): SceneSprite[] {

@@ -18,6 +18,7 @@ import {
   spriteScreenRect,
   staffDestination,
   toScreen,
+  type PoseSample,
   type StaffPlacement,
 } from '../canvas/plaza'
 import { staffWalkPoint, trackStalls, type StaffTrip } from '../canvas/walk'
@@ -117,7 +118,8 @@ export function StreetScreen({
     current: Street | null
     leaving: Map<string, number>
     staff: Map<string, StaffTrip>
-  }>({ tick: -1, tickAt: 0, previous: null, current: null, leaving: new Map(), staff: new Map() })
+    pose: Map<string, PoseSample>
+  }>({ tick: -1, tickAt: 0, previous: null, current: null, leaving: new Map(), staff: new Map(), pose: new Map() })
   const [hudBottom, setHudBottom] = useState(64)
   streetRef.current = street
   viewRef.current = view
@@ -264,6 +266,7 @@ export function StreetScreen({
         reduceMotion: reduce,
         leavingFrom: motion.leaving,
         staffAt,
+        pose: motion.pose,
       })
       const glow = new Set(glowSlotsRef.current)
       let spark: { x: number; y: number; t: number } | null = null
