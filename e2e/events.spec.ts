@@ -68,6 +68,7 @@ async function shotScene(page: Page, name: string, prepare: () => Promise<void>)
 }
 
 async function start(page: Page) {
+  await page.addInitScript(() => localStorage.clear())
   await page.goto('./?debug=1')
   await expect(page.getByTestId('title-start')).toHaveText('開始營業')
   await openMarket(page)

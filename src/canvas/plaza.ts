@@ -591,9 +591,13 @@ export const FESTIVAL_LIGHTS: Record<string, string> = {
   跨年: 'assets/art25/festival/newyear-lights.png',
 }
 
-export const MERCHANT_STAND = { x: 900, y: 780 }
+/** Right of centre, in front of the offer card that sits on the left. */
+export const MERCHANT_STAND = { x: 1120, y: 800 }
 
-export const MERCHANT_ART: ArtPiece = actorPiece(piece('assets/art25/animals/merchant.png', 498, 512, CUSTOMER_H), 'merchant')
+export const MERCHANT_ART: ArtPiece = actorPiece(
+  piece('assets/art25/animals/merchant.png', 498, 512, Math.round(CUSTOMER_H * 1.7)),
+  'merchant',
+)
 
 export const ANIMAL_ART: Record<Species, ArtPiece> = {
   cat: animal('cat', 'assets/art25/animals/cat.png', 438, 512),

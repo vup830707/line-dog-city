@@ -29,9 +29,9 @@ export function plazaTint(weather: Weather, phase: Phase): string {
       late: 'rgba(70, 100, 160, 0.24)',
     },
     rain: {
-      dusk: 'rgba(80, 100, 130, 0.28)',
-      mid: 'rgba(60, 80, 110, 0.32)',
-      late: 'rgba(40, 55, 80, 0.36)',
+      dusk: 'rgba(70, 96, 132, 0.34)',
+      mid: 'rgba(48, 72, 112, 0.4)',
+      late: 'rgba(28, 44, 78, 0.48)',
     },
   }
   return tint[weather][phase]
@@ -111,18 +111,25 @@ function drawGarland(ctx: CanvasRenderingContext2D, image: HTMLImageElement | un
 }
 
 function drawRain(ctx: CanvasRenderingContext2D, viewW: number, viewH: number, timeMs: number, reduce: boolean): void {
-  const count = reduce ? 10 : 42
+  const count = reduce ? 10 : 64
+  const length = reduce ? 22 : 36
   ctx.save()
-  ctx.strokeStyle = 'rgba(226, 232, 240, 0.55)'
-  ctx.lineWidth = reduce ? 1.4 : 1.1
   ctx.lineCap = 'round'
   for (let i = 0; i < count; i += 1) {
     const x = (i * 137) % Math.max(1, viewW)
-    const lane = (i * 53) % Math.max(1, viewH)
-    const y = reduce ? lane : (lane + timeMs * (0.22 + (i % 5) * 0.04)) % (viewH + 30)
+    const lane = (i * 89) % Math.max(1, viewH)
+    const y = reduce ? lane : (lane + timeMs * (0.28 + (i % 5) * 0.05)) % (viewH + length)
+    ctx.strokeStyle = 'rgba(170, 196, 224, 0.4)'
+    ctx.lineWidth = reduce ? 2.6 : 2.4
     ctx.beginPath()
     ctx.moveTo(x, y)
-    ctx.lineTo(x - 4, y + (reduce ? 18 : 16))
+    ctx.lineTo(x - 8, y + length)
+    ctx.stroke()
+    ctx.strokeStyle = 'rgba(246, 250, 255, 0.92)'
+    ctx.lineWidth = reduce ? 1.2 : 1.15
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(x - 8, y + length)
     ctx.stroke()
   }
   ctx.restore()
