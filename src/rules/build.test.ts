@@ -3,6 +3,7 @@ import { gameConfig } from '../config'
 import { ownedSet, stall, streetWith } from './fixtures'
 import { canPlace, eligibleSlots, placeBlock, placeItem } from './actions'
 import { buildOffers, shortfallText } from './build'
+import { openSlotIndexes } from './market'
 import { forecastLine } from './weather'
 
 const labels = { sunny: '晴', hot: '熱', cold: '冷', rain: '雨' } as const
@@ -56,7 +57,9 @@ describe('slot eligibility', () => {
     const street = streetWith({ money: 3000 })
     const item = { kind: 'stall' as const, stallType: 'ice' as const }
     expect(canPlace(street, 4, item, gameConfig)).toBe(true)
-    expect(eligibleSlots(street, item, gameConfig)).toEqual(street.slots.map((_, index) => index))
+    expect(canPlace(street, 9, item, gameConfig)).toBe(false)
+    expect(placeBlock(street, 9, item, gameConfig)).toBe('這個位子還沒開放')
+    expect(eligibleSlots(street, item, gameConfig)).toEqual([...openSlotIndexes(1, gameConfig)].sort((a, b) => a - b))
     expect(placeBlock(street, 4, item, gameConfig)).toBeNull()
   })
 

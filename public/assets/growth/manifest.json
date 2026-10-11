@@ -1,0 +1,197 @@
+{
+  "assets": [
+    {
+      "path": "products/vanilla.png",
+      "width": 90,
+      "height": 170
+    },
+    {
+      "path": "products/strawberry.png",
+      "width": 94,
+      "height": 162
+    },
+    {
+      "path": "products/chocolate.png",
+      "width": 90,
+      "height": 170
+    },
+    {
+      "path": "products/sundae.png",
+      "width": 146,
+      "height": 186
+    },
+    {
+      "path": "products/sunny.png",
+      "width": 122,
+      "height": 128
+    },
+    {
+      "path": "products/breeze.png",
+      "width": 122,
+      "height": 128
+    },
+    {
+      "path": "products/warm.png",
+      "width": 122,
+      "height": 128
+    },
+    {
+      "path": "products/raindrop.png",
+      "width": 122,
+      "height": 128
+    },
+    {
+      "path": "products/quick.png",
+      "width": 82,
+      "height": 116
+    },
+    {
+      "path": "products/starlight.png",
+      "width": 82,
+      "height": 116
+    },
+    {
+      "path": "products/dream.png",
+      "width": 82,
+      "height": 116
+    },
+    {
+      "path": "products/slip.png",
+      "width": 184,
+      "height": 112
+    },
+    {
+      "path": "products/portrait.png",
+      "width": 194,
+      "height": 132
+    },
+    {
+      "path": "products/chart.png",
+      "width": 288,
+      "height": 138
+    },
+    {
+      "path": "products/small.png",
+      "width": 110,
+      "height": 112
+    },
+    {
+      "path": "products/starwish.png",
+      "width": 114,
+      "height": 110
+    },
+    {
+      "path": "products/meteor.png",
+      "width": 224,
+      "height": 93
+    },
+    {
+      "path": "products/skewer-small.png",
+      "width": 110,
+      "height": 112,
+      "note": "reuses small"
+    },
+    {
+      "path": "products/skewer-double.png",
+      "width": 114,
+      "height": 110,
+      "note": "reuses starwish"
+    },
+    {
+      "path": "products/skewer-meteor.png",
+      "width": 224,
+      "height": 93,
+      "note": "reuses meteor"
+    },
+    {
+      "path": "overlay-bunting.png",
+      "width": 272,
+      "height": 108
+    },
+    {
+      "path": "overlay-bulbs.png",
+      "width": 230,
+      "height": 104
+    },
+    {
+      "path": "overlay-frame.png",
+      "width": 240,
+      "height": 192
+    },
+    {
+      "path": "overlay-crest.png",
+      "width": 152,
+      "height": 144
+    },
+    {
+      "path": "blocker-fence.png",
+      "width": 248,
+      "height": 153
+    },
+    {
+      "path": "blocker-bush.png",
+      "width": 226,
+      "height": 174
+    },
+    {
+      "path": "blocker-crates.png",
+      "width": 264,
+      "height": 190
+    },
+    {
+      "path": "banner.png",
+      "width": 356,
+      "height": 112
+    },
+    {
+      "path": "coin.png",
+      "width": 104,
+      "height": 102
+    },
+    {
+      "path": "overlay-lanterns.png",
+      "width": 172,
+      "height": 180
+    },
+    {
+      "path": "figures/temple.png",
+      "width": 294,
+      "height": 328
+    },
+    {
+      "path": "figures/dreamIce.png",
+      "width": 194,
+      "height": 326
+    },
+    {
+      "path": "figures/starCap.png",
+      "width": 212,
+      "height": 308
+    },
+    {
+      "path": "figures/pajama.png",
+      "width": 226,
+      "height": 314
+    },
+    {
+      "path": "figures/weatherCan.png",
+      "width": 236,
+      "height": 326
+    },
+    {
+      "path": "figures/chargeTail.png",
+      "width": 272,
+      "height": 290
+    },
+    {
+      "path": "figures/chicken.png",
+      "width": 236,
+      "height": 312
+    },
+    {
+      "path": "figures/milkTea.png",
+      "width": 208,
+      "height": 316
+    }
+  ]
+}

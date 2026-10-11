@@ -1,13 +1,18 @@
 import { useState } from 'react'
 import { assetMap } from '../assets/assetMap'
+import { ANIMAL_ART } from '../canvas/plaza'
+import { FIGURE_SRC, PRODUCT_SRC } from '../assets/growthArt'
 import { gameConfig } from '../config'
 import { assignJob, hireBlock, hireStaff, trainBlock, trainStaff } from '../rules/actions'
 import { restockStaffWarning } from '../rules/staff'
 import { isWishPondUnlocked, ownedCount } from '../rules/collection'
 import { ambienceScore } from '../rules/ambience'
-import type { Job, SaveV3, Weather } from '../rules/types'
+import { levelRow, nextLevelRow } from '../rules/market'
+import type { Job, SaveV3, Species, Weather } from '../rules/types'
 import { festivalName, forecastLine } from '../rules/weather'
 import { JOB_LABEL, PHASE_LABEL, WEATHER_LABEL } from './labels'
+
+const artRoot = import.meta.env.BASE_URL
 
 export type PhoneApp = 'staff' | 'collection' | 'letters' | 'settings' | 'market'
 
@@ -279,26 +284,92 @@ function HireButton({
 }
 
 function CollectionApp({ save }: { save: SaveV3 }) {
+  const [tab, setTab] = useState<'figures' | 'animals' | 'products'>('figures')
+  const [species, setSpecies] = useState<Species | null>(null)
   const figureIds = gameConfig.figures.map((figure) => figure.id)
   const unlocked = isWishPondUnlocked(save.street.collection, figureIds)
+  const tabs = [
+    ['figures', '造型'],
+    ['animals', '動物'],
+    ['products', '商品'],
+  ] as const
   return (
     <div className="phone-panel" data-testid="collection-panel">
-      <p data-testid="collection-progress">
-        {ownedCount(save.street.collection, figureIds)} / {figureIds.length}
-        {unlocked ? '。流星許願池已解鎖。' : '。集滿就能開流星許願池。'}
-      </p>
-      <div className="collection-grid">
-        {gameConfig.figures.map((figure) => {
-          const owned = (save.street.collection[figure.id] ?? 0) >= 1
-          return (
-            <article key={figure.id}>
-              <h3>{owned ? figure.name : '？？？'}</h3>
-              <p>{owned ? figure.blurb : '還沒抽到'}</p>
-            </article>
-          )
-        })}
+      <div className="codex-tabs">
+        {tabs.map(([id, label]) => (
+          <button key={id} type="button" className={tab === id ? 'on' : ''} data-testid={`codex-tab-${id}`} onClick={() => setTab(id)}>
+            {label}
+          </button>
+        ))}
       </div>
+      {tab === 'figures' ? (
+        <>
+          <p data-testid="collection-progress">
+            {ownedCount(save.street.collection, figureIds)} / {figureIds.length}
+            {unlocked ? '。流星許願池已解鎖。' : '。集滿就能開流星許願池。'}
+          </p>
+          <div className="collection-grid">
+            {gameConfig.figures.map((figure) => {
+              const owned = (save.street.collection[figure.id] ?? 0) >= 1
+              const src = FIGURE_SRC[figure.id]
+              return (
+                <article key={figure.id}>
+                  {owned && src ? <img src={`${artRoot}${src}`} alt="" /> : null}
+                  <h3>{owned ? figure.name : '？？？'}</h3>
+                  <p>{owned ? figure.blurb : '還沒抽到'}</p>
+                </article>
+              )
+            })}
+          </div>
+        </>
+      ) : null}
+      {tab === 'animals' ? (
+        <div className="collection-grid" data-testid="codex-animals">
+          {gameConfig.species.map((item) => {
+            const seen = save.street.seenSpecies.includes(item.id)
+            return (
+              <button key={item.id} type="button" data-testid={`codex-animal-${item.id}`} onClick={() => setSpecies(item.id)}>
+                {seen ? <img src={`${artRoot}${ANIMAL_ART[item.id].src}`} alt="" /> : null}
+                <span>{seen ? item.name : '？？？'}</span>
+              </button>
+            )
+          })}
+          {species ? <CodexAnimal save={save} species={species} /> : null}
+        </div>
+      ) : null}
+      {tab === 'products' ? (
+        <div className="collection-grid" data-testid="codex-products">
+          {Object.values(gameConfig.products)
+            .flat()
+            .map((item) => {
+              const seen = save.street.seenProducts.includes(item.id)
+              const src = PRODUCT_SRC[item.id]
+              return (
+                <article key={item.id}>
+                  {seen && src ? <img src={`${artRoot}${src}`} alt="" /> : null}
+                  <h3>{seen ? item.name : '？？？'}</h3>
+                  <p>{seen ? `${item.price} 幣` : '還沒看過'}</p>
+                </article>
+              )
+            })}
+        </div>
+      ) : null}
     </div>
+  )
+}
+
+function CodexAnimal({ save, species }: { save: SaveV3; species: Species }) {
+  const spec = gameConfig.species.find((item) => item.id === species)
+  const favourite = spec ? Object.values(gameConfig.products).flat().find((item) => item.id === spec.product) : undefined
+  const known = spec ? save.street.seenProducts.includes(spec.product) : false
+  const letters = save.street.letters.filter((letter) => letter.species === species)
+  return (
+    <article data-testid="codex-animal-card">
+      <h3>{spec?.name}</h3>
+      <p>最愛 {known && favourite ? favourite.name : '？'}</p>
+      <p>滿意度 {Math.round((save.street.speciesSatisfaction[species] ?? 0) * 100)}</p>
+      {letters.length === 0 ? <p>還沒有留下信。</p> : letters.map((letter) => <p key={letter.id}>{letter.body}</p>)}
+    </article>
   )
 }
 
@@ -401,11 +472,31 @@ function SettingsApp({
   )
 }
 
+function productName(id: string | undefined): string {
+  if (!id) return '還沒決定'
+  return Object.values(gameConfig.products).flat().find((item) => item.id === id)?.name ?? id
+}
+
 function MarketApp({ save }: { save: SaveV3 }) {
   const festival = festivalName(save.street.day, gameConfig)
   const weather = save.street.weather
+  const row = levelRow(save.street.marketLevel, gameConfig)
+  const next = nextLevelRow(save.street.marketLevel, gameConfig)
+  const span = next ? Math.max(1, next.bustleXp - row.bustleXp) : 1
+  const gained = Math.max(0, save.street.bustleXp - row.bustleXp)
+  const ratio = next ? Math.min(1, gained / span) : 1
+  const unlocks = next ? [...next.stalls.map((id) => gameConfig.stallLabels[id]), ...next.decors.map((id) => gameConfig.decorLabels[id])] : []
   return (
     <div className="phone-panel" data-testid="market-panel">
+      <p data-testid="market-level">夜市 Lv.{save.street.marketLevel}</p>
+      <p data-testid="market-xp">
+        累積熱鬧度 {save.street.bustleXp}
+        {next ? ` / ${next.bustleXp}` : ''}
+      </p>
+      <div className="xp-bar" data-testid="market-xp-bar">
+        <span style={{ width: `${Math.round(ratio * 100)}%` }} />
+      </div>
+      <p data-testid="market-next">{next ? `下一級：${unlocks.join('、') || '更多格子'}，格子 ${next.slots}` : '夜市已經滿級'}</p>
       <p data-testid="market-day">
         第 {save.street.day} 天・{PHASE_LABEL[save.street.phase]}
       </p>
@@ -416,7 +507,7 @@ function MarketApp({ save }: { save: SaveV3 }) {
       <p data-testid="market-festival">{festival ? `節日 ${festival}` : '今天沒有節日'}</p>
       <p data-testid="market-forecast">{forecastLine(save.street.pendingWeather, WEATHER_LABEL)}</p>
       <p data-testid="market-bustle">熱鬧度 {ambienceScore(save.street, gameConfig)}</p>
-      <p className="fine">夜市等級之後會記在這裡。</p>
+      <p data-testid="market-limited">今夜限定 {productName(save.street.trending[0])}</p>
     </div>
   )
 }

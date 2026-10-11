@@ -1,3 +1,6 @@
+import { gameConfig } from '../config'
+import { BLOCKER_SRC, OVERLAY_SRC, PRODUCT_SRC } from '../assets/growthArt'
+import { isSlotOpen } from '../rules/market'
 import type { DecorType, Job, Species, StallType, Street } from '../rules/types'
 
 /** Plaza background size. Slot anchors live in this coordinate space. */
@@ -64,6 +67,17 @@ export function coverTransform(viewW: number, viewH: number): CoverTransform {
   }
 }
 
+/** Cover transform. In build mode, pan up until slots 9 and 14 clear the build strip. */
+export function plazaTransform(viewW: number, viewH: number, build = false): CoverTransform {
+  const cover = coverTransform(viewW, viewH)
+  if (!build) return cover
+  const strip = buildStripRect(viewW, viewH)
+  const lowest = Math.max(...[9, 14].map((index) => (PLAZA_SLOTS[index]?.y ?? 0) * cover.scale + cover.offsetY))
+  const limit = strip.top - 16
+  if (lowest <= limit) return cover
+  return { ...cover, offsetY: cover.offsetY - (lowest - limit) }
+}
+
 export function toScreen(point: PlazaPoint, cover: CoverTransform): PlazaPoint {
   return {
     x: point.x * cover.scale + cover.offsetX,
@@ -107,8 +121,8 @@ export function slotFrame(index: number, stallType?: StallType | null): SlotFram
   }
 }
 
-/** Matches `.build-strip`: left 12px, right inset 108px, bottom 8px, height 104px. */
-export const BUILD_STRIP = { left: 12, rightInset: 108, bottom: 8, height: 104 } as const
+/** Matches `.build-strip`: left 12px, right inset 108px, bottom 8px, height 168px. */
+export const BUILD_STRIP = { left: 12, rightInset: 108, bottom: 8, height: 168 } as const
 
 export function buildStripRect(viewW: number, viewH: number): ScreenRect {
   return {
@@ -263,10 +277,11 @@ export function bobOffset(timeMs: number, seed = 0): number {
   return Math.sin(timeMs / 160 + seed) * 5
 }
 
-export function depthSort<T extends { y: number }>(items: readonly T[]): T[] {
+export function depthSort<T extends { y: number; sortY?: number }>(items: readonly T[]): T[] {
+  const key = (item: T) => item.sortY ?? item.y
   return items
     .map((item, index) => ({ item, index }))
-    .sort((a, b) => a.item.y - b.item.y || a.index - b.index)
+    .sort((a, b) => key(a.item) - key(b.item) || a.index - b.index)
     .map((entry) => entry.item)
 }
 
@@ -289,6 +304,8 @@ export const STALL_ART: Record<StallType, ArtPiece> = {
   fortune: piece('assets/art25/stalls/fortune-teller-booth.png', 323, 512, STALL_NEAR_H),
   ichiban: piece('assets/art25/stalls/ichiban-kuji-booth.png', 374, 512, STALL_NEAR_H),
   wish: piece('assets/art25/stalls/wishing-pond.png', 512, 337, Math.round(PLAZA_H * 0.22)),
+  /** No skewer stall was drawn. The ice cart carries a star crest in layoutScene. */
+  skewer: piece('assets/art25/stalls/dream-ice-cream-cart.png', 348, 512, STALL_NEAR_H),
 }
 
 export const DECOR_ART: Record<DecorType, ArtPiece> = {
@@ -297,7 +314,22 @@ export const DECOR_ART: Record<DecorType, ArtPiece> = {
   sign: piece('assets/art25/decor/signboard-blank.png', 430, 512, Math.round(PLAZA_H * 0.2)),
   flower: piece('assets/art25/decor/flower-cart.png', 430, 512, Math.round(PLAZA_H * 0.24)),
   star: piece('assets/art25/decor/potted-plant.png', 336, 512, Math.round(PLAZA_H * 0.18)),
+  string: piece('assets/growth/overlay-bulbs.png', 230, 104, Math.round(PLAZA_H * 0.12)),
 }
+
+const OVERLAY_ART = {
+  bunting: piece(OVERLAY_SRC.bunting, 272, 108, Math.round(PLAZA_H * 0.08)),
+  bulbs: piece(OVERLAY_SRC.bulbs, 230, 104, Math.round(PLAZA_H * 0.07)),
+  frame: piece(OVERLAY_SRC.frame, 240, 192, Math.round(PLAZA_H * 0.16)),
+  lanterns: piece(OVERLAY_SRC.lanterns, 172, 180, Math.round(PLAZA_H * 0.14)),
+  crest: piece(OVERLAY_SRC.crest, 152, 144, Math.round(PLAZA_H * 0.1)),
+}
+
+const BLOCKER_ART = [
+  piece(BLOCKER_SRC[0], 248, 153, Math.round(PLAZA_H * 0.16)),
+  piece(BLOCKER_SRC[1], 226, 174, Math.round(PLAZA_H * 0.18)),
+  piece(BLOCKER_SRC[2], 264, 190, Math.round(PLAZA_H * 0.18)),
+]
 
 /** Game species keep their rules. A few use the closest finished sprite. */
 export const ANIMAL_ART: Record<Species, ArtPiece> = {
@@ -338,6 +370,8 @@ export interface SceneSprite {
   bob: boolean
   mirror: boolean
   seed: number
+  /** Depth key when the sprite should sort with a stall it is pinned to. */
+  sortY?: number
 }
 
 export interface Footprint {
@@ -435,14 +469,47 @@ function puppyArt(dog: 'white' | 'brown', job: Job, facing: Facing, moving: bool
   return PUPPY[`${dog}-front`] as ArtPiece
 }
 
+function pin(art: ArtPiece, at: PlazaPoint, sortY: number, id: string): SceneSprite {
+  return { ...sprite(id, art, at, { shadow: false, bob: false, mirror: false, seed: 0 }), sortY }
+}
+
 export function layoutScene(street: Street, timeMs = 0): SceneSprite[] {
   const props: SceneSprite[] = []
+  const overlays: SceneSprite[] = []
   street.slots.forEach((place, index) => {
     const slot = PLAZA_SLOTS[index]
-    if (!place || !slot) return
+    if (!slot) return
     const scale = rankScale(index)
+    if (!place) {
+      if (!isSlotOpen(index, street.marketLevel, gameConfig)) {
+        const art = BLOCKER_ART[index % BLOCKER_ART.length] as ArtPiece
+        props.push(sprite(`blocker-${index}`, art, slot, { shadow: false, bob: false, mirror: false, seed: 0 }, scale))
+      }
+      return
+    }
     if (place.kind === 'stall' && place.stallType) {
-      props.push(sprite(`slot-${index}`, STALL_ART[place.stallType], slot, { shadow: false, bob: false, mirror: false, seed: 0 }, scale))
+      const art = STALL_ART[place.stallType]
+      props.push(sprite(`slot-${index}`, art, slot, { shadow: false, bob: false, mirror: false, seed: 0 }, scale))
+      const body = art.drawH * scale
+      const sortY = slot.y + 0.4
+      if (place.level >= 2) {
+        overlays.push(pin(OVERLAY_ART.bunting, { x: slot.x, y: slot.y - body * 0.62 }, sortY, `bunting-${index}`))
+        overlays.push(pin(OVERLAY_ART.bulbs, { x: slot.x, y: slot.y - body * 0.42 }, sortY + 0.1, `bulbs-${index}`))
+      }
+      if (place.level >= 3) {
+        overlays.push(pin(OVERLAY_ART.frame, { x: slot.x, y: slot.y - body * 0.2 }, sortY + 0.2, `frame-${index}`))
+        overlays.push(pin(OVERLAY_ART.lanterns, { x: slot.x, y: slot.y - body * 0.34 }, sortY + 0.3, `lanterns-${index}`))
+      }
+      if (place.stallType === 'skewer' || place.level >= 3) {
+        overlays.push(pin(OVERLAY_ART.crest, { x: slot.x, y: slot.y - body * 0.78 }, sortY + 0.4, `crest-${index}`))
+      }
+      const productId = gameConfig.products[place.stallType]?.[0]?.id
+      const thumb = productId ? PRODUCT_SRC[productId] : undefined
+      if (thumb) {
+        overlays.push(
+          pin(piece(thumb, 90, 120, Math.round(PLAZA_H * 0.07)), { x: slot.x + 54, y: slot.y - body * 0.28 }, sortY + 0.5, `thumb-${index}`),
+        )
+      }
     } else if (place.decorType) {
       props.push(sprite(`slot-${index}`, DECOR_ART[place.decorType], slot, { shadow: false, bob: false, mirror: false, seed: 0 }, scale))
     }
@@ -498,13 +565,22 @@ export function layoutScene(street: Street, timeMs = 0): SceneSprite[] {
   })
 
   separateCharacters(people, props)
-  return depthSort([...props, ...people])
+  return depthSort([...props, ...overlays, ...people])
 }
 
 export function artSources(): string[] {
   const srcs = new Set<string>([BG_SRC])
-  for (const art of [...Object.values(STALL_ART), ...Object.values(DECOR_ART), ...Object.values(ANIMAL_ART), ...Object.values(PUPPY), ...Object.values(HIRE_ART)]) {
+  for (const art of [
+    ...Object.values(STALL_ART),
+    ...Object.values(DECOR_ART),
+    ...Object.values(ANIMAL_ART),
+    ...Object.values(PUPPY),
+    ...Object.values(HIRE_ART),
+    ...Object.values(OVERLAY_ART),
+    ...BLOCKER_ART,
+  ]) {
     srcs.add(art.src)
   }
+  for (const src of Object.values(PRODUCT_SRC)) srcs.add(src)
   return [...srcs]
 }

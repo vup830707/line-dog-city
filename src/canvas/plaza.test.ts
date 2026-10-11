@@ -13,6 +13,7 @@ import {
   bobOffset,
   characterFootprint,
   coverTransform,
+  plazaTransform,
   depthSort,
   layoutScene,
   pathPoint,
@@ -130,7 +131,16 @@ describe('plaza spacing', () => {
     const scene = layoutScene(save.street, 0)
     const stalls = scene.filter((sprite) => sprite.id.startsWith('slot-') && Object.values(STALL_ART).some((art) => art.src === sprite.src))
     const people = scene.filter((sprite) => sprite.shadow)
-    expect(stalls.length).toBeGreaterThanOrEqual(5)
+    expect(stalls.length).toBe(2)
+    expect(scene.some((sprite) => sprite.id.startsWith('blocker-'))).toBe(true)
+    const upgraded = layoutScene(
+      streetWith({
+        slots: save.street.slots.map((slot, index) => (index === 1 && slot ? { ...slot, level: 3 } : slot)),
+        marketLevel: 3,
+      }),
+      0,
+    )
+    expect(upgraded.some((sprite) => sprite.src.includes('overlay-frame'))).toBe(true)
     expect(people.length).toBeGreaterThanOrEqual(6)
     for (const person of people) {
       for (const stallSprite of stalls) {
@@ -171,6 +181,17 @@ describe('slot frames', () => {
         }
       }
     }
+  })
+
+  it('pans the plaza in build mode so slots 9 and 14 clear the strip at 1280x720', () => {
+    const cover = plazaTransform(1280, 720, true)
+    const strip = buildStripRect(1280, 720)
+    for (const index of [9, 14]) {
+      const slot = PLAZA_SLOTS[index] as { x: number; y: number }
+      const footY = slot.y * cover.scale + cover.offsetY
+      expect(footY).toBeLessThan(strip.top)
+    }
+    expect(plazaTransform(1280, 720, false)).toEqual(coverTransform(1280, 720))
   })
 
   it('lifts a foot pad that would sit under the build strip', () => {

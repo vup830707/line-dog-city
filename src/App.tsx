@@ -93,6 +93,28 @@ export function App() {
           storeGame(localStorage, next)
           setSave(next)
         },
+        setMoney(amount: number) {
+          const current = saveRef.current
+          if (!current || !Number.isFinite(amount)) return
+          pauseRef.current = true
+          commit({ ...current, street: { ...current.street, money: Math.max(0, Math.floor(amount)) } })
+        },
+        setStallLevel(index: number, level: number) {
+          const current = saveRef.current
+          if (!current) return
+          const place = current.street.slots[index]
+          if (!place || place.kind !== 'stall') return
+          pauseRef.current = true
+          const slots = current.street.slots.slice()
+          slots[index] = { ...place, level }
+          commit({ ...current, street: { ...current.street, slots } })
+        },
+        showLevel(level: number) {
+          const current = saveRef.current
+          if (!current) return
+          pauseRef.current = true
+          commit({ ...current, street: { ...current.street, levelUpBanner: level, pendingToasts: [`夜市升到 Lv.${level}！`] } })
+        },
         clearSlot(index: number) {
           const current = saveRef.current
           if (!current || index < 0 || index >= current.street.slots.length) return

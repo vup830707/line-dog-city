@@ -9,6 +9,9 @@ declare global {
       rewindClock: (ms: number) => void
       spawn: (species: string) => void
       clearSlot: (index: number) => void
+      setMoney: (amount: number) => void
+      setStallLevel: (index: number, level: number) => void
+      showLevel: (level: number) => void
     }
   }
 }

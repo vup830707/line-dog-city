@@ -18,17 +18,17 @@ export function cleanFactor(cleanliness: number, config: GameConfig): number {
   return 1 - weight + weight * clamped
 }
 
-/** Floor at an empty street, 1 at the target, capped above that. Weather is not an input. */
-export function visitFactor(ambience: number, config: GameConfig, cleanliness = 100): number {
-  if (config.ambienceTarget <= 0) return config.ambienceCap
+/** Floor at an empty street, 1 at the target, capped by the market's visitCap (or the global cap). */
+export function visitFactor(ambience: number, config: GameConfig, cleanliness = 100, visitCap = config.ambienceCap): number {
+  if (config.ambienceTarget <= 0) return visitCap
   const raw = (ambience * cleanFactor(cleanliness, config)) / config.ambienceTarget
-  return Math.min(config.ambienceCap, Math.max(config.ambienceFloor, raw))
+  return Math.min(visitCap, Math.max(config.ambienceFloor, raw))
 }
 
 export function expectedVisits(
-  input: { ambience: number; festival: boolean; weather?: string; cleanliness?: number },
+  input: { ambience: number; festival: boolean; weather?: string; cleanliness?: number; visitCap?: number },
   config: GameConfig,
 ): number {
   const bonus = input.festival ? config.festivalBonus : 1
-  return config.baseVisitsPerPhase * visitFactor(input.ambience, config, input.cleanliness ?? 100) * bonus
+  return config.baseVisitsPerPhase * visitFactor(input.ambience, config, input.cleanliness ?? 100, input.visitCap) * bonus
 }

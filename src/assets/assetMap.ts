@@ -54,6 +54,7 @@ export const assetMap = {
     fortune: { kind: 'placeholder', id: 'stall-fortune', accent: '#c9b6f2' },
     ichiban: { kind: 'placeholder', id: 'stall-ichiban', accent: '#f0b27a' },
     wish: { kind: 'placeholder', id: 'stall-wish', accent: '#8fd0c4' },
+    skewer: { kind: 'placeholder', id: 'stall-skewer', accent: '#e2b657' },
   },
   animals: {
     cat: { kind: 'placeholder', id: 'animal-cat', accent: '#e7a0c4' },
@@ -71,6 +72,7 @@ export const assetMap = {
     sign: { kind: 'placeholder', id: 'decor-sign', accent: '#c45c26' },
     flower: { kind: 'placeholder', id: 'decor-flower', accent: '#e7a0c4' },
     star: { kind: 'placeholder', id: 'decor-star', accent: '#f0d35a' },
+    string: { kind: 'placeholder', id: 'decor-string', accent: '#e2b657' },
   },
   hires: {
     munia: { kind: 'placeholder', id: 'hire-munia', accent: '#d7c4a3' },

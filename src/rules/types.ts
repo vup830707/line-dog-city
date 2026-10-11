@@ -1,7 +1,8 @@
 export type Weather = 'sunny' | 'hot' | 'cold' | 'rain'
 export type Phase = 'dusk' | 'mid' | 'late'
-export type StallType = 'ice' | 'can' | 'charge' | 'fortune' | 'ichiban' | 'wish'
-export type DecorType = 'lantern' | 'seat' | 'sign' | 'flower' | 'star'
+export type StallType = 'ice' | 'can' | 'charge' | 'fortune' | 'ichiban' | 'wish' | 'skewer'
+export type DecorType = 'lantern' | 'seat' | 'sign' | 'flower' | 'star' | 'string'
+export type Rarity = 'common' | 'uncommon' | 'rare'
 export type Job = 'restock' | 'clean' | 'greet' | 'rest'
 export type Species = 'cat' | 'rabbit' | 'hamster' | 'sparrow' | 'otter' | 'hedgehog' | 'fox' | 'bear'
 export type HireSpecies = 'munia' | 'ferret'
@@ -64,6 +65,7 @@ export interface Visitor {
   spent: number
   fortune: string | null
   drewGrade: Grade | null
+  productId?: string | null
 }
 
 export interface StaffMember {
@@ -111,10 +113,18 @@ export interface Street {
   nextVisitor: number
   offlineNote: string | null
   lastOfflineTicks: number
+  marketLevel: number
+  bustleXp: number
+  seenSpecies: Species[]
+  seenProducts: string[]
+  ackedSpecies: Species[]
+  pendingToasts: string[]
+  levelUpBanner: number | null
+  speciesSatisfaction: Partial<Record<Species, number>>
 }
 
-export interface SaveV3 {
-  schemaVersion: 3
+export interface SaveV4 {
+  schemaVersion: 4
   playerDog: 'white' | 'brown'
   whiteName: string
   brownName: string
@@ -122,12 +132,41 @@ export interface SaveV3 {
   street: Street
 }
 
+/** Current on-disk save. v3 files are migrated on read. */
+export type SaveV3 = SaveV4
+
+export interface ProductDef {
+  id: string
+  name: string
+  price: number
+  level: number
+}
+
+export type SpeciesUnlock =
+  | { kind: 'start' }
+  | { kind: 'seats'; count: number }
+  | { kind: 'stallLevel'; level: number }
+  | { kind: 'ichibanDecor'; decor: number }
+  | { kind: 'wishAmbience'; ambience: number }
+
 export interface SpeciesDef {
   id: Species
   name: string
   stall: StallType
+  product: string
   decor: DecorType
   topic: string
+  rarity: Rarity
+  unlock: SpeciesUnlock
+}
+
+export interface MarketLevelDef {
+  level: number
+  bustleXp: number
+  slots: number
+  stalls: StallType[]
+  decors: DecorType[]
+  visitCap: number
 }
 
 export interface GameConfig {
@@ -143,7 +182,6 @@ export interface GameConfig {
   cleanDropPerPhase: number
   cleanDropPerVisitor: number
   cleanlinessWeight: number
-  levelPriceMultiplier: number[]
   saveEveryTicks: number
   titleLightMs: number
   phoneHeightRatio: number
@@ -157,7 +195,30 @@ export interface GameConfig {
   letterAt: number
   decorationDuplicateValue: number
   duplicateValue: Record<Grade, number>
-  satisfaction: { base: number; liked: number; decor: number; clean: number; cleanAt: number; greet: number }
+  satisfaction: {
+    base: number
+    liked: number
+    decor: number
+    clean: number
+    cleanAt: number
+    greet: number
+    favorite: number
+    limited: number
+  }
+  topProductChance: number
+  favoriteBonus: number
+  tipRate: number
+  chargeBonus: number
+  spendMultiplier: Record<Rarity, number>
+  products: Record<StallType, ProductDef[]>
+  marketLevels: MarketLevelDef[]
+  slotOrder: number[]
+  ichibanRestockByLevel: number[]
+  speciesWeights: {
+    base: Record<Species, number>
+    weather: Record<Species, Record<Weather, number>>
+    phase: Record<Species, Record<Phase, number>>
+  }
   prices: Record<StallType, number>
   placeCost: Record<StallType, number>
   upgradeCost: Record<StallType, number[]>

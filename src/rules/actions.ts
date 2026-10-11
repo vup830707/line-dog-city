@@ -1,6 +1,7 @@
 import { isWishPondUnlocked } from './collection'
 import { createBox, refundAmount } from './ichiban'
-import { createRng } from './rng'
+import { decorMarketLevel, isSlotOpen, stallMarketLevel } from './market'
+import { createRng, type Rng } from './rng'
 import { stockCap } from './staff'
 import { rollWeather } from './weather'
 import type { ActionResult, DecorType, GameConfig, Job, StallType, Street, Weather } from './types'
@@ -13,16 +14,22 @@ export type PlaceItem = { kind: 'stall'; stallType: StallType } | { kind: 'decor
 
 /** Why this card cannot go on this slot. `null` means the click will build it. */
 export function placeBlock(street: Street, slot: number, item: PlaceItem, config: GameConfig): string | null {
-  if (slot < 0 || slot >= config.streetSlots || street.slots[slot]) return '這個位子已經有東西了'
+  if (slot < 0 || slot >= config.streetSlots) return '這個位子已經有東西了'
+  if (!isSlotOpen(slot, street.marketLevel, config)) return '這個位子還沒開放'
+  if (street.slots[slot]) return '這個位子已經有東西了'
   const figures = config.figures.map((figure) => figure.id)
   if (item.kind === 'stall') {
     if (street.slots.some((place) => place?.stallType === item.stallType)) return '這種攤已經在街上了'
+    const needed = stallMarketLevel(item.stallType, config)
+    if (needed != null && street.marketLevel < needed) return `夜市 Lv.${needed} 才蓋得了${config.stallLabels[item.stallType]}`
     if (item.stallType === 'wish' && !isWishPondUnlocked(street.collection, figures)) {
       return '集滿第一套造型才開得了流星許願池'
     }
     if (street.money < config.placeCost[item.stallType]) return '金幣不夠'
     return null
   }
+  const decorLevel = decorMarketLevel(item.decorType, config)
+  if (decorLevel != null && street.marketLevel < decorLevel) return `夜市 Lv.${decorLevel} 才買得到${config.decorLabels[item.decorType]}`
   if (item.decorType === 'star' && !isWishPondUnlocked(street.collection, figures)) {
     return '許願池解鎖後才買得到星星'
   }
@@ -120,22 +127,22 @@ export function hireStaff(street: Street, config: GameConfig): ActionResult {
   }
 }
 
-export function castWish(street: Street, desired: Weather, config: GameConfig): ActionResult {
+export function castWish(street: Street, desired: Weather, config: GameConfig, rng?: Rng): ActionResult {
   const placed = street.slots.some((slot) => slot?.stallType === 'wish')
   if (!placed || !isWishPondUnlocked(street.collection, config.figures.map((figure) => figure.id))) {
     return fail(street, '許願池還沒開')
   }
   if (street.wishUsed) return fail(street, '今天已經許過願了')
-  const rng = createRng(street.rngState)
-  const natural = rollWeather(rng)
-  const roll = rng.next()
+  const live = rng ?? createRng(street.rngState)
+  const natural = rollWeather(live)
+  const roll = live.next()
   const succeeded = roll < config.wishSuccessRate
   const weather = succeeded ? desired : natural
   return {
     ok: true,
     street: {
       ...street,
-      rngState: rng.getState(),
+      rngState: live.getState(),
       pendingWeather: weather,
       wishUsed: true,
       wishMessage: succeeded ? '許願會帶進下一天的天氣。' : '這次沒中，下一天照原本的天氣走。',
@@ -152,12 +159,12 @@ export function closeBox(street: Street, config: GameConfig): ActionResult {
   }
 }
 
-export function openBox(street: Street, config: GameConfig): Street {
+export function openBox(street: Street, config: GameConfig, rng?: Rng): Street {
   const def = config.ichiban.boxes[0]
   if (!def) return street
-  const rng = createRng(street.rngState)
-  const box = { ...createBox(def, rng), paid: false, idleTicks: 0 }
-  return { ...street, rngState: rng.getState(), box, boxRestock: 0 }
+  const live = rng ?? createRng(street.rngState)
+  const box = { ...createBox(def, live), paid: false, idleTicks: 0 }
+  return { ...street, rngState: live.getState(), box, boxRestock: 0 }
 }
 
 /** Pay the full wholesale price to open a box now. Only this box refunds when it is put away. */

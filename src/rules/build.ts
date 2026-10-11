@@ -1,16 +1,16 @@
 import { isWishPondUnlocked } from './collection'
+import { decorMarketLevel, stallMarketLevel } from './market'
+import { productsFor } from './products'
 import type { DecorType, GameConfig, StallType, Street } from './types'
 
-const STALLS: StallType[] = ['ice', 'can', 'charge', 'fortune', 'ichiban', 'wish']
-const DECORS: DecorType[] = ['lantern', 'seat', 'sign', 'flower', 'star']
+const STALLS: StallType[] = ['ice', 'can', 'charge', 'fortune', 'ichiban', 'wish', 'skewer']
+const DECORS: DecorType[] = ['lantern', 'seat', 'sign', 'flower', 'star', 'string']
 
-const STALL_BLURB: Record<StallType, string> = {
-  ice: '賣香草冰淇淋',
-  can: '賣晴天罐',
-  charge: '賣快充',
-  fortune: '賣一句籤',
-  ichiban: '抽一番賞',
-  wish: '許一個天氣',
+function stallBlurb(stall: StallType, config: GameConfig): string {
+  const first = productsFor(stall, 1, config)[0]
+  if (stall === 'ichiban') return '抽一番賞'
+  if (stall === 'wish') return '許一個天氣'
+  return first ? `賣${first.name}` : '擺一個攤'
 }
 
 export interface BuildOffer {
@@ -65,27 +65,35 @@ function offer(input: {
 /** Cards for the build strip. Locked and already-built stalls cannot be picked. */
 export function buildOffers(street: Street, config: GameConfig): BuildOffer[] {
   const figureIds = config.figures.map((figure) => figure.id)
-  const unlocked = isWishPondUnlocked(street.collection, figureIds)
-  const lockReason = `集滿 ${figureIds.length} 款造型`
+  const setReady = isWishPondUnlocked(street.collection, figureIds)
+  const setReason = `集滿 ${figureIds.length} 款造型`
   const look = config.lookByLevel[0] ?? 0
   const stalls = STALLS.map((stallType) => {
-    const locked = stallType === 'wish' && !unlocked
+    const needed = stallMarketLevel(stallType, config)
+    const levelLocked = needed != null && street.marketLevel < needed
+    const setLocked = stallType === 'wish' && !setReady
+    const locked = levelLocked || setLocked
     const placed = street.slots.some((place) => place?.stallType === stallType)
+    const lockReason = levelLocked ? `夜市 Lv.${needed}` : setLocked ? setReason : null
     return offer({
       id: stallType,
       kind: 'stall',
       stallType,
       name: config.stallLabels[stallType],
       cost: config.placeCost[stallType],
-      effect: `${STALL_BLURB[stallType]}，熱鬧度 +${look}`,
+      effect: `${stallBlurb(stallType, config)}，熱鬧度 +${look}`,
       locked,
       placed,
-      lockReason: locked ? lockReason : null,
+      lockReason,
       money: street.money,
     })
   })
   const decor = DECORS.map((decorType) => {
-    const locked = decorType === 'star' && !unlocked
+    const needed = decorMarketLevel(decorType, config)
+    const levelLocked = needed != null && street.marketLevel < needed
+    const setLocked = decorType === 'star' && !setReady
+    const locked = levelLocked || setLocked
+    const lockReason = levelLocked ? `夜市 Lv.${needed}` : setLocked ? setReason : null
     return offer({
       id: decorType,
       kind: 'decor',
@@ -95,7 +103,7 @@ export function buildOffers(street: Street, config: GameConfig): BuildOffer[] {
       effect: `熱鬧度 +${config.decorScore[decorType]}`,
       locked,
       placed: false,
-      lockReason: locked ? lockReason : null,
+      lockReason,
       money: street.money,
     })
   })

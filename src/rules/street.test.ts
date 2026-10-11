@@ -14,6 +14,7 @@ describe('street tick', () => {
       visitors: [visitor('rabbit', 0, 2)],
       staff: [],
       arrivals: [],
+      trending: ['sundae'],
     })
     const mid = streetTick(start, gameConfig)
     expect(mid.visitors[0]?.position).toBe(1)

@@ -1,5 +1,5 @@
 {
- "game": "動物夜市",
+ "game": "\u52d5\u7269\u591c\u5e02",
  "style": "2.5D",
  "generated_count": 37,
  "missing": [],
@@ -521,6 +521,348 @@
    ],
    "tileable_x": false,
    "source": "uploads/title"
+  },
+  {
+   "path": "../growth/products/vanilla.png",
+   "kind": "growth",
+   "name": "vanilla",
+   "width": 90,
+   "height": 170,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/strawberry.png",
+   "kind": "growth",
+   "name": "strawberry",
+   "width": 94,
+   "height": 162,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/chocolate.png",
+   "kind": "growth",
+   "name": "chocolate",
+   "width": 90,
+   "height": 170,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/sundae.png",
+   "kind": "growth",
+   "name": "sundae",
+   "width": 146,
+   "height": 186,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/sunny.png",
+   "kind": "growth",
+   "name": "sunny",
+   "width": 122,
+   "height": 128,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/breeze.png",
+   "kind": "growth",
+   "name": "breeze",
+   "width": 122,
+   "height": 128,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/warm.png",
+   "kind": "growth",
+   "name": "warm",
+   "width": 122,
+   "height": 128,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/raindrop.png",
+   "kind": "growth",
+   "name": "raindrop",
+   "width": 122,
+   "height": 128,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/quick.png",
+   "kind": "growth",
+   "name": "quick",
+   "width": 82,
+   "height": 116,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/starlight.png",
+   "kind": "growth",
+   "name": "starlight",
+   "width": 82,
+   "height": 116,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/dream.png",
+   "kind": "growth",
+   "name": "dream",
+   "width": 82,
+   "height": 116,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/slip.png",
+   "kind": "growth",
+   "name": "slip",
+   "width": 184,
+   "height": 112,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/portrait.png",
+   "kind": "growth",
+   "name": "portrait",
+   "width": 194,
+   "height": 132,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/chart.png",
+   "kind": "growth",
+   "name": "chart",
+   "width": 288,
+   "height": 138,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/small.png",
+   "kind": "growth",
+   "name": "small",
+   "width": 110,
+   "height": 112,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/starwish.png",
+   "kind": "growth",
+   "name": "starwish",
+   "width": 114,
+   "height": 110,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/meteor.png",
+   "kind": "growth",
+   "name": "meteor",
+   "width": 224,
+   "height": 93,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/skewer-small.png",
+   "kind": "growth",
+   "name": "skewer-small",
+   "width": 110,
+   "height": 112,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/skewer-double.png",
+   "kind": "growth",
+   "name": "skewer-double",
+   "width": 114,
+   "height": 110,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/products/skewer-meteor.png",
+   "kind": "growth",
+   "name": "skewer-meteor",
+   "width": 224,
+   "height": 93,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/overlay-bunting.png",
+   "kind": "growth",
+   "name": "overlay-bunting",
+   "width": 272,
+   "height": 108,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/overlay-bulbs.png",
+   "kind": "growth",
+   "name": "overlay-bulbs",
+   "width": 230,
+   "height": 104,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/overlay-frame.png",
+   "kind": "growth",
+   "name": "overlay-frame",
+   "width": 240,
+   "height": 192,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/overlay-crest.png",
+   "kind": "growth",
+   "name": "overlay-crest",
+   "width": 152,
+   "height": 144,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/blocker-fence.png",
+   "kind": "growth",
+   "name": "blocker-fence",
+   "width": 248,
+   "height": 153,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/blocker-bush.png",
+   "kind": "growth",
+   "name": "blocker-bush",
+   "width": 226,
+   "height": 174,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/blocker-crates.png",
+   "kind": "growth",
+   "name": "blocker-crates",
+   "width": 264,
+   "height": 190,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/banner.png",
+   "kind": "growth",
+   "name": "banner",
+   "width": 356,
+   "height": 112,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/coin.png",
+   "kind": "growth",
+   "name": "coin",
+   "width": 104,
+   "height": 102,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/overlay-lanterns.png",
+   "kind": "growth",
+   "name": "overlay-lanterns",
+   "width": 172,
+   "height": 180,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/figures/temple.png",
+   "kind": "growth",
+   "name": "temple",
+   "width": 294,
+   "height": 328,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/figures/dreamIce.png",
+   "kind": "growth",
+   "name": "dreamIce",
+   "width": 194,
+   "height": 326,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/figures/starCap.png",
+   "kind": "growth",
+   "name": "starCap",
+   "width": 212,
+   "height": 308,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/figures/pajama.png",
+   "kind": "growth",
+   "name": "pajama",
+   "width": 226,
+   "height": 314,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/figures/weatherCan.png",
+   "kind": "growth",
+   "name": "weatherCan",
+   "width": 236,
+   "height": 326,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/figures/chargeTail.png",
+   "kind": "growth",
+   "name": "chargeTail",
+   "width": 272,
+   "height": 290,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/figures/chicken.png",
+   "kind": "growth",
+   "name": "chicken",
+   "width": 236,
+   "height": 312,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
+  },
+  {
+   "path": "../growth/figures/milkTea.png",
+   "kind": "growth",
+   "name": "milkTea",
+   "width": 208,
+   "height": 316,
+   "anchor": "bottom-center",
+   "source": "uploads/pr-d-sheets"
   }
  ]
 }
