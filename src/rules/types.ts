@@ -146,6 +146,8 @@ export interface GameConfig {
   levelPriceMultiplier: number[]
   saveEveryTicks: number
   titleLightMs: number
+  phoneHeightRatio: number
+  buildAnimMs: number
   ichibanIdleTicks: number
   walkSpeed: number
   restockCostRatio: number

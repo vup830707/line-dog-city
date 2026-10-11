@@ -1,0 +1,21 @@
+{
+  "game": "動物夜市",
+  "kind": "phone-ui",
+  "source": "game/phone/phone-ui-sheet.jpg",
+  "assets": [
+    { "path": "charm.png", "name": "小狗吊飾" },
+    { "path": "frame.png", "name": "手機外框" },
+    { "path": "app-build.png", "name": "建造" },
+    { "path": "app-staff.png", "name": "員工" },
+    { "path": "app-collection.png", "name": "圖鑑" },
+    { "path": "app-letters.png", "name": "信件" },
+    { "path": "app-settings.png", "name": "設定" },
+    { "path": "app-market.png", "name": "夜市等級" },
+    { "path": "letter-paper.png", "name": "信紙" },
+    { "path": "coin.png", "name": "金幣" },
+    { "path": "weather-sunny.png", "name": "晴" },
+    { "path": "weather-hot.png", "name": "熱" },
+    { "path": "weather-cold.png", "name": "冷" },
+    { "path": "weather-rain.png", "name": "雨" }
+  ]
+}

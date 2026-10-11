@@ -8,6 +8,7 @@ declare global {
       runTicks: (count: number) => void
       rewindClock: (ms: number) => void
       spawn: (species: string) => void
+      clearSlot: (index: number) => void
     }
   }
 }

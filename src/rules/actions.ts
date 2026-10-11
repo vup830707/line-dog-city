@@ -9,20 +9,45 @@ function fail(street: Street, reason: string): ActionResult {
   return { street, ok: false, reason }
 }
 
-export function placeItem(
-  street: Street,
-  slot: number,
-  item: { kind: 'stall'; stallType: StallType } | { kind: 'decor'; decorType: DecorType },
-  config: GameConfig,
-): ActionResult {
-  if (slot < 0 || slot >= config.streetSlots || street.slots[slot]) return fail(street, '這個位子已經有東西了')
+export type PlaceItem = { kind: 'stall'; stallType: StallType } | { kind: 'decor'; decorType: DecorType }
+
+/** Why this card cannot go on this slot. `null` means the click will build it. */
+export function placeBlock(street: Street, slot: number, item: PlaceItem, config: GameConfig): string | null {
+  if (slot < 0 || slot >= config.streetSlots || street.slots[slot]) return '這個位子已經有東西了'
+  const figures = config.figures.map((figure) => figure.id)
   if (item.kind === 'stall') {
-    if (street.slots.some((place) => place?.stallType === item.stallType)) return fail(street, '這種攤已經在街上了')
-    if (item.stallType === 'wish' && !isWishPondUnlocked(street.collection, config.figures.map((figure) => figure.id))) {
-      return fail(street, '集滿第一套造型才開得了流星許願池')
+    if (street.slots.some((place) => place?.stallType === item.stallType)) return '這種攤已經在街上了'
+    if (item.stallType === 'wish' && !isWishPondUnlocked(street.collection, figures)) {
+      return '集滿第一套造型才開得了流星許願池'
     }
+    if (street.money < config.placeCost[item.stallType]) return '金幣不夠'
+    return null
+  }
+  if (item.decorType === 'star' && !isWishPondUnlocked(street.collection, figures)) {
+    return '許願池解鎖後才買得到星星'
+  }
+  if (street.money < config.decorCost[item.decorType]) return '金幣不夠'
+  return null
+}
+
+export function canPlace(street: Street, slot: number, item: PlaceItem, config: GameConfig): boolean {
+  return placeBlock(street, slot, item, config) === null
+}
+
+/** Empty slots that light up once the player picks a card. */
+export function eligibleSlots(street: Street, item: PlaceItem, config: GameConfig): number[] {
+  const slots: number[] = []
+  for (let index = 0; index < street.slots.length; index += 1) {
+    if (canPlace(street, index, item, config)) slots.push(index)
+  }
+  return slots
+}
+
+export function placeItem(street: Street, slot: number, item: PlaceItem, config: GameConfig): ActionResult {
+  const reason = placeBlock(street, slot, item, config)
+  if (reason) return fail(street, reason)
+  if (item.kind === 'stall') {
     const cost = config.placeCost[item.stallType]
-    if (street.money < cost) return fail(street, '金幣不夠')
     const uid = `${item.stallType}-${street.tick}-${slot}`
     const slots = street.slots.slice()
     slots[slot] = { uid, kind: 'stall', stallType: item.stallType, level: 1 }
@@ -30,11 +55,7 @@ export function placeItem(
     if (item.stallType !== 'ichiban') stock[uid] = stockCap(1, config)
     return { ok: true, street: { ...street, money: street.money - cost, slots, stock } }
   }
-  if (item.decorType === 'star' && !isWishPondUnlocked(street.collection, config.figures.map((figure) => figure.id))) {
-    return fail(street, '許願池解鎖後才買得到星星')
-  }
   const cost = config.decorCost[item.decorType]
-  if (street.money < cost) return fail(street, '金幣不夠')
   const slots = street.slots.slice()
   slots[slot] = { uid: `${item.decorType}-${street.tick}-${slot}`, kind: 'decor', decorType: item.decorType, level: 1 }
   return { ok: true, street: { ...street, money: street.money - cost, slots } }

@@ -14,6 +14,25 @@ export function stockCap(level: number, config: GameConfig): number {
   return Math.max(1, level) * config.stockPerLevel
 }
 
+function snackShelves(street: Street) {
+  return street.slots.filter((slot) => slot?.kind === 'stall' && slot.stallType && slot.stallType !== 'ichiban')
+}
+
+/** Shown in the staff app whenever nobody is assigned to restock a snack stall. */
+export function restockStaffWarning(street: Street): string | null {
+  if (street.staff.some((member) => member.job === 'restock')) return null
+  if (snackShelves(street).length === 0) return null
+  return '現在沒有人補貨。貨架賣完就不會進帳。'
+}
+
+/** Shown on the street once those shelves are actually empty. */
+export function emptyShelfHint(street: Street): string | null {
+  if (restockStaffWarning(street) == null) return null
+  const empty = snackShelves(street).some((slot) => slot != null && (street.stock[slot.uid] ?? 0) <= 0)
+  if (!empty) return null
+  return '沒人補貨，攤位賣完了。'
+}
+
 export function someoneGreets(street: Street): boolean {
   return street.staff.some((member) => member.job === 'greet')
 }

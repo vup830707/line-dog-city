@@ -107,6 +107,56 @@ export function slotFrame(index: number, stallType?: StallType | null): SlotFram
   }
 }
 
+/** Matches `.build-strip`: left 12px, right inset 108px, bottom 8px, height 104px. */
+export const BUILD_STRIP = { left: 12, rightInset: 108, bottom: 8, height: 104 } as const
+
+export function buildStripRect(viewW: number, viewH: number): ScreenRect {
+  return {
+    left: BUILD_STRIP.left,
+    top: viewH - BUILD_STRIP.bottom - BUILD_STRIP.height,
+    width: Math.max(0, viewW - BUILD_STRIP.left - BUILD_STRIP.rightInset),
+    height: BUILD_STRIP.height,
+  }
+}
+
+/** Radii of the glowing ground ellipse. Canvas and the click target share these. */
+export function glowRadii(frame: SlotFrame, scale: number): { rx: number; ry: number } {
+  return {
+    rx: Math.max(8, frame.rx * scale) * 1.25,
+    ry: Math.max(4, frame.ry * scale) * 2.6,
+  }
+}
+
+/**
+ * Click target for a glowing build slot. It is centered on the same foot as the stall sprite.
+ * The box moves up only when that foot sits inside the build strip.
+ */
+export function glowSlotHit(frame: SlotFrame, cover: CoverTransform, viewW: number, viewH: number): ScreenRect {
+  const foot = toScreen(frame, cover)
+  const { rx, ry } = glowRadii(frame, cover.scale)
+  const rect: ScreenRect = { left: foot.x - rx, top: foot.y - ry, width: rx * 2, height: ry * 2 }
+  const strip = buildStripRect(viewW, viewH)
+  const footInStrip =
+    foot.x >= strip.left && foot.x <= strip.left + strip.width && foot.y >= strip.top && foot.y <= strip.top + strip.height
+  if (!footInStrip) return rect
+  return { ...rect, top: Math.max(8, strip.top - rect.height) }
+}
+
+/**
+ * Keep a build target clickable when the bottom card strip covers the foot pad.
+ * Slots that already sit above the strip stay on their feet.
+ */
+export function clearOfDock(rect: ScreenRect, dockTop: number): ScreenRect {
+  const center = rect.top + rect.height / 2
+  if (center < dockTop) return rect
+  return {
+    left: rect.left,
+    top: Math.max(8, dockTop - 48),
+    width: Math.max(rect.width, 44),
+    height: 40,
+  }
+}
+
 /** Click pad on the stall's feet. Tall sprite boxes overlap the next rank. */
 export function slotHitRect(frame: SlotFrame, cover: CoverTransform): ScreenRect {
   const foot = toScreen(frame, cover)

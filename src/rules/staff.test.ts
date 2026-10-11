@@ -3,7 +3,7 @@ import { gameConfig } from '../config'
 import { satisfactionOf } from './animals'
 import { decor, stall, streetWith, visitor } from './fixtures'
 import { streetTick } from './street'
-import { applyStaff, cleanPower, greetPower, restockInterval } from './staff'
+import { applyStaff, cleanPower, emptyShelfHint, greetPower, restockInterval, restockStaffWarning } from './staff'
 
 describe('staff jobs and levels', () => {
   it('restocks faster at higher levels and never charges coins', () => {
@@ -127,5 +127,33 @@ describe('staff jobs and levels', () => {
     expect(level3.visitors[0]?.satisfaction).toBeCloseTo(plain + greetPower(3, gameConfig))
     expect(level3.visitors[0]?.satisfaction ?? 0).toBeGreaterThan(level1.visitors[0]?.satisfaction ?? 0)
     expect(level1.money).toBe(level3.money)
+  })
+
+  it('warns when nobody is restocking and the shelves run dry', () => {
+    const stocked = streetWith({
+      slots: [stall('ice', 'ice')],
+      stock: { ice: 4 },
+    })
+    expect(restockStaffWarning(stocked)).toBeNull()
+    expect(emptyShelfHint(stocked)).toBeNull()
+
+    const greeting = streetWith({
+      slots: [stall('ice', 'ice')],
+      stock: { ice: 4 },
+      staff: [
+        { id: 'dog-white', name: '雪球', kind: 'dog', dog: 'white', job: 'greet', level: 1 },
+        { id: 'dog-brown', name: '可可', kind: 'dog', dog: 'brown', job: 'clean', level: 1 },
+      ],
+    })
+    expect(restockStaffWarning(greeting)).toBe('現在沒有人補貨。貨架賣完就不會進帳。')
+    expect(emptyShelfHint(greeting)).toBeNull()
+
+    const empty = streetWith({
+      slots: [stall('ice', 'ice')],
+      stock: { ice: 0 },
+      staff: greeting.staff,
+    })
+    expect(emptyShelfHint(empty)).toBe('沒人補貨，攤位賣完了。')
+    expect(restockStaffWarning(streetWith({ slots: [stall('ichiban', 'box')], staff: greeting.staff }))).toBeNull()
   })
 })

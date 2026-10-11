@@ -18,12 +18,11 @@ test('a new game can place a stall, earn coins, reload, and cap offline time', a
   await expect(page).toHaveURL(/\/line-dog-city\//)
   await expect(page.getByTestId('title-start')).toHaveText('開始營業')
   await openMarket(page)
-  await expect(page.getByTestId('player-name')).toHaveText('小白')
+  await expectDogNames(page, '小白', '可可')
 
   const before = Number((await page.getByTestId('money').innerText()).replace(/[^\d]/g, ''))
-  await page.getByTestId('tab-build').click()
-  await page.getByTestId('build-lantern').dragTo(page.getByTestId('slot-11'))
-  await page.getByTestId('build-sign').dragTo(page.getByTestId('slot-12'))
+  await placeDecor(page, 'lantern', 'slot-11')
+  await placeDecor(page, 'sign', 'slot-12')
   await expect(page.getByTestId('slot-0')).not.toHaveText('1')
   await expect(page.getByTestId('slot-1')).not.toHaveText('2')
 
@@ -31,12 +30,12 @@ test('a new game can place a stall, earn coins, reload, and cap offline time', a
   const earned = Number((await page.getByTestId('money').innerText()).replace(/[^\d]/g, ''))
   expect(earned).toBeGreaterThan(before)
 
+  await page.evaluate(() => window.__puppy?.pause())
   await page.reload()
   await expect(page.getByTestId('title-start')).toHaveText('繼續營業')
   await openMarket(page)
-  await expect(page.getByTestId('player-name')).toHaveText('小白')
   await expect(page.getByTestId('money')).toHaveText(`${earned} 幣`)
-  await expect(page.getByText('可可')).toBeVisible()
+  await expectDogNames(page, '小白', '可可')
 
   await page.evaluate(() => window.__puppy?.rewindClock(10 * 60 * 60 * 1000))
   await page.reload()
@@ -59,8 +58,7 @@ test('desktop layouts do not scroll the page sideways', async ({ page }) => {
     expect(await overflows(page)).toBe(false)
   }
   await openMarket(page)
-  await page.getByTestId('tab-build').click()
-  await page.getByTestId('build-sign').dragTo(page.getByTestId('slot-12'))
+  await placeDecor(page, 'sign', 'slot-12')
   for (const viewport of [
     { width: 1920, height: 1080 },
     { width: 1280, height: 720 },
@@ -74,8 +72,7 @@ test('the plaza background covers the window at both desktop sizes', async ({ pa
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto('./?debug=1')
   await openMarket(page)
-  await page.getByTestId('tab-build').click()
-  await page.getByTestId('build-sign').dragTo(page.getByTestId('slot-12'))
+  await placeDecor(page, 'sign', 'slot-12')
   await page.evaluate(() => window.__puppy?.spawn('cat'))
   await expect(page.getByTestId('street-metrics')).toHaveAttribute('data-art-ready', '1')
 
@@ -121,4 +118,26 @@ test('Enter and Space both leave the title for the street', async ({ page }) => 
 
 function overflows(page: import('@playwright/test').Page) {
   return page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)
+}
+
+async function expectDogNames(page: import('@playwright/test').Page, white: string, brown: string) {
+  await page.getByTestId('phone-charm').click()
+  await page.getByTestId('phone-app-settings').click()
+  await expect(page.getByTestId('rename-white')).toHaveValue(white)
+  await expect(page.getByTestId('rename-brown')).toHaveValue(brown)
+  await page.getByTestId('phone-home').click()
+  await expect(page.getByTestId('phone')).toBeHidden()
+}
+
+async function placeDecor(page: import('@playwright/test').Page, id: string, slot: string) {
+  if (!(await page.getByTestId('build-strip').isVisible())) {
+    await page.getByTestId('phone-charm').click()
+    await page.getByTestId('phone-app-build').click()
+    await expect(page.getByTestId('build-strip')).toBeVisible()
+    await page.getByTestId('build-tab-decor').click()
+  }
+  await page.getByTestId(`build-${id}`).click()
+  await expect(page.getByTestId(slot)).toHaveAttribute('data-glow', '1')
+  await page.getByTestId(slot).click()
+  await expect(page.getByTestId(slot)).toHaveAttribute('data-item', id)
 }

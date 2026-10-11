@@ -19,6 +19,9 @@ import {
   propFootprint,
   rankScale,
   screenRect,
+  buildStripRect,
+  clearOfDock,
+  glowSlotHit,
   slotFrame,
   slotHitRect,
   spriteScreenRect,
@@ -145,6 +148,39 @@ describe('plaza spacing', () => {
 })
 
 describe('slot frames', () => {
+  it('keeps a glowing slot on the stall foot unless the build strip covers it', () => {
+    const views = [
+      { w: 1920, h: 1080 },
+      { w: 1280, h: 720 },
+      { w: 390, h: 844 },
+    ]
+    for (const view of views) {
+      const cover = coverTransform(view.w, view.h)
+      const strip = buildStripRect(view.w, view.h)
+      for (let index = 0; index < PLAZA_SLOTS.length; index += 1) {
+        const frame = slotFrame(index, null)
+        const foot = { x: frame.x * cover.scale + cover.offsetX, y: frame.y * cover.scale + cover.offsetY }
+        const hit = glowSlotHit(frame, cover, view.w, view.h)
+        expect(hit.left + hit.width / 2).toBeCloseTo(foot.x, 4)
+        const covered = foot.x >= strip.left && foot.x <= strip.left + strip.width && foot.y >= strip.top && foot.y <= strip.top + strip.height
+        if (!covered) {
+          expect(hit.top + hit.height / 2).toBeCloseTo(foot.y, 4)
+        } else {
+          expect(hit.top + hit.height).toBeLessThanOrEqual(strip.top + 0.01)
+          expect(hit.left + hit.width / 2).toBeCloseTo(foot.x, 4)
+        }
+      }
+    }
+  })
+
+  it('lifts a foot pad that would sit under the build strip', () => {
+    const covered = { left: 40, top: 600, width: 36, height: 40 }
+    const lifted = clearOfDock(covered, 590)
+    expect(lifted.top + lifted.height).toBeLessThanOrEqual(590)
+    const clear = { left: 40, top: 200, width: 36, height: 40 }
+    expect(clearOfDock(clear, 590)).toEqual(clear)
+  })
+
   it('anchors the pad on the slot and scales it with the stall art', () => {
     const ice = slotFrame(1, 'ice')
     const slot = PLAZA_SLOTS[1] as { x: number; y: number }
