@@ -42,6 +42,15 @@ export function clamp01(value: number): number {
   return value
 }
 
+/** A hidden or frozen tab must not spend the whole gap on one frame. */
+export const MAX_LIGHT_FRAME_MS = 100
+
+/** Positive frame gap, capped so a resume continues the fade instead of skipping it. */
+export function clampFrameDt(dtMs: number, maxMs = MAX_LIGHT_FRAME_MS): number {
+  if (!(dtMs > 0) || !(maxMs > 0)) return 0
+  return Math.min(dtMs, maxMs)
+}
+
 /** Smoothstep. 0 at the start, 1 after `durationSec`, eased so the ends don't pop. */
 export function fadeT(elapsedMs: number, durationSec: number): number {
   if (!(durationSec > 0)) return 1
@@ -111,6 +120,10 @@ interface OverlayFade {
 }
 
 export interface LightState {
+  /** Last rAF timestamp. Wall-clock gaps are not fade time. */
+  seenAt: number
+  /** Clock the fades actually run on. */
+  clock: number
   tint: TintFade
   garland: OverlayFade
   rain: OverlayFade
@@ -136,6 +149,8 @@ export interface LightInput {
   lightFadeSec: number
   overlayFadeSec: number
   reduceMotion: boolean
+  /** Page is in the background. The fade holds until it is visible again. */
+  hidden?: boolean
 }
 
 function tintKey(weather: Weather, phase: Phase, showRain: boolean): string {
@@ -170,31 +185,38 @@ function stepOverlay(prev: OverlayFade | null, desired: string | null, now: numb
   return prev
 }
 
+function lightClock(prev: LightState | null, now: number, hidden: boolean): { seenAt: number; clock: number } {
+  if (!prev) return { seenAt: now, clock: now }
+  const dt = hidden ? 0 : clampFrameDt(now - prev.seenAt)
+  return { seenAt: now, clock: prev.clock + dt }
+}
+
 /** Render-only light. The street simulation is not read or written. */
 export function stepLights(prev: LightState | null, input: LightInput): { state: LightState; frame: LightFrame } {
+  const { seenAt, clock } = lightClock(prev, input.now, input.hidden === true)
   const target = shownTint(input.weather, input.phase, input.showRain, input)
   const key = tintKey(input.weather, input.phase, input.showRain)
   let tint: TintFade
   if (!prev) {
-    tint = { key, from: target, startedAt: input.now - Math.max(0, input.lightFadeSec) * 1000, target }
+    tint = { key, from: target, startedAt: clock - Math.max(0, input.lightFadeSec) * 1000, target }
   } else if (prev.tint.key !== key) {
-    tint = { key, from: sampleTint(prev.tint, input.now, input.lightFadeSec), startedAt: input.now, target }
-  } else if (fadeT(input.now - prev.tint.startedAt, input.lightFadeSec) >= 1) {
-    tint = { key, from: target, startedAt: input.now - Math.max(0, input.lightFadeSec) * 1000, target }
+    tint = { key, from: sampleTint(prev.tint, clock, input.lightFadeSec), startedAt: clock, target }
+  } else if (fadeT(clock - prev.tint.startedAt, input.lightFadeSec) >= 1) {
+    tint = { key, from: target, startedAt: clock - Math.max(0, input.lightFadeSec) * 1000, target }
   } else {
     tint = { ...prev.tint, target }
   }
-  const garland = stepOverlay(prev?.garland ?? null, input.festival, input.now, input.overlayFadeSec)
-  const rain = stepOverlay(prev?.rain ?? null, input.showRain ? 'rain' : null, input.now, input.overlayFadeSec)
-  const state = { tint, garland, rain }
-  const garlandShown = sampleOverlay(garland, input.now, input.overlayFadeSec)
+  const garland = stepOverlay(prev?.garland ?? null, input.festival, clock, input.overlayFadeSec)
+  const rain = stepOverlay(prev?.rain ?? null, input.showRain ? 'rain' : null, clock, input.overlayFadeSec)
+  const state = { seenAt, clock, tint, garland, rain }
+  const garlandShown = sampleOverlay(garland, clock, input.overlayFadeSec)
   return {
     state,
     frame: {
-      tint: rgbaCss(sampleTint(tint, input.now, input.lightFadeSec)),
-      garlandAlpha: garlandShown * garlandTwinkle(input.now, input.reduceMotion),
+      tint: rgbaCss(sampleTint(tint, clock, input.lightFadeSec)),
+      garlandAlpha: garlandShown * garlandTwinkle(clock, input.reduceMotion),
       garlandId: garland.id,
-      rainAlpha: sampleOverlay(rain, input.now, input.overlayFadeSec),
+      rainAlpha: sampleOverlay(rain, clock, input.overlayFadeSec),
     },
   }
 }

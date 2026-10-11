@@ -146,6 +146,7 @@ export function StreetScreen({
   const buildFxRef = useRef<{ slot: number; start: number } | null>(null)
   const reduceRef = useRef(false)
   const lightRef = useRef<LightState | null>(null)
+  const lightHiddenRef = useRef(false)
   const motionRef = useRef<{
     tick: number
     tickAt: number
@@ -242,6 +243,15 @@ export function StreetScreen({
     const id = window.setTimeout(() => setNotice(''), 4000)
     return () => window.clearTimeout(id)
   }, [notice])
+
+  useEffect(() => {
+    const onVisibility = () => {
+      lightHiddenRef.current = document.visibilityState === 'hidden'
+    }
+    onVisibility()
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -344,6 +354,7 @@ export function StreetScreen({
           lightFadeSec: gameConfig.lightFadeSec,
           overlayFadeSec: gameConfig.garlandFadeSec,
           reduceMotion: reduce,
+          hidden: lightHiddenRef.current,
         })
         lightRef.current = lights.state
         drawPlaza(ctx, width, height, imagesRef.current.get(BG_SRC), imagesRef.current, scene, now, frames, spark, viewCover, {
