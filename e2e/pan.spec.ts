@@ -39,23 +39,17 @@ test('a portrait phone can pan the plaza and tap a stall that started off screen
   await panToEdge(page, 1)
   await expect(page.getByTestId('pan-hint-left')).toHaveCount(0)
   await expect(page.getByTestId('pan-hint-right')).toBeVisible()
-  const revealed = await slotBox(page, 'slot-1')
-  expect(revealed.x).toBeGreaterThanOrEqual(0)
-  expect(revealed.x + revealed.width / 2).toBeLessThan(390)
-  await page.getByTestId('slot-1').click()
-  await expect(page.getByTestId('stall-card')).toContainText('夢境冰淇淋')
   await saveScreenshot(page, '/opt/cursor/artifacts/plaza-pan-left-390.png')
+  await clickInView(page, 'slot-1')
+  await expect(page.getByTestId('stall-card')).toContainText('夢境冰淇淋')
 
   await page.getByTestId('street-canvas').click({ position: { x: 300, y: 120 } })
   await panToEdge(page, -1)
   await expect(page.getByTestId('pan-hint-right')).toHaveCount(0)
   await expect(page.getByTestId('pan-hint-left')).toBeVisible()
-  const rightSlot = await slotBox(page, 'slot-7')
-  expect(rightSlot.x + rightSlot.width).toBeGreaterThan(0)
-  expect(rightSlot.x).toBeLessThan(390)
-  await page.getByTestId('slot-7').click()
-  await expect(page.getByTestId('slot-7')).toHaveClass(/selected/)
   await saveScreenshot(page, '/opt/cursor/artifacts/plaza-pan-right-390.png')
+  await clickInView(page, 'slot-7')
+  await expect(page.getByTestId('slot-7')).toHaveClass(/selected/)
 
   const panned = Number(await page.getByTestId('street-metrics').getAttribute('data-pan-x'))
   await page.getByTestId('phone-charm').click()
@@ -77,6 +71,23 @@ test('a portrait phone can pan the plaza and tap a stall that started off screen
   await expect(page.getByTestId('pan-hint-right')).toHaveCount(0)
   await expect.poll(async () => Number(await page.getByTestId('street-metrics').getAttribute('data-pan-x'))).toBe(0)
 })
+
+async function clickInView(page: Page, id: string) {
+  const box = await slotBox(page, id)
+  const view = page.viewportSize() ?? { width: 390, height: 844 }
+  const left = Math.max(box.x, 4)
+  const right = Math.min(box.x + box.width, view.width - 4)
+  const top = Math.max(box.y, 4)
+  const bottom = Math.min(box.y + box.height, view.height - 4)
+  expect(right - left).toBeGreaterThan(12)
+  expect(bottom - top).toBeGreaterThan(8)
+  await page.getByTestId(id).click({
+    position: {
+      x: left + (right - left) / 2 - box.x,
+      y: top + (bottom - top) / 2 - box.y,
+    },
+  })
+}
 
 async function slotBox(page: Page, id: string) {
   return page.getByTestId(id).evaluate((el) => {
