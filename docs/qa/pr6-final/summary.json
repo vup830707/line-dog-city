@@ -1,0 +1,639 @@
+{
+  "seeds": 32,
+  "hours": 12,
+  "elapsedSec": 31.416,
+  "config": {
+    "offlineCapHours": 8,
+    "tickMs": 1000,
+    "wishSuccessRate": 0.6,
+    "ichibanRestockTicks": 180,
+    "startingMoney": 800
+  },
+  "idle": {
+    "seeds": 32,
+    "finalMoneyMedian": 410395.5,
+    "finalMoneyP10": 408554.30000000005,
+    "finalMoneyP90": 411555.60000000003,
+    "hour1Median": 35296.5,
+    "hour3Median": 103335,
+    "grossHourMedian": [
+      34496.5,
+      33997.5,
+      33946,
+      34169,
+      33976,
+      34349,
+      34042,
+      34054.5,
+      34186.5,
+      34230.5,
+      34131,
+      34244
+    ],
+    "collectionComplete": 32,
+    "collectionHourMedian": 1.8777777777777778,
+    "boxOpensMedian": 5,
+    "boxOpensMax": 6,
+    "drawsMedian": 398,
+    "ichibanGoldMedian": 19700,
+    "ichibanShare": 0.04902073768768959,
+    "openingFactorMedian": 1.025,
+    "firstPurchaseHourMedian": 0,
+    "purchasesPer10Min": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "firstHourGapMinMedian": 0,
+    "firstHourGapMinMax": 0,
+    "finalTicketsMedian": 22.5,
+    "stalled": 0,
+    "stallHourMedian": 0,
+    "lastPrizeSeeds": 32,
+    "minOpDelta": 0,
+    "maxQuietMinMedian": 0.30833333333333335,
+    "maxQuietMinMax": 0.38333333333333336,
+    "maxUnaffordableMinMedian": 0,
+    "maxUnaffordableMinMax": 0,
+    "safeInteger": true,
+    "endStockMedian": {
+      "ice": 4,
+      "can": 4,
+      "charge": 4,
+      "fortune": 4
+    },
+    "milestones": {
+      "hire-1": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "hire-2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "ice-lv2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "can-lv2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "charge-lv2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "fortune-lv2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "fortune-lv3": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "opening-lv3": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "stall-tree": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "shop-empty": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "wish-placed": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "collection": {
+        "seeds": 32,
+        "medianHour": 1.8777777777777778
+      },
+      "letter-sparrow": {
+        "seeds": 32,
+        "medianHour": 0.0008333333333333334
+      },
+      "letter-hedgehog": {
+        "seeds": 32,
+        "medianHour": 0.013888888888888888
+      },
+      "letter-bear": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "bear-seen": {
+        "seeds": 0,
+        "medianHour": null
+      }
+    }
+  },
+  "reasonable": {
+    "seeds": 32,
+    "finalMoneyMedian": 1031124.5,
+    "finalMoneyP10": 1024410.8,
+    "finalMoneyP90": 1035682.2000000001,
+    "hour1Median": 37154,
+    "hour3Median": 212890,
+    "grossHourMedian": [
+      76050.5,
+      91842.5,
+      91265,
+      90582.5,
+      90809.5,
+      90680,
+      90909,
+      90864.5,
+      90980.5,
+      90582,
+      91056,
+      91008
+    ],
+    "collectionComplete": 32,
+    "collectionHourMedian": 1.2402777777777776,
+    "boxOpensMedian": 6,
+    "boxOpensMax": 7,
+    "drawsMedian": 459,
+    "ichibanGoldMedian": 38122.5,
+    "ichibanShare": 0.03699406472887582,
+    "openingFactorMedian": 1.025,
+    "firstPurchaseHourMedian": 0.002777777777777778,
+    "purchasesPer10Min": [
+      11,
+      3,
+      4,
+      2,
+      0,
+      0
+    ],
+    "firstHourGapMinMedian": 4.408333333333333,
+    "firstHourGapMinMax": 4.65,
+    "finalTicketsMedian": 22,
+    "stalled": 0,
+    "stallHourMedian": 0,
+    "lastPrizeSeeds": 32,
+    "minOpDelta": 0,
+    "maxQuietMinMedian": 0.21666666666666667,
+    "maxQuietMinMax": 0.2833333333333333,
+    "maxUnaffordableMinMedian": 4.408333333333333,
+    "maxUnaffordableMinMax": 4.65,
+    "safeInteger": true,
+    "endStockMedian": {
+      "ice": 12,
+      "can": 12,
+      "charge": 12,
+      "fortune": 12
+    },
+    "milestones": {
+      "hire-1": {
+        "seeds": 32,
+        "medianHour": 0.002777777777777778
+      },
+      "hire-2": {
+        "seeds": 32,
+        "medianHour": 0.09444444444444444
+      },
+      "ice-lv2": {
+        "seeds": 32,
+        "medianHour": 0.20277777777777778
+      },
+      "can-lv2": {
+        "seeds": 32,
+        "medianHour": 0.15833333333333333
+      },
+      "charge-lv2": {
+        "seeds": 32,
+        "medianHour": 0.2833333333333333
+      },
+      "fortune-lv2": {
+        "seeds": 32,
+        "medianHour": 0.3375
+      },
+      "fortune-lv3": {
+        "seeds": 32,
+        "medianHour": 0.6333333333333333
+      },
+      "opening-lv3": {
+        "seeds": 32,
+        "medianHour": 0.6333333333333333
+      },
+      "stall-tree": {
+        "seeds": 32,
+        "medianHour": 0.6333333333333333
+      },
+      "shop-empty": {
+        "seeds": 32,
+        "medianHour": 0.6333333333333333
+      },
+      "wish-placed": {
+        "seeds": 32,
+        "medianHour": 1.2416666666666667
+      },
+      "collection": {
+        "seeds": 32,
+        "medianHour": 1.2402777777777776
+      },
+      "letter-sparrow": {
+        "seeds": 32,
+        "medianHour": 0.0008333333333333334
+      },
+      "letter-hedgehog": {
+        "seeds": 32,
+        "medianHour": 0.013194444444444446
+      },
+      "letter-bear": {
+        "seeds": 32,
+        "medianHour": 1.247638888888889
+      },
+      "bear-seen": {
+        "seeds": 32,
+        "medianHour": 1.2468055555555555
+      }
+    }
+  },
+  "blueprint": {
+    "seeds": 32,
+    "finalMoneyMedian": 962971,
+    "finalMoneyP10": 954241.3999999999,
+    "finalMoneyP90": 976320.6,
+    "hour1Median": 42071.5,
+    "hour3Median": 144889.5,
+    "grossHourMedian": [
+      43251.5,
+      59728,
+      91314.5,
+      90708.5,
+      91126,
+      91139,
+      90979,
+      90716,
+      90667.5,
+      91077,
+      90618.5,
+      91002
+    ],
+    "collectionComplete": 32,
+    "collectionHourMedian": 1.637361111111111,
+    "boxOpensMedian": 6,
+    "boxOpensMax": 7,
+    "drawsMedian": 454,
+    "ichibanGoldMedian": 35582.5,
+    "ichibanShare": 0.03753989074761791,
+    "openingFactorMedian": 0.6,
+    "firstPurchaseHourMedian": 0.002777777777777778,
+    "purchasesPer10Min": [
+      11,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "firstHourGapMinMedian": 0.5666666666666667,
+    "firstHourGapMinMax": 0.8166666666666667,
+    "finalTicketsMedian": 43.5,
+    "stalled": 0,
+    "stallHourMedian": 0,
+    "lastPrizeSeeds": 32,
+    "minOpDelta": 0,
+    "maxQuietMinMedian": 0.575,
+    "maxQuietMinMax": 0.6833333333333333,
+    "maxUnaffordableMinMedian": 0.5666666666666667,
+    "maxUnaffordableMinMax": 0.8166666666666667,
+    "safeInteger": true,
+    "endStockMedian": {
+      "ice": 12,
+      "can": 12,
+      "charge": 12,
+      "fortune": 12
+    },
+    "milestones": {
+      "hire-1": {
+        "seeds": 32,
+        "medianHour": 1.6402777777777777
+      },
+      "hire-2": {
+        "seeds": 32,
+        "medianHour": 1.6430555555555555
+      },
+      "ice-lv2": {
+        "seeds": 32,
+        "medianHour": 1.6430555555555555
+      },
+      "can-lv2": {
+        "seeds": 32,
+        "medianHour": 1.6402777777777777
+      },
+      "charge-lv2": {
+        "seeds": 32,
+        "medianHour": 1.6486111111111112
+      },
+      "fortune-lv2": {
+        "seeds": 32,
+        "medianHour": 1.6541666666666668
+      },
+      "fortune-lv3": {
+        "seeds": 32,
+        "medianHour": 1.6708333333333334
+      },
+      "opening-lv3": {
+        "seeds": 32,
+        "medianHour": 1.6708333333333334
+      },
+      "stall-tree": {
+        "seeds": 32,
+        "medianHour": 1.6708333333333334
+      },
+      "shop-empty": {
+        "seeds": 32,
+        "medianHour": 0.04722222222222222
+      },
+      "wish-placed": {
+        "seeds": 32,
+        "medianHour": 1.6375
+      },
+      "collection": {
+        "seeds": 32,
+        "medianHour": 1.637361111111111
+      },
+      "letter-sparrow": {
+        "seeds": 32,
+        "medianHour": 0.01611111111111111
+      },
+      "letter-hedgehog": {
+        "seeds": 32,
+        "medianHour": 0.04611111111111111
+      },
+      "letter-bear": {
+        "seeds": 32,
+        "medianHour": 1.6413888888888888
+      },
+      "bear-seen": {
+        "seeds": 32,
+        "medianHour": 1.6391666666666667
+      }
+    }
+  },
+  "refund": {
+    "seeds": 8,
+    "finalMoneyMedian": 100634,
+    "finalMoneyP10": 100173.2,
+    "finalMoneyP90": 101186.59999999999,
+    "hour1Median": 34247,
+    "hour3Median": 100634,
+    "grossHourMedian": [
+      33447,
+      33105,
+      33147
+    ],
+    "collectionComplete": 0,
+    "collectionHourMedian": 0,
+    "boxOpensMedian": 60,
+    "boxOpensMax": 60,
+    "drawsMedian": 0,
+    "ichibanGoldMedian": 0,
+    "ichibanShare": 0,
+    "openingFactorMedian": 1.025,
+    "firstPurchaseHourMedian": 0,
+    "purchasesPer10Min": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "firstHourGapMinMedian": 0,
+    "firstHourGapMinMax": 0,
+    "finalTicketsMedian": 0,
+    "stalled": 0,
+    "stallHourMedian": 0,
+    "lastPrizeSeeds": 0,
+    "minOpDelta": 0,
+    "maxQuietMinMedian": 0.3,
+    "maxQuietMinMax": 0.3,
+    "maxUnaffordableMinMedian": 0,
+    "maxUnaffordableMinMax": 0,
+    "safeInteger": true,
+    "endStockMedian": {
+      "ice": 4,
+      "can": 4,
+      "charge": 4,
+      "fortune": 3.5
+    },
+    "milestones": {
+      "hire-1": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "hire-2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "ice-lv2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "can-lv2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "charge-lv2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "fortune-lv2": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "fortune-lv3": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "opening-lv3": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "stall-tree": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "shop-empty": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "wish-placed": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "collection": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "letter-sparrow": {
+        "seeds": 8,
+        "medianHour": 0.0008333333333333334
+      },
+      "letter-hedgehog": {
+        "seeds": 8,
+        "medianHour": 0.014166666666666666
+      },
+      "letter-bear": {
+        "seeds": 0,
+        "medianHour": null
+      },
+      "bear-seen": {
+        "seeds": 0,
+        "medianHour": null
+      }
+    },
+    "goldPerHour": 33278,
+    "idleGoldPerHour": 34178.33333333333
+  },
+  "missingFiguresIdle": {},
+  "letters": {
+    "idle:sparrow": 32,
+    "idle:hedgehog": 32,
+    "reasonable:sparrow": 32,
+    "reasonable:hedgehog": 32,
+    "reasonable:bear": 32,
+    "blueprint:rabbit": 32,
+    "blueprint:sparrow": 32,
+    "blueprint:otter": 32,
+    "blueprint:hamster": 32,
+    "blueprint:hedgehog": 32,
+    "blueprint:bear": 32
+  },
+  "speciesIdle": {
+    "cat": 19.223494093527286,
+    "rabbit": 21.347709004523413,
+    "hamster": 13.17973250024407,
+    "sparrow": 18.04972501545771,
+    "otter": 12.039726317159687,
+    "hedgehog": 14.7975039864623,
+    "fox": 1.3621090826255329,
+    "bear": 0
+  },
+  "speciesFestivalIdle": {
+    "cat": 17.29322007508261,
+    "rabbit": 19.063024410497725,
+    "hamster": 11.700084770686642,
+    "sparrow": 16.232721485044028,
+    "otter": 10.906008338667544,
+    "hedgehog": 13.219037074200301,
+    "fox": 11.585903845821152,
+    "bear": 0
+  },
+  "bearShareWhileWish": 0.24525500416931253,
+  "wish": {
+    "trials": 20000,
+    "mechanismRate": 0.60415,
+    "outcomeRate": 0.70285
+  },
+  "levers": {
+    "baseline": {
+      "goldPerHour": 34344.25,
+      "spawnsPerHour": 1284.5,
+      "visitMin": 0.874325,
+      "visitMax": 0.874325,
+      "endStock": {
+        "ice": 4,
+        "can": 4,
+        "charge": 4,
+        "fortune": 4
+      }
+    },
+    "no-decor": {
+      "goldPerHour": 23648.25,
+      "spawnsPerHour": 884,
+      "visitMin": 0.6,
+      "visitMax": 0.6,
+      "endStock": {
+        "ice": 4,
+        "can": 4,
+        "charge": 4,
+        "fortune": 4
+      }
+    },
+    "stall-lv3": {
+      "goldPerHour": 98563,
+      "spawnsPerHour": 2201.25,
+      "visitMin": 1.5,
+      "visitMax": 1.5,
+      "endStock": {
+        "ice": 11.5,
+        "can": 12,
+        "charge": 12,
+        "fortune": 12
+      }
+    },
+    "restock-lv3": {
+      "goldPerHour": 34344.25,
+      "spawnsPerHour": 1284.5,
+      "visitMin": 0.874325,
+      "visitMax": 0.874325,
+      "endStock": {
+        "ice": 4,
+        "can": 4,
+        "charge": 4,
+        "fortune": 4
+      }
+    }
+  },
+  "reasonableWish": {
+    "casts": 20558,
+    "hits": 14462
+  },
+  "offline": [
+    {
+      "seed": 1,
+      "offline": 275425,
+      "online": 275425,
+      "match": true
+    },
+    {
+      "seed": 2,
+      "offline": 272681,
+      "online": 272681,
+      "match": true
+    },
+    {
+      "seed": 3,
+      "offline": 271428,
+      "online": 271428,
+      "match": true
+    },
+    {
+      "seed": 4,
+      "offline": 272965,
+      "online": 272965,
+      "match": true
+    }
+  ],
+  "long": {
+    "idleMoney72": 2456244,
+    "reasonableMoney72": 6484377,
+    "idleLinearSlopePerHour": 34063.475417032474,
+    "idleLinearR2": 0.9999992403850562,
+    "idleLogR2": 0.9148264252801697,
+    "idleMissing": [],
+    "idleTickets": 28,
+    "idleOpens": 30,
+    "reasonableOpens": 35,
+    "reasonableMissing": [],
+    "idleSafe": true,
+    "reasonableSafe": true,
+    "idleMinDelta": 0,
+    "reasonableMinDelta": 0
+  },
+  "visitFactor": {
+    "idleMin": 0.874325,
+    "idleMax": 0.874325,
+    "reasonableMin": 1.5,
+    "blueprintMin": 1.1302249999999998
+  }
+}
