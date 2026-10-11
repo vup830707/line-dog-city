@@ -309,7 +309,7 @@ describe('walking poses', () => {
     const white = scene.find((sprite) => sprite.id === 'staff-dog-white')
     const brown = scene.find((sprite) => sprite.id === 'staff-dog-brown')
     expect(white?.src).toMatch(/white-puppy-back-/)
-    expect(white?.mirror).toBe(true)
+    expect(white?.mirror).toBe(false)
     expect(brown?.src).toMatch(/brown-puppy-back-/)
     expect(walkFacing(8, 1)).toEqual({ facing: 'front', mirror: false })
   })

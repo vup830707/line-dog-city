@@ -12,6 +12,8 @@ import {
   artSources,
   layoutScene,
   queueSpot,
+  walkFacing,
+  walkMirror,
 } from './plaza'
 import type { HireSpecies, Species } from '../rules/types'
 import {
@@ -186,6 +188,41 @@ describe('walk frames', () => {
       expect(person?.footOffset).toBeCloseTo((512 - 500) / 512)
       expect(person?.drawH).toBeGreaterThan(CUSTOMER_H * 0.8)
       expect(person?.drawH).toBeLessThan(CUSTOMER_H * 1.05)
+    }
+  })
+
+  it('faces every walker along dx, using that sheet\'s authored direction', () => {
+    const authored: Record<string, { frontFacesRight: boolean; backFacesRight: boolean }> = {
+      cat: { frontFacesRight: true, backFacesRight: false },
+      rabbit: { frontFacesRight: false, backFacesRight: true },
+      hamster: { frontFacesRight: false, backFacesRight: false },
+      sparrow: { frontFacesRight: false, backFacesRight: true },
+      'white-puppy': { frontFacesRight: true, backFacesRight: true },
+      'brown-puppy': { frontFacesRight: true, backFacesRight: true },
+      hedgehog: { frontFacesRight: true, backFacesRight: true },
+      otter: { frontFacesRight: false, backFacesRight: true },
+      bear: { frontFacesRight: false, backFacesRight: true },
+      fox: { frontFacesRight: false, backFacesRight: true },
+      ferret: { frontFacesRight: false, backFacesRight: false },
+      munia: { frontFacesRight: false, backFacesRight: true },
+    }
+    expect(Object.keys(WALK_ACTORS).sort()).toEqual(Object.keys(authored).sort())
+    const shownRight = (nativeRight: boolean, mirror: boolean) => nativeRight !== mirror
+    for (const [id, flags] of Object.entries(authored)) {
+      const actor = WALK_ACTORS[id]
+      expect(actor?.frontFacesRight, id).toBe(flags.frontFacesRight)
+      expect(actor?.backFacesRight, id).toBe(flags.backFacesRight)
+      for (const facing of ['front', 'back'] as const) {
+        const nativeRight = facing === 'front' ? flags.frontFacesRight : flags.backFacesRight
+        const dy = facing === 'back' ? -6 : 1
+        const right = walkFacing(4, dy, actor)
+        const left = walkFacing(-4, dy, actor)
+        expect(right.facing, `${id} ${facing} right`).toBe(facing)
+        expect(left.facing, `${id} ${facing} left`).toBe(facing)
+        expect(shownRight(nativeRight, right.mirror), `${id} ${facing} walks right`).toBe(true)
+        expect(shownRight(nativeRight, left.mirror), `${id} ${facing} walks left`).toBe(false)
+        expect(walkMirror(0, facing, flags), `${id} ${facing} vertical`).toBe(false)
+      }
     }
   })
 

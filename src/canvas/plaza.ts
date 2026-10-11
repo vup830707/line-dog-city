@@ -298,16 +298,29 @@ export interface Facing {
   mirror: boolean
 }
 
-/** Down or right faces the camera. Up faces away. Left mirrors a front walk. */
-export function walkFacing(dx: number, dy: number): Facing {
+/** Which way the unmirrored sheet is drawn. Batch 1's cat is the default. */
+export interface WalkSheet {
+  frontFacesRight: boolean
+  backFacesRight: boolean
+}
+
+const CAT_SHEET: WalkSheet = { frontFacesRight: true, backFacesRight: false }
+
+/**
+ * Flip the sheet so the face points with `dx`.
+ * `dx === 0` leaves the drawing as authored.
+ */
+export function walkMirror(dx: number, facing: 'front' | 'back', sheet: WalkSheet = CAT_SHEET): boolean {
+  if (dx === 0) return false
+  const nativeRight = facing === 'front' ? sheet.frontFacesRight : sheet.backFacesRight
+  return nativeRight !== dx > 0
+}
+
+/** Down or right faces the camera. Up faces away. Mirror follows the sheet and dx. */
+export function walkFacing(dx: number, dy: number, sheet: WalkSheet = CAT_SHEET): Facing {
   if (dx === 0 && dy === 0) return { facing: 'front', mirror: false }
-  if (Math.abs(dy) >= Math.abs(dx)) {
-    if (dy >= 0) return { facing: 'front', mirror: dx < 0 }
-    // Back sheets lean the other way, so a step to screen-right is mirrored.
-    return { facing: 'back', mirror: dx > 0 }
-  }
-  if (dx >= 0) return { facing: 'front', mirror: false }
-  return { facing: 'front', mirror: true }
+  const facing: 'front' | 'back' = Math.abs(dy) >= Math.abs(dx) && dy < 0 ? 'back' : 'front'
+  return { facing, mirror: walkMirror(dx, facing, sheet) }
 }
 
 /** A step shorter than this does not change which way someone is facing. */
@@ -322,9 +335,15 @@ const FACING_COMMIT = 1
  * Mirror follows dx. A character who has stopped, or whose step is inside the
  * dead zone, keeps the facing they already had.
  */
-export function facingFromStep(dx: number, dy: number, moving: boolean, held: Facing): Facing {
+export function facingFromStep(
+  dx: number,
+  dy: number,
+  moving: boolean,
+  held: Facing,
+  sheet: WalkSheet = CAT_SHEET,
+): Facing {
   if (!moving || Math.hypot(dx, dy) < FACING_DEAD_ZONE) return held
-  const next = walkFacing(dx, dy)
+  const next = walkFacing(dx, dy, sheet)
   if (next.facing === held.facing) {
     if (next.mirror !== held.mirror && Math.abs(dx) < FACING_DEAD_ZONE) return held
     return next
@@ -356,6 +375,15 @@ export interface ArtPiece {
   frames?: WalkFrames
   /** Overrides `walkFps` for this sheet. */
   fps?: number
+  frontFacesRight?: boolean
+  backFacesRight?: boolean
+}
+
+function walkSheetOf(art: { frontFacesRight?: boolean; backFacesRight?: boolean }): WalkSheet {
+  return {
+    frontFacesRight: art.frontFacesRight ?? CAT_SHEET.frontFacesRight,
+    backFacesRight: art.backFacesRight ?? CAT_SHEET.backFacesRight,
+  }
 }
 
 function piece(src: string, width: number, height: number, drawH: number): ArtPiece {
@@ -366,20 +394,21 @@ function piece(src: string, width: number, height: number, drawH: number): ArtPi
  * Characters with a walk sheet. Adding the next batch is a new row:
  * animals and hires are keyed by id, dogs by `${dog}-puppy`.
  * Feet sit at `foot` on a `height` canvas (these sheets: y=500 of 512).
+ * `frontFacesRight` / `backFacesRight` describe the unmirrored drawing.
  */
-export const WALK_ACTORS: Record<string, { file: string; width: number; height: number; foot: number }> = {
-  cat: { file: 'cat', width: 360, height: 512, foot: 500 },
-  rabbit: { file: 'rabbit', width: 284, height: 512, foot: 500 },
-  hamster: { file: 'hamster', width: 404, height: 512, foot: 500 },
-  sparrow: { file: 'duck', width: 396, height: 512, foot: 500 },
-  'white-puppy': { file: 'white-puppy', width: 374, height: 512, foot: 500 },
-  'brown-puppy': { file: 'brown-puppy', width: 430, height: 512, foot: 500 },
-  hedgehog: { file: 'hedgehog', width: 370, height: 512, foot: 500 },
-  otter: { file: 'otter', width: 414, height: 512, foot: 500 },
-  bear: { file: 'raccoon', width: 400, height: 512, foot: 500 },
-  fox: { file: 'red-panda', width: 424, height: 512, foot: 500 },
-  ferret: { file: 'ferret', width: 450, height: 512, foot: 500 },
-  munia: { file: 'munia', width: 456, height: 512, foot: 500 },
+export const WALK_ACTORS: Record<string, { file: string; width: number; height: number; foot: number } & WalkSheet> = {
+  cat: { file: 'cat', width: 360, height: 512, foot: 500, frontFacesRight: true, backFacesRight: false },
+  rabbit: { file: 'rabbit', width: 284, height: 512, foot: 500, frontFacesRight: false, backFacesRight: true },
+  hamster: { file: 'hamster', width: 404, height: 512, foot: 500, frontFacesRight: false, backFacesRight: false },
+  sparrow: { file: 'duck', width: 396, height: 512, foot: 500, frontFacesRight: false, backFacesRight: true },
+  'white-puppy': { file: 'white-puppy', width: 374, height: 512, foot: 500, frontFacesRight: true, backFacesRight: true },
+  'brown-puppy': { file: 'brown-puppy', width: 430, height: 512, foot: 500, frontFacesRight: true, backFacesRight: true },
+  hedgehog: { file: 'hedgehog', width: 370, height: 512, foot: 500, frontFacesRight: true, backFacesRight: true },
+  otter: { file: 'otter', width: 414, height: 512, foot: 500, frontFacesRight: false, backFacesRight: true },
+  bear: { file: 'raccoon', width: 400, height: 512, foot: 500, frontFacesRight: false, backFacesRight: true },
+  fox: { file: 'red-panda', width: 424, height: 512, foot: 500, frontFacesRight: false, backFacesRight: true },
+  ferret: { file: 'ferret', width: 450, height: 512, foot: 500, frontFacesRight: false, backFacesRight: false },
+  munia: { file: 'munia', width: 456, height: 512, foot: 500, frontFacesRight: false, backFacesRight: true },
 }
 
 function actorPiece(base: ArtPiece, actorId: string): ArtPiece {
@@ -392,6 +421,8 @@ function actorPiece(base: ArtPiece, actorId: string): ArtPiece {
   return {
     ...base,
     footOffset: (sheet.height - sheet.foot) / sheet.height,
+    frontFacesRight: sheet.frontFacesRight,
+    backFacesRight: sheet.backFacesRight,
     frames: {
       front: [1, 2, 3].map((n) => frame('front', n)),
       back: [1, 2, 3].map((n) => frame('back', n)),
@@ -833,11 +864,12 @@ export function layoutScene(street: Street, timeMs = 0, motion?: SceneMotion): S
     const travel = Math.hypot(here.point.x - prevPose.point.x, here.point.y - prevPose.point.y)
     const walking = glide.glance ? false : previous && prevVisitor ? travel > 3 : here.mode !== 'stand'
     const delta = walking ? { x: here.point.x - prevPose.point.x, y: here.point.y - prevPose.point.y } : here.tangent
-    const facing = Math.hypot(delta.x, delta.y) > 0.5 ? walkFacing(delta.x, delta.y) : walkFacing(here.tangent.x, here.tangent.y)
-    let mirror = facing.mirror
-    if (glide.glance === 'left') mirror = true
-    if (glide.glance === 'right') mirror = false
     const art = ANIMAL_ART[visitor.species]
+    const lean = walkSheetOf(art)
+    const facing = Math.hypot(delta.x, delta.y) > 0.5 ? walkFacing(delta.x, delta.y, lean) : walkFacing(here.tangent.x, here.tangent.y, lean)
+    let mirror = facing.mirror
+    if (glide.glance === 'left') mirror = walkMirror(-1, facing.facing, lean)
+    if (glide.glance === 'right') mirror = walkMirror(1, facing.facing, lean)
     const frame = selectArtFrame(art, facing.facing, timeMs, walking, gameConfig.walkFps)
     const sheet: ArtPiece = { ...art, src: frame.src, aspect: frame.aspect }
     poseIntent.set(`visitor-${visitor.id}`, { art, fallback: facing, glance: glide.glance })
@@ -863,11 +895,13 @@ export function layoutScene(street: Street, timeMs = 0, motion?: SceneMotion): S
     const point = post
     const walking = Boolean(placed?.walking) && !reduce
     const face = placed && walking ? { x: placed.faceX, y: placed.faceY } : faceStaff(street, member.id, point)
-    const facing = Math.hypot(face.x, face.y) > 0.5 ? walkFacing(face.x, face.y) : { facing: 'front' as const, mirror: false }
+    const direction = Math.hypot(face.x, face.y) > 0.5 ? walkFacing(face.x, face.y) : { facing: 'front' as const, mirror: false }
     const art =
       member.kind === 'hire' && member.hireSpecies
         ? HIRE_ART[member.hireSpecies]
-        : puppyArt(member.dog === 'brown' ? 'brown' : 'white', member.job, facing, walking)
+        : puppyArt(member.dog === 'brown' ? 'brown' : 'white', member.job, direction, walking)
+    const lean = walkSheetOf(art)
+    const facing = Math.hypot(face.x, face.y) > 0.5 ? walkFacing(face.x, face.y, lean) : direction
     const frame = selectArtFrame(art, facing.facing, timeMs, walking, gameConfig.walkFps)
     const sheet: ArtPiece = { ...art, src: frame.src, aspect: frame.aspect }
     poseIntent.set(`staff-${member.id}`, { art, fallback: facing, glance: null })
@@ -937,14 +971,15 @@ function commitPoses(
     if (!plan) continue
     live.add(person.id)
     const prev = memory?.get(person.id)
+    const lean = walkSheetOf(plan.art)
     const facing = prev
-      ? facingFromStep(person.x - prev.x, person.y - prev.y, person.bob, prev.facing)
+      ? facingFromStep(person.x - prev.x, person.y - prev.y, person.bob, prev.facing, lean)
       : plan.fallback
     const frame = selectArtFrame(plan.art, facing.facing, timeMs, person.bob, gameConfig.walkFps)
     person.src = frame.src
     person.aspect = frame.aspect
-    if (plan.glance === 'left') person.mirror = true
-    else if (plan.glance === 'right') person.mirror = false
+    if (plan.glance === 'left') person.mirror = walkMirror(-1, facing.facing, lean)
+    else if (plan.glance === 'right') person.mirror = walkMirror(1, facing.facing, lean)
     else person.mirror = facing.mirror
     memory?.set(person.id, { x: person.x, y: person.y, facing })
   }
