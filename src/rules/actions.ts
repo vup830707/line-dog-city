@@ -37,10 +37,17 @@ export function placeBlock(street: Street, slot: number, item: PlaceItem, config
   return null
 }
 
-/** The first copy uses decorCost. Another copy of the same kind uses decorNextCost. */
+/** The first copy uses decorCost. Another copy of the same kind uses decorNextCost. A gift token is free. */
 export function decorPrice(street: Street, decor: DecorType, config: GameConfig): number {
+  if (street.giftTokens.includes(decor)) return 0
   const owned = street.slots.filter((slot) => slot?.decorType === decor).length
   return owned >= 1 ? config.decorNextCost[decor] : config.decorCost[decor]
+}
+
+function consumeGift(tokens: readonly DecorType[], decor: DecorType): DecorType[] {
+  const index = tokens.indexOf(decor)
+  if (index < 0) return [...tokens]
+  return tokens.filter((_, cursor) => cursor !== index)
 }
 
 export function canPlace(street: Street, slot: number, item: PlaceItem, config: GameConfig): boolean {
@@ -68,10 +75,47 @@ export function placeItem(street: Street, slot: number, item: PlaceItem, config:
     if (item.stallType !== 'ichiban') stock[uid] = stockCap(1, config)
     return { ok: true, street: { ...street, money: street.money - cost, slots, stock } }
   }
-  const cost = decorPrice(street, item.decorType, config)
+  const gifted = street.giftTokens.includes(item.decorType)
+  const cost = gifted ? 0 : decorPrice(street, item.decorType, config)
   const slots = street.slots.slice()
   slots[slot] = { uid: `${item.decorType}-${street.tick}-${slot}`, kind: 'decor', decorType: item.decorType, level: 1 }
-  return { ok: true, street: { ...street, money: street.money - cost, slots } }
+  return {
+    ok: true,
+    street: {
+      ...street,
+      money: street.money - cost,
+      slots,
+      giftTokens: gifted ? consumeGift(street.giftTokens, item.decorType) : street.giftTokens,
+    },
+  }
+}
+
+/** Pay the merchant for tonight's rare figure. A short purse just declines. */
+export function buyFromMerchant(street: Street, config: GameConfig): ActionResult {
+  const event = street.nightEvent
+  if (!event || event.kind !== 'merchant' || !event.offer) return fail(street, '今晚沒有商人')
+  if (event.bought) return fail(street, '商人已經把東西交給你了')
+  const price = event.offer.price
+  if (street.money < price) return fail(street, `還差 ${price - street.money} 幣`)
+  const offer = event.offer
+  const figureId = offer.figureId
+  const decorType = offer.decorType
+  const name = figureId
+    ? (config.figures.find((figure) => figure.id === figureId)?.name ?? '稀有造型')
+    : decorType
+      ? config.decorLabels[decorType]
+      : '禮物'
+  return {
+    ok: true,
+    street: {
+      ...street,
+      money: street.money - price,
+      collection: figureId ? { ...street.collection, [figureId]: (street.collection[figureId] ?? 0) + 1 } : street.collection,
+      giftTokens: decorType ? [...street.giftTokens, decorType] : street.giftTokens,
+      nightEvent: { ...event, bought: true },
+      pendingToasts: [...street.pendingToasts, `收下了${name}。`],
+    },
+  }
 }
 
 export function upgradeStall(street: Street, slot: number, config: GameConfig): ActionResult {

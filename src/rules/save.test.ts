@@ -76,7 +76,7 @@ describe('save schema', () => {
     store.setItem(SAVE_KEY, JSON.stringify(v03))
     expect(loadGame(store)).toBeNull()
     const fresh = createNewGame({ playerDog: 'white', whiteName: '雪球', brownName: '可可', now: 1, seed: 4 }, gameConfig)
-    expect(fresh.schemaVersion).toBe(4)
+    expect(fresh.schemaVersion).toBe(5)
     expect(fresh.street.money).toBe(gameConfig.startingMoney)
     expect(fresh.street.money).not.toBe(99999)
     const starter = fresh.street.slots.flatMap((slot) => (slot?.stallType ? [slot.stallType] : []))
@@ -193,7 +193,7 @@ describe('save schema', () => {
     })
     expect(parsed.ok).toBe(true)
     if (!parsed.ok) return
-    expect(parsed.save.schemaVersion).toBe(4)
+    expect(parsed.save.schemaVersion).toBe(5)
     expect(parsed.save.whiteName).toBe('雪球')
     expect(parsed.save.brownName).toBe('豆豆')
     expect(parsed.save.playerDog).toBe('brown')
@@ -288,6 +288,36 @@ describe('save schema', () => {
     expect(parsed.save.street.slots.map((slot) => slot?.uid ?? null)).toEqual(slots.map((slot) => slot?.uid ?? null))
     expect(parsed.save.street.slots[3]?.decorType).toBe('seat')
     expect(parsed.save.street.slots[8]?.stallType).toBe('charge')
+  })
+
+  it('migrates a v4 save to v5 with empty affinity instead of inventing hearts from seen species', () => {
+    const fresh = createNewGame({ playerDog: 'white', whiteName: '雪球', brownName: '可可', now: 30, seed: 4 }, gameConfig)
+    const street = { ...fresh.street, money: 4321, seenSpecies: ['cat', 'rabbit', 'hamster', 'sparrow'] }
+    const legacy = { ...street } as Record<string, unknown>
+    delete legacy.affinity
+    delete legacy.affinityProgress
+    delete legacy.giftTokens
+    delete legacy.nightEvent
+    delete legacy.eventLog
+    const parsed = parseSave({
+      schemaVersion: 4,
+      playerDog: 'white',
+      whiteName: '雪球',
+      brownName: '可可',
+      savedAt: 30,
+      street: legacy,
+    })
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.save.schemaVersion).toBe(5)
+    expect(parsed.save.street.money).toBe(4321)
+    expect(parsed.save.street.affinity).toEqual({})
+    expect(parsed.save.street.affinityProgress).toEqual({})
+    expect(parsed.save.street.giftTokens).toEqual([])
+    expect(parsed.save.street.nightEvent).toBeNull()
+    expect(parsed.save.street.eventLog).toEqual([])
+    expect(parsed.save.street.seenSpecies).toEqual(expect.arrayContaining(['cat', 'rabbit']))
+    expect(parsed.save.street.letters).toEqual(fresh.street.letters)
   })
 
   it('round-trips an exported save through import', () => {

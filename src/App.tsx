@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { gameConfig } from './config'
 import { applyOffline } from './rules/offline'
+import { presentNightEvent } from './rules/events'
 import { runTicks, spawnVisitor, streetTick } from './rules/street'
 import type { SaveV3, Species } from './rules/types'
 import { debugHooksEnabled } from './game/debug'
@@ -114,6 +115,45 @@ export function App() {
           if (!current) return
           pauseRef.current = true
           commit({ ...current, street: { ...current.street, levelUpBanner: level, pendingToasts: [`夜市升到 Lv.${level}！`] } })
+        },
+        showEvent(kind: string) {
+          const current = saveRef.current
+          if (!current) return
+          if (kind !== 'rain' && kind !== 'festival-eve' && kind !== 'merchant') return
+          pauseRef.current = true
+          commit({ ...current, street: presentNightEvent(current.street, kind, gameConfig) })
+        },
+        tune(patch: { weather?: string; phase?: string; day?: number; clearEvent?: boolean }) {
+          const current = saveRef.current
+          if (!current) return
+          pauseRef.current = true
+          const weather = patch.weather
+          const phase = patch.phase
+          const street = {
+            ...current.street,
+            weather: weather === 'sunny' || weather === 'hot' || weather === 'cold' || weather === 'rain' ? weather : current.street.weather,
+            phase: phase === 'dusk' || phase === 'mid' || phase === 'late' ? phase : current.street.phase,
+            day: Number.isFinite(patch.day) ? Math.max(1, Math.floor(patch.day ?? current.street.day)) : current.street.day,
+            nightEvent: patch.clearEvent ? null : current.street.nightEvent,
+          }
+          commit({ ...current, street })
+        },
+        setAffinity(species: string, hearts: number, progress = 0) {
+          const current = saveRef.current
+          if (!current) return
+          const id = species as Species
+          if (!gameConfig.species.some((item) => item.id === id)) return
+          pauseRef.current = true
+          const seen = current.street.seenSpecies.includes(id) ? current.street.seenSpecies : [...current.street.seenSpecies, id]
+          commit({
+            ...current,
+            street: {
+              ...current.street,
+              seenSpecies: seen,
+              affinity: { ...current.street.affinity, [id]: Math.max(0, Math.floor(hearts)) },
+              affinityProgress: { ...current.street.affinityProgress, [id]: Math.max(0, Math.floor(progress)) },
+            },
+          })
         },
         clearSlot(index: number) {
           const current = saveRef.current

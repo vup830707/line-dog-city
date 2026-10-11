@@ -2,6 +2,7 @@ import { LETTERS } from '../content/letters'
 import { PLAZA_SLOTS } from '../canvas/plaza'
 import { ambienceScore } from './ambience'
 import type { Rng } from './rng'
+import { eventSpeciesMultiplier } from './events'
 import { isFestival } from './weather'
 import type { DecorType, GameConfig, Grade, Species, StallType, Street } from './types'
 
@@ -56,7 +57,7 @@ export function speciesWeight(species: Species, street: Street, config: GameConf
   const weights = config.speciesWeights
   let weight = weights.base[species] * weights.weather[species][street.weather] * weights.phase[species][street.phase]
   if (species === 'fox' && isFestival(street.day, config) && boxHasRarePrize(street)) weight *= 2
-  return weight
+  return weight * eventSpeciesMultiplier(species, street, config)
 }
 
 export function pickSpecies(street: Street, config: GameConfig, rng: Rng): Species {

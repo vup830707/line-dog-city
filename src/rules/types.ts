@@ -86,6 +86,34 @@ export interface Letter {
   tick: number
 }
 
+export type NightEventKind = 'rain' | 'festival-eve' | 'merchant'
+
+export interface MerchantOffer {
+  figureId: string | null
+  decorType: DecorType | null
+  price: number
+}
+
+/** One positive night event. Absent fields stay null. */
+export interface NightEvent {
+  day: number
+  kind: NightEventKind
+  festival: string | null
+  offer: MerchantOffer | null
+  bought: boolean
+}
+
+export interface EventNote {
+  id: string
+  /** Monotonic. The log only keeps the latest notes, so the summary cannot use array length. */
+  seq: number
+  day: number
+  kind: NightEventKind
+  title: string
+  body: string
+  tick: number
+}
+
 export interface Street {
   tick: number
   day: number
@@ -121,10 +149,20 @@ export interface Street {
   pendingToasts: string[]
   levelUpBanner: number | null
   speciesSatisfaction: Partial<Record<Species, number>>
+  /** Whole hearts. One heart is `affinityStride` satisfied purchases. */
+  affinity: Partial<Record<Species, number>>
+  /** Satisfied purchases toward the next heart. */
+  affinityProgress: Partial<Record<Species, number>>
+  /** Decorations a regular gave the player. Placing one costs nothing. */
+  giftTokens: DecorType[]
+  nightEvent: NightEvent | null
+  eventLog: EventNote[]
+  /** Next event note sequence. Increases even after the log drops old notes. */
+  eventSeq: number
 }
 
-export interface SaveV4 {
-  schemaVersion: 4
+export interface SaveV5 {
+  schemaVersion: 5
   playerDog: 'white' | 'brown'
   whiteName: string
   brownName: string
@@ -132,8 +170,9 @@ export interface SaveV4 {
   street: Street
 }
 
-/** Current on-disk save. v3 files are migrated on read. */
-export type SaveV3 = SaveV4
+/** Current on-disk save. v3 and v4 files are migrated on read. */
+export type SaveV4 = SaveV5
+export type SaveV3 = SaveV5
 
 export interface ProductDef {
   id: string
@@ -199,6 +238,32 @@ export interface GameConfig {
   refundRate: number
   festivalBonus: number
   letterAt: number
+  /** Hearts at which a regular sends their 2nd letter, 3rd letter, then a gift. */
+  affinityLetters: number[]
+  /**
+   * Pip cost of the first heart. Later hearts cost more when `affinityHeartGrowth` is above 0,
+   * so the 25th heart arrives hours after the third.
+   */
+  affinityStride: number
+  /** No pips below this satisfaction. A dirty opening purchase can sit near 0.2. */
+  affinityMin: number
+  /** pips = round(affinityPipBase * satisfaction). A full score earns the most. */
+  affinityPipBase: number
+  /** Added to the heart-cost multiplier for each heart already earned. */
+  affinityHeartGrowth: number
+  /** Chance of at most one positive event when a night begins. */
+  eventChance: number
+  /** Bustle added on a festival eve. Visits can rise; they never fall. */
+  eventBustle: number
+  /** Extra weight for animals who already like rain, during a sudden shower. */
+  rainLoverBonus: number
+  /** Extra weight for animals who like benches, during a sudden shower. */
+  rainSeatBonus: number
+  /**
+   * Merchant skin price is this times the expected coin cost of one ichiban dog skin
+   * (pull price × tickets in the box ÷ skin tickets). Kept between 1.5 and 2.
+   */
+  merchantPriceMultiplier: number
   decorationDuplicateValue: number
   duplicateValue: Record<Grade, number>
   satisfaction: {

@@ -1,6 +1,41 @@
 import { gameConfig } from '../config'
+import type { Phase, Weather } from '../rules/types'
 import { glowAlpha } from './fx'
-import { bobOffset, coverTransform, depthSort, glowRadii, PLAZA_H, PLAZA_W, toScreen, type CoverTransform, type SceneSprite, type SlotFrame } from './plaza'
+import { bobOffset, coverTransform, depthSort, FESTIVAL_LIGHTS, garlandTiles, glowRadii, PLAZA_H, PLAZA_W, toScreen, type CoverTransform, type SceneSprite, type SlotFrame } from './plaza'
+
+export interface PlazaMood {
+  weather: Weather
+  phase: Phase
+  festival: string | null
+  reduceMotion: boolean
+  showRain: boolean
+}
+
+export function plazaTint(weather: Weather, phase: Phase): string {
+  const tint: Record<Weather, Record<Phase, string>> = {
+    sunny: {
+      dusk: 'rgba(255, 196, 140, 0.18)',
+      mid: 'rgba(176, 196, 255, 0.1)',
+      late: 'rgba(70, 90, 160, 0.16)',
+    },
+    hot: {
+      dusk: 'rgba(255, 150, 90, 0.24)',
+      mid: 'rgba(255, 120, 80, 0.18)',
+      late: 'rgba(190, 80, 60, 0.16)',
+    },
+    cold: {
+      dusk: 'rgba(170, 200, 230, 0.22)',
+      mid: 'rgba(120, 160, 210, 0.2)',
+      late: 'rgba(70, 100, 160, 0.24)',
+    },
+    rain: {
+      dusk: 'rgba(70, 96, 132, 0.34)',
+      mid: 'rgba(48, 72, 112, 0.4)',
+      late: 'rgba(28, 44, 78, 0.48)',
+    },
+  }
+  return tint[weather][phase]
+}
 
 export function drawPlaza(
   ctx: CanvasRenderingContext2D,
@@ -13,6 +48,7 @@ export function drawPlaza(
   frames: readonly { frame: SlotFrame; selected: boolean; glow?: boolean }[] = [],
   spark: { x: number; y: number; t: number } | null = null,
   cover: CoverTransform = coverTransform(viewW, viewH),
+  mood: PlazaMood | null = null,
 ): void {
   ctx.clearRect(0, 0, viewW, viewH)
   if (background) {
@@ -20,6 +56,12 @@ export function drawPlaza(
   } else {
     ctx.fillStyle = '#243044'
     ctx.fillRect(0, 0, viewW, viewH)
+  }
+  if (mood) {
+    ctx.save()
+    ctx.fillStyle = plazaTint(mood.showRain ? 'rain' : mood.weather, mood.phase)
+    ctx.fillRect(0, 0, viewW, viewH)
+    ctx.restore()
   }
 
   ctx.imageSmoothingEnabled = true
@@ -54,7 +96,47 @@ export function drawPlaza(
   for (const mark of frames) {
     if (mark.glow) drawSlotMark(ctx, mark, cover, timeMs)
   }
+  if (mood?.festival) drawGarland(ctx, images.get(FESTIVAL_LIGHTS[mood.festival] ?? ''), cover)
+  if (mood?.showRain) drawRain(ctx, viewW, viewH, timeMs, mood.reduceMotion)
   if (spark) drawSpark(ctx, spark)
+}
+
+function drawGarland(ctx: CanvasRenderingContext2D, image: HTMLImageElement | undefined, cover: CoverTransform): void {
+  if (!image || image.naturalWidth <= 0) return
+  const tiles = garlandTiles(image.naturalWidth, image.naturalHeight)
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(cover.offsetX, cover.offsetY, PLAZA_W * cover.scale, PLAZA_H * cover.scale)
+  ctx.clip()
+  for (const tile of tiles) {
+    ctx.drawImage(
+      image,
+      cover.offsetX + tile.x * cover.scale,
+      cover.offsetY + tile.y * cover.scale,
+      tile.w * cover.scale,
+      tile.h * cover.scale,
+    )
+  }
+  ctx.restore()
+}
+
+function drawRain(ctx: CanvasRenderingContext2D, viewW: number, viewH: number, timeMs: number, reduce: boolean): void {
+  const count = reduce ? 10 : 48
+  const length = reduce ? 12 : 14
+  ctx.save()
+  ctx.strokeStyle = 'rgba(226, 234, 244, 0.3)'
+  ctx.lineWidth = 1
+  ctx.lineCap = 'round'
+  for (let i = 0; i < count; i += 1) {
+    const x = (i * 137) % Math.max(1, viewW)
+    const lane = (i * 89) % Math.max(1, viewH)
+    const y = reduce ? lane : (lane + timeMs * (0.22 + (i % 5) * 0.03)) % (viewH + length)
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(x - 3, y + length)
+    ctx.stroke()
+  }
+  ctx.restore()
 }
 
 /** Flatten the ground shadow a little while a foot is in the air. */
