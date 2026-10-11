@@ -1,12 +1,14 @@
 import { FORTUNE_LINES } from '../content/fortunes'
-import { ambienceScore, expectedVisits } from './ambience'
+import { ambienceScore, expectedVisits, visitAmbience } from './ambience'
 import { decorNearby, letterFor, pickSpecies, satisfactionOf, speciesDef } from './animals'
-import { openBox } from './actions'
+import { eligibleSlots, openBox, placeItem } from './actions'
+import { accrueBustle, stallMarketLevel, visitCapFor } from './market'
 import { customerDraw } from './ichiban'
+import { chooseProduct, ichibanRestockFor, productNet, rollLimitedProduct } from './products'
 import { createRng, sampleCount } from './rng'
 import { applyStaff, greetLevel, stockCap } from './staff'
 import { isFestival, nextPhase, rollWeather } from './weather'
-import type { GameConfig, Grade, Species, StallType, Street, Visitor } from './types'
+import type { GameConfig, Grade, Species, Street, Visitor } from './types'
 
 export function scheduleArrivals(rate: number, minutes: number, rng: ReturnType<typeof createRng>): number[] {
   const count = sampleCount(rate, rng)
@@ -25,12 +27,6 @@ function stallHasGoods(street: Street, index: number): boolean {
   if (!place || place.kind !== 'stall') return false
   if (place.stallType === 'ichiban') return (street.box?.tickets.length ?? 0) > 0
   return (street.stock[place.uid] ?? 0) > 0
-}
-
-export function stallSalePrice(stallType: StallType, level: number, config: GameConfig): number {
-  const index = Math.max(0, level - 1)
-  const mult = config.levelPriceMultiplier[index] ?? config.levelPriceMultiplier[config.levelPriceMultiplier.length - 1] ?? 1
-  return Math.round(config.prices[stallType] * mult)
 }
 
 function coins(value: number): number {
@@ -65,6 +61,14 @@ function anotherStocked(street: Street, except: number): number | null {
 export function spawnVisitor(street: Street, config: GameConfig, species: Species): Street {
   const target = targetFor(street, species, config)
   let next = street
+  if (!next.seenSpecies.includes(species)) {
+    const name = speciesDef(species, config).name
+    next = {
+      ...next,
+      seenSpecies: [...next.seenSpecies, species],
+      pendingToasts: [...next.pendingToasts, `新客人：${name}！`],
+    }
+  }
   if (next.box && next.slots[target]?.stallType === 'ichiban' && (next.box.idleTicks ?? 0) >= config.ichibanIdleTicks) {
     next = { ...next, box: { ...next.box, idleTicks: 0 } }
   }
@@ -90,8 +94,9 @@ function shop(street: Street, visitor: Visitor, config: GameConfig, rng: ReturnT
   if (!place || place.kind !== 'stall' || !place.stallType) {
     return { street, visitor: { ...visitor, status: 'leave', target: config.streetSlots } }
   }
-  const liked = speciesDef(visitor.species, config).stall === place.stallType
-  const decor = decorNearby(street, index, speciesDef(visitor.species, config).decor)
+  const spec = speciesDef(visitor.species, config)
+  const liked = spec.stall === place.stallType
+  const decor = decorNearby(street, index, spec.decor)
   let money = coins(street.money)
   let stock = street.stock
   let box = street.box
@@ -100,6 +105,15 @@ function shop(street: Street, visitor: Visitor, config: GameConfig, rng: ReturnT
   let drewGrade: Grade | null = visitor.drewGrade
   let fortune = visitor.fortune
   let spent = 0
+  let seenProducts = street.seenProducts
+  const product = chooseProduct(visitor.species, place.stallType, place.level, config, rng)
+  if (!product) {
+    const alt = anotherStocked(street, index)
+    if (alt != null) return { street, visitor: { ...visitor, status: 'walk', target: alt } }
+    return { street, visitor: { ...visitor, status: 'leave', target: config.streetSlots } }
+  }
+  const favorite = product.id === spec.product
+  const limited = street.trending.includes(product.id)
 
   if (place.stallType === 'ichiban') {
     if (!box || box.tickets.length === 0) {
@@ -111,11 +125,31 @@ function shop(street: Street, visitor: Visitor, config: GameConfig, rng: ReturnT
       box,
       collection,
       ownedDecor,
-      drawPrice: stallSalePrice('ichiban', place.level, config),
+      drawPrice: product.price,
       config,
     })
-    money += drawn.moneyDelta
-    spent = drawn.moneyDelta
+    const extras = drawn.moneyDelta - product.price
+    const satisfactionPreview = satisfactionOf({
+      liked,
+      decor,
+      cleanliness: street.cleanliness,
+      greet: false,
+      greetLevel: greetLevel(street),
+      favorite,
+      limited,
+      config,
+    })
+    const gain = productNet({
+      price: product.price,
+      config,
+      rarity: spec.rarity,
+      favorite,
+      charged: false,
+      tip: satisfactionPreview >= config.letterAt,
+      ichiban: true,
+    })
+    money += gain + extras
+    spent = gain + extras
     box = drawn.box
     collection = drawn.collection
     ownedDecor = drawn.ownedDecor
@@ -127,10 +161,24 @@ function shop(street: Street, visitor: Visitor, config: GameConfig, rng: ReturnT
       if (alt != null) return { street, visitor: { ...visitor, status: 'walk', target: alt } }
       return { street, visitor: { ...visitor, status: 'leave', target: config.streetSlots } }
     }
-    const price = stallSalePrice(place.stallType, place.level, config)
-    const cost = Math.round(price * config.restockCostRatio)
-    let gain = price - cost
-    if (visitor.charged) gain = Math.round(gain * 1.2)
+    const satisfactionPreview = satisfactionOf({
+      liked,
+      decor,
+      cleanliness: street.cleanliness,
+      greet: false,
+      greetLevel: greetLevel(street),
+      favorite,
+      limited,
+      config,
+    })
+    const gain = productNet({
+      price: product.price,
+      config,
+      rarity: spec.rarity,
+      favorite,
+      charged: visitor.charged,
+      tip: satisfactionPreview >= config.letterAt,
+    })
     money += gain
     spent = gain
     stock = { ...stock, [place.uid]: have - 1 }
@@ -138,6 +186,7 @@ function shop(street: Street, visitor: Visitor, config: GameConfig, rng: ReturnT
       fortune = FORTUNE_LINES[Math.floor(rng.next() * FORTUNE_LINES.length)] ?? null
     }
   }
+  if (!seenProducts.includes(product.id)) seenProducts = [...seenProducts, product.id]
 
   const satisfaction = satisfactionOf({
     liked,
@@ -145,6 +194,8 @@ function shop(street: Street, visitor: Visitor, config: GameConfig, rng: ReturnT
     cleanliness: street.cleanliness,
     greet: false,
     greetLevel: greetLevel(street),
+    favorite,
+    limited,
     config,
   })
   const letter = letterFor({
@@ -155,6 +206,7 @@ function shop(street: Street, visitor: Visitor, config: GameConfig, rng: ReturnT
     config,
     drewGrade,
     satisfaction,
+    productId: product.id,
   })
   let letters = street.letters
   let sentTopics = street.sentTopics
@@ -176,9 +228,13 @@ function shop(street: Street, visitor: Visitor, config: GameConfig, rng: ReturnT
     }
   }
 
+  const speciesSatisfaction = {
+    ...street.speciesSatisfaction,
+    [visitor.species]: Math.max(street.speciesSatisfaction[visitor.species] ?? 0, satisfaction),
+  }
   return {
-    street: { ...street, money, stock, box, collection, ownedDecor, letters, sentTopics },
-    visitor: { ...visitor, status, target, charged, liked, satisfaction, spent, fortune, drewGrade },
+    street: { ...street, money, stock, box, collection, ownedDecor, letters, sentTopics, seenProducts, speciesSatisfaction },
+    visitor: { ...visitor, status, target, charged, liked, satisfaction, spent, fortune, drewGrade, productId: product.id },
   }
 }
 
@@ -204,34 +260,64 @@ function moveVisitors(street: Street, config: GameConfig, rng: ReturnType<typeof
 }
 
 function advancePhase(street: Street, config: GameConfig, rng: ReturnType<typeof createRng>): Street {
-  const phase = nextPhase(street.phase)
-  let day = street.day
-  let weather = street.weather
-  let pendingWeather = street.pendingWeather
-  let wishUsed = street.wishUsed
-  let wishMessage = street.wishMessage
-  let trending = street.trending
-  if (street.phase === 'late') {
-    day = (street.day % config.calendarLength) + 1
+  const grown = accrueBustle(street, config)
+  const phase = nextPhase(grown.phase)
+  let day = grown.day
+  let weather = grown.weather
+  let pendingWeather = grown.pendingWeather
+  let wishUsed = grown.wishUsed
+  let wishMessage = grown.wishMessage
+  let trending = grown.trending
+  if (grown.phase === 'late') {
+    day = (grown.day % config.calendarLength) + 1
     weather = pendingWeather ?? rollWeather(rng)
     pendingWeather = null
     wishUsed = false
     wishMessage = null
-    const first = config.flavors[Math.floor(rng.next() * config.flavors.length)]?.id ?? 'fly'
-    const second = config.flavors[Math.floor(rng.next() * config.flavors.length)]?.id ?? first
-    trending = first === second ? [first] : [first, second]
+    trending = [rollLimitedProduct(config, rng)]
   }
-  const cleanliness = Math.max(0, street.cleanliness - config.cleanDropPerPhase - street.arrivals.length * config.cleanDropPerVisitor)
-  const draft = { ...street, phase, day, weather, cleanliness }
+  const cleanliness = Math.max(0, grown.cleanliness - config.cleanDropPerPhase - grown.arrivals.length * config.cleanDropPerVisitor)
+  const draft = { ...grown, phase, day, weather, cleanliness }
   const arrivals = scheduleArrivals(
     expectedVisits(
-      { ambience: ambienceScore(draft, config), cleanliness: draft.cleanliness, festival: isFestival(day, config) },
+      {
+        ambience: visitAmbience(ambienceScore(draft, config), draft.marketLevel, config),
+        cleanliness: draft.cleanliness,
+        festival: isFestival(day, config),
+        visitCap: visitCapFor(draft.marketLevel, config),
+      },
       config,
     ),
     config.phaseMinutes,
     rng,
   )
-  return { ...draft, pendingWeather, wishUsed, wishMessage, trending, arrivals, phaseTick: 0 }
+  return { ...grantIchiban(draft, config), pendingWeather, wishUsed, wishMessage, trending, arrivals, phaseTick: 0 }
+}
+
+/** Reaching the ichiban level opens the booth on an empty slot, without charging coins. */
+function grantIchiban(street: Street, config: GameConfig): Street {
+  const needed = stallMarketLevel('ichiban', config)
+  if (needed == null || street.marketLevel < needed) return street
+  if (street.slots.some((slot) => slot?.stallType === 'ichiban')) return street
+  const open = eligibleSlots(
+    { ...street, money: street.money + config.placeCost.ichiban },
+    { kind: 'stall', stallType: 'ichiban' },
+    config,
+  )
+  const slot = open.find((index) => index !== 4) ?? open[0]
+  if (slot == null) return street
+  const placed = placeItem(
+    { ...street, money: street.money + config.placeCost.ichiban },
+    slot,
+    { kind: 'stall', stallType: 'ichiban' },
+    config,
+  )
+  if (!placed.ok) return street
+  return {
+    ...placed.street,
+    money: street.money,
+    pendingToasts: [...placed.street.pendingToasts, '一番賞開張了！'],
+  }
 }
 
 function noteIchibanIdle(street: Street, ticketsBefore: number | null): Street {
@@ -242,12 +328,12 @@ function noteIchibanIdle(street: Street, ticketsBefore: number | null): Street {
   return { ...street, box: { ...box, idleTicks: (box.idleTicks ?? 0) + 1 } }
 }
 
-function restockIchiban(street: Street, config: GameConfig): Street {
-  const placed = street.slots.some((slot) => slot?.stallType === 'ichiban')
-  if (!placed || street.box) return street
+function restockIchiban(street: Street, config: GameConfig, rng: ReturnType<typeof createRng>): Street {
+  const place = street.slots.find((slot) => slot?.stallType === 'ichiban')
+  if (!place || street.box) return street
   const boxRestock = street.boxRestock + 1
-  if (boxRestock < config.ichibanRestockTicks) return { ...street, boxRestock }
-  return openBox({ ...street, boxRestock }, config)
+  if (boxRestock < ichibanRestockFor(place.level, config)) return { ...street, boxRestock }
+  return openBox({ ...street, boxRestock }, config, rng)
 }
 
 export function streetTick(state: Street, config: GameConfig): Street {
@@ -259,7 +345,7 @@ export function streetTick(state: Street, config: GameConfig): Street {
   street = moveVisitors(street, config, rng)
   const spawns = street.arrivals.filter((tick) => tick === index).length
   for (let i = 0; i < spawns; i++) street = spawnVisitor(street, config, pickSpecies(street, config, rng))
-  street = restockIchiban(street, config)
+  street = restockIchiban(street, config, rng)
   street = noteIchibanIdle(street, ticketsBefore)
   return {
     ...street,

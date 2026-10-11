@@ -64,6 +64,22 @@ const phoneAssets = [
 for (const name of phoneAssets) {
   if (!workerSource.includes(`assets/phone/${name}`)) problems.push(`service worker is missing assets/phone/${name}`)
 }
+const growthAssets = [
+  'assets/growth/overlay-bunting.png',
+  'assets/growth/overlay-bulbs.png',
+  'assets/growth/overlay-frame.png',
+  'assets/growth/overlay-lanterns.png',
+  'assets/growth/overlay-crest.png',
+  'assets/growth/blocker-fence.png',
+  'assets/growth/blocker-bush.png',
+  'assets/growth/blocker-crates.png',
+  'assets/growth/banner.png',
+  'assets/growth/products/vanilla.png',
+  'assets/growth/figures/temple.png',
+]
+for (const asset of growthAssets) {
+  if (!workerSource.includes(asset)) problems.push(`service worker is missing ${asset}`)
+}
 
 if (problems.length > 0) {
   console.error('PWA path check failed.')

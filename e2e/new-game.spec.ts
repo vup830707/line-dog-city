@@ -22,18 +22,23 @@ test('a new game can place a stall, earn coins, reload, and cap offline time', a
 
   const before = Number((await page.getByTestId('money').innerText()).replace(/[^\d]/g, ''))
   await placeDecor(page, 'lantern', 'slot-11')
-  await placeDecor(page, 'sign', 'slot-12')
+  await placeDecor(page, 'seat', 'slot-3')
   await expect(page.getByTestId('slot-0')).not.toHaveText('1')
   await expect(page.getByTestId('slot-1')).not.toHaveText('2')
 
   await page.evaluate(() => window.__puppy?.runTicks(40))
-  const earned = Number((await page.getByTestId('money').innerText()).replace(/[^\d]/g, ''))
+  const earned = await page.evaluate(() => {
+    const raw = localStorage.getItem('puppy-city-save')
+    return Number(JSON.parse(raw ?? '{}').street?.money ?? 0)
+  })
   expect(earned).toBeGreaterThan(before)
+  await expect(page.getByTestId('money')).toHaveText(`${earned} 幣`)
 
-  await page.evaluate(() => window.__puppy?.pause())
+  await page.evaluate(() => window.__puppy?.rewindClock(0))
   await page.reload()
   await expect(page.getByTestId('title-start')).toHaveText('繼續營業')
   await openMarket(page)
+  await page.evaluate(() => window.__puppy?.pause())
   await expect(page.getByTestId('money')).toHaveText(`${earned} 幣`)
   await expectDogNames(page, '小白', '可可')
 
@@ -58,7 +63,7 @@ test('desktop layouts do not scroll the page sideways', async ({ page }) => {
     expect(await overflows(page)).toBe(false)
   }
   await openMarket(page)
-  await placeDecor(page, 'sign', 'slot-12')
+  await placeDecor(page, 'seat', 'slot-3')
   for (const viewport of [
     { width: 1920, height: 1080 },
     { width: 1280, height: 720 },
@@ -72,7 +77,7 @@ test('the plaza background covers the window at both desktop sizes', async ({ pa
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto('./?debug=1')
   await openMarket(page)
-  await placeDecor(page, 'sign', 'slot-12')
+  await placeDecor(page, 'seat', 'slot-3')
   await page.evaluate(() => window.__puppy?.spawn('cat'))
   await expect(page.getByTestId('street-metrics')).toHaveAttribute('data-art-ready', '1')
 

@@ -24,9 +24,13 @@ export function stallCardBox(
   return { left, top, width, flipped }
 }
 
+const artRoot = import.meta.env.BASE_URL
+
 export function StallCard({
   title,
   goods,
+  products = [],
+  upgradeLabel = '升級',
   anchor,
   view,
   upgradeReason,
@@ -37,6 +41,8 @@ export function StallCard({
 }: {
   title: string
   goods: string
+  products?: { id: string; name: string; price: number; src: string }[]
+  upgradeLabel?: string
   anchor: ScreenRect
   view: { w: number; h: number }
   upgradeReason: string | null
@@ -84,9 +90,21 @@ export function StallCard({
     >
       <h2>{title}</h2>
       <p data-testid="stall-goods">{goods}</p>
+      {products.length > 0 ? (
+        <div className="product-row" data-testid="stall-products">
+          {products.map((item) => (
+            <figure key={item.id}>
+              {item.src ? <img src={`${artRoot}${item.src}`} alt="" /> : null}
+              <figcaption>
+                {item.name} {item.price}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      ) : null}
       <div className="stall-actions">
         <button type="button" data-testid="upgrade-stall" disabled={upgradeReason != null} title={upgradeReason ?? undefined} onClick={onUpgrade}>
-          升級
+          {upgradeLabel}
         </button>
         {ichiban ? (
           <button type="button" data-testid="close-box" disabled={ichiban.closeReason != null} title={ichiban.closeReason ?? undefined} onClick={() => setConfirmClose(true)}>

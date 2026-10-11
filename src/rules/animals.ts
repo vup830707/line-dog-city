@@ -1,41 +1,22 @@
 import { LETTERS } from '../content/letters'
+import { PLAZA_SLOTS } from '../canvas/plaza'
 import { ambienceScore } from './ambience'
-import { isWishPondUnlocked } from './collection'
 import type { Rng } from './rng'
 import { isFestival } from './weather'
-import type { DecorType, GameConfig, Grade, Phase, Species, StallType, Street, Weather } from './types'
+import type { DecorType, GameConfig, Grade, Species, StallType, Street } from './types'
 
-const BASE: Record<Species, number> = {
-  cat: 3,
-  rabbit: 3,
-  hamster: 3,
-  sparrow: 3,
-  otter: 2,
-  hedgehog: 2,
-  fox: 4,
-  bear: 4,
-}
+/**
+ * Plaza distance that still counts as 「旁」.
+ * Index-adjacent stalls in the back row are about 230px apart.
+ * The slot standing in front of a back-row stall is at most about 395px away
+ * (slot 3 → slot 11). 400px covers both, and leaves the opposite corner out.
+ */
+export const DECOR_NEAR_PX = 400
 
-const WEATHER: Record<Species, Record<Weather, number>> = {
-  cat: { sunny: 1, hot: 1, cold: 1, rain: 2 },
-  rabbit: { sunny: 2, hot: 1.4, cold: 1, rain: 1 },
-  hamster: { sunny: 1, hot: 1, cold: 1, rain: 1 },
-  sparrow: { sunny: 1.4, hot: 1, cold: 1, rain: 1 },
-  otter: { sunny: 1, hot: 1, cold: 1.2, rain: 2 },
-  hedgehog: { sunny: 1, hot: 1.2, cold: 2, rain: 1 },
-  fox: { sunny: 1, hot: 1, cold: 1.2, rain: 1 },
-  bear: { sunny: 2, hot: 1, cold: 1.2, rain: 1 },
-}
-
-const PHASE: Record<Species, Record<Phase, number>> = {
-  cat: { dusk: 1.6, mid: 1, late: 1 },
-  rabbit: { dusk: 1, mid: 1.6, late: 1 },
-  hamster: { dusk: 1, mid: 1, late: 1 },
-  sparrow: { dusk: 1.8, mid: 1, late: 1 },
-  otter: { dusk: 1, mid: 1.2, late: 1 },
-  hedgehog: { dusk: 1, mid: 1, late: 1.8 },
-  fox: { dusk: 1, mid: 1.2, late: 1.2 },
-  bear: { dusk: 1, mid: 1, late: 1.4 },
+const LETTER_PRODUCT: Partial<Record<Species, string>> = {
+  rabbit: 'strawberry',
+  hamster: 'sunny',
+  sparrow: 'vanilla',
 }
 
 export function speciesDef(species: Species, config: GameConfig) {
@@ -44,24 +25,38 @@ export function speciesDef(species: Species, config: GameConfig) {
   return found
 }
 
+export function isSpeciesUnlocked(species: Species, street: Street, config: GameConfig): boolean {
+  const rule = speciesDef(species, config).unlock
+  if (rule.kind === 'start') return true
+  if (rule.kind === 'seats') return street.slots.filter((slot) => slot?.decorType === 'seat').length >= rule.count
+  if (rule.kind === 'stallLevel') return street.slots.some((slot) => slot?.kind === 'stall' && slot.level >= rule.level)
+  if (rule.kind === 'ichibanDecor') {
+    const ichiban = street.slots.some((slot) => slot?.stallType === 'ichiban')
+    const decor = street.slots.filter((slot) => slot?.kind === 'decor').length
+    return ichiban && decor >= rule.decor
+  }
+  const wish = street.slots.some((slot) => slot?.stallType === 'wish')
+  return wish && ambienceScore(street, config) >= rule.ambience
+}
+
 export function foxCanVisit(street: Street, config: GameConfig): boolean {
-  if (!isFestival(street.day, config)) return false
-  if (!street.box) return false
-  return street.box.tickets.some((ticket) => ticket.grade === 'A' || ticket.grade === 'B')
+  return isSpeciesUnlocked('fox', street, config)
 }
 
 export function bearCanVisit(street: Street, config: GameConfig): boolean {
-  const placed = street.slots.some((slot) => slot?.kind === 'stall' && slot.stallType === 'wish')
-  if (!placed) return false
-  const ids = config.figures.map((figure) => figure.id)
-  if (!isWishPondUnlocked(street.collection, ids)) return false
-  return ambienceScore(street, config) >= config.ambienceTarget
+  return isSpeciesUnlocked('bear', street, config)
+}
+
+function boxHasRarePrize(street: Street): boolean {
+  return street.box?.tickets.some((ticket) => ticket.grade === 'A' || ticket.grade === 'B') ?? false
 }
 
 export function speciesWeight(species: Species, street: Street, config: GameConfig): number {
-  if (species === 'fox' && !foxCanVisit(street, config)) return 0
-  if (species === 'bear' && !bearCanVisit(street, config)) return 0
-  return BASE[species] * WEATHER[species][street.weather] * PHASE[species][street.phase]
+  if (!isSpeciesUnlocked(species, street, config)) return 0
+  const weights = config.speciesWeights
+  let weight = weights.base[species] * weights.weather[species][street.weather] * weights.phase[species][street.phase]
+  if (species === 'fox' && isFestival(street.day, config) && boxHasRarePrize(street)) weight *= 2
+  return weight
 }
 
 export function pickSpecies(street: Street, config: GameConfig, rng: Rng): Species {
@@ -77,9 +72,13 @@ export function pickSpecies(street: Street, config: GameConfig, rng: Rng): Speci
 }
 
 export function decorNearby(street: Street, slot: number, decor: DecorType): boolean {
+  const here = PLAZA_SLOTS[slot]
+  if (!here) return false
   return street.slots.some((place, index) => {
     if (!place || place.kind !== 'decor' || place.decorType !== decor) return false
-    return Math.abs(index - slot) <= 1
+    const there = PLAZA_SLOTS[index]
+    if (!there) return false
+    return Math.hypot(here.x - there.x, here.y - there.y) <= DECOR_NEAR_PX
   })
 }
 
@@ -89,6 +88,8 @@ export function satisfactionOf(input: {
   cleanliness: number
   greet: boolean
   greetLevel?: number
+  favorite?: boolean
+  limited?: boolean
   config: GameConfig
 }): number {
   const weights = input.config.satisfaction
@@ -98,6 +99,8 @@ export function satisfactionOf(input: {
   if (input.cleanliness >= weights.cleanAt) score += weights.clean
   const level = input.greetLevel != null ? input.greetLevel : input.greet ? 1 : 0
   if (level > 0) score += weights.greet * level
+  if (input.favorite) score += weights.favorite
+  if (input.limited) score += weights.limited
   return score
 }
 
@@ -109,13 +112,16 @@ export function letterFor(input: {
   config: GameConfig
   drewGrade: Grade | null
   satisfaction: number
+  productId?: string | null
 }): { topic: string; body: string } | null {
   if (input.satisfaction < input.config.letterAt) return null
   const spec = speciesDef(input.species, input.config)
   if (input.stall !== spec.stall || !input.decor) return null
   if (input.species === 'hedgehog' && input.street.phase !== 'late') return null
   if (input.species === 'fox' && input.drewGrade !== 'A' && input.drewGrade !== 'B' && input.drewGrade !== 'C') return null
-  if (input.species === 'sparrow' && input.stall !== 'ice' && input.stall !== 'wish') return null
+  if (input.species === 'bear' && !input.street.wishUsed) return null
+  const needed = LETTER_PRODUCT[input.species]
+  if (needed && input.productId !== needed) return null
   const topic = spec.topic
   if (input.street.sentTopics.includes(`${input.species}:${topic}`)) return null
   return { topic, body: LETTERS[topic] ?? '留下了一張短信。' }

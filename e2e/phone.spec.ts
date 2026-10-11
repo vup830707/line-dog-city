@@ -73,16 +73,18 @@ test('an unaffordable card is greyed out and shows how many coins are missing', 
   await startGame(page)
   await page.getByTestId('phone-charm').click()
   await page.getByTestId('phone-app-build').click()
+  await page.evaluate(() => window.__puppy?.setMoney(100))
+  await expect(page.getByTestId('build-lock-charge')).toHaveCount(0)
+  await expect(page.getByTestId('build-charge')).toContainText('已經在夜市裡')
+  await expect(page.getByTestId('build-lock-ichiban')).toHaveText('鎖 夜市 Lv.2')
   await page.getByTestId('build-tab-decor').click()
-  await page.getByTestId('build-flower').click()
-  for (const slot of [9, 10, 11, 12, 13, 14]) {
-    await expect(page.getByTestId(`slot-${slot}`)).toHaveAttribute('data-glow', '1')
-    await page.getByTestId(`slot-${slot}`).click()
-  }
-  await expect(page.getByTestId('build-flower')).toBeDisabled()
-  await expect(page.getByTestId('build-shortfall-flower')).toHaveText('還差 40 幣')
-  await page.getByTestId('build-sign').click()
-  await expect(page.getByTestId('slot-15')).toHaveAttribute('data-glow', '1')
+  await page.getByTestId('build-seat').click()
+  await expect(page.getByTestId('slot-3')).toHaveAttribute('data-glow', '1')
+  await page.getByTestId('slot-3').click()
+  await expect(page.getByTestId('slot-3')).toHaveAttribute('data-item', 'seat')
+  await expect(page.getByTestId('build-lantern')).toBeDisabled()
+  await expect(page.getByTestId('build-shortfall-lantern')).toHaveText('還差 40 幣')
+  await expect(page.getByTestId('build-lock-flower')).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByTestId('build-strip')).toBeHidden()
 })
@@ -111,6 +113,10 @@ test('capture the phone and build mode at both desktop sizes', async ({ page }) 
   }
   for (const app of ['staff', 'settings', 'market'] as const) {
     await page.getByTestId(`phone-app-${app}`).click()
+    if (app === 'market') {
+      await expect(page.getByTestId('market-xp')).toContainText('/ 1500')
+      await expect(page.getByTestId('market-next')).toContainText('一番賞、招牌')
+    }
     for (const viewport of viewports) {
       await page.setViewportSize(viewport)
       await shot(page, `phone-${app}-${viewport.width}`)
@@ -123,14 +129,12 @@ test('capture the phone and build mode at both desktop sizes', async ({ page }) 
   await page.getByTestId('phone-charm').click()
   await phoneSettled(page)
   await page.getByTestId('phone-app-build').click()
+  await page.evaluate(() => window.__puppy?.setMoney(100))
   await page.getByTestId('build-tab-decor').click()
-  await page.getByTestId('build-flower').click()
-  for (const slot of [9, 10, 11, 12, 13, 14]) {
-    await page.getByTestId(`slot-${slot}`).click()
-  }
-  await expect(page.getByTestId('build-shortfall-flower')).toBeVisible()
-  await page.getByTestId('build-sign').click()
-  await expect(page.getByTestId('slot-15')).toHaveAttribute('data-glow', '1')
+  await page.getByTestId('build-seat').click()
+  await page.getByTestId('slot-3').click()
+  await expect(page.getByTestId('build-shortfall-lantern')).toBeVisible()
+  await expect(page.getByTestId('build-lock-sign')).toBeVisible()
   for (const viewport of viewports) {
     await page.setViewportSize(viewport)
     await shot(page, `build-mode-${viewport.width}`)

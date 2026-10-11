@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { createNewGame } from '../game/newGame'
 import { gameConfig } from '../config'
 import { ownedSet, stall, streetWith } from './fixtures'
 import { canPlace, eligibleSlots, placeBlock, placeItem } from './actions'
 import { buildOffers, shortfallText } from './build'
+import { openSlotIndexes } from './market'
 import { forecastLine } from './weather'
 
 const labels = { sunny: '晴', hot: '熱', cold: '冷', rain: '雨' } as const
@@ -42,6 +44,26 @@ describe('build offers', () => {
     expect(open.find((card) => card.id === 'star')?.affordable).toBe(true)
   })
 
+  it('does not lock a stall the opening already placed', () => {
+    const save = createNewGame({ playerDog: 'white', whiteName: '雪球', brownName: '可可', now: 0, seed: 1 }, gameConfig)
+    const offers = buildOffers(save.street, gameConfig)
+    const charge = offers.find((card) => card.id === 'charge')
+    expect(charge?.placed).toBe(true)
+    expect(charge?.locked).toBe(false)
+    expect(charge?.lockReason).toBeNull()
+    const ichiban = offers.find((card) => card.id === 'ichiban')
+    expect(ichiban?.placed).toBe(false)
+    expect(ichiban?.locked).toBe(true)
+    expect(ichiban?.lockReason).toBe('夜市 Lv.2')
+    expect(offers.find((card) => card.id === 'flower')?.lockReason).toBe('夜市 Lv.3')
+    expect(offers.find((card) => card.id === 'seat')?.cost).toBe(gameConfig.decorCost.seat)
+    expect(offers.find((card) => card.id === 'lantern')?.cost).toBe(gameConfig.decorCost.lantern)
+    const withSign = save.street.slots.slice()
+    withSign[3] = { uid: 'sign-1', kind: 'decor', decorType: 'sign', level: 1 }
+    const second = buildOffers(streetWith({ money: 20000, slots: withSign, marketLevel: 2 }), gameConfig).find((card) => card.id === 'sign')
+    expect(second?.cost).toBe(gameConfig.decorNextCost.sign)
+  })
+
   it('does not offer a second copy of a stall that is already on the plaza', () => {
     const slots = streetWith().slots.slice()
     slots[1] = stall('ice')
@@ -56,7 +78,9 @@ describe('slot eligibility', () => {
     const street = streetWith({ money: 3000 })
     const item = { kind: 'stall' as const, stallType: 'ice' as const }
     expect(canPlace(street, 4, item, gameConfig)).toBe(true)
-    expect(eligibleSlots(street, item, gameConfig)).toEqual(street.slots.map((_, index) => index))
+    expect(canPlace(street, 9, item, gameConfig)).toBe(false)
+    expect(placeBlock(street, 9, item, gameConfig)).toBe('這個位子還沒開放')
+    expect(eligibleSlots(street, item, gameConfig)).toEqual([...openSlotIndexes(1, gameConfig)].sort((a, b) => a - b))
     expect(placeBlock(street, 4, item, gameConfig)).toBeNull()
   })
 

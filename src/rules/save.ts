@@ -1,13 +1,15 @@
 import { gameConfig } from '../config'
-import type { BoxState, SaveV3, Ticket } from './types'
+import { inferMarketLevel } from './market'
+import { productsFor } from './products'
+import type { BoxState, SaveV4, Species, Street, Ticket } from './types'
 
-export const SCHEMA_VERSION = 3
+export const SCHEMA_VERSION = 4
 
 export type ParseResult =
-  | { ok: true; save: SaveV3 }
+  | { ok: true; save: SaveV4 }
   | { ok: false; reason: 'legacy' | 'invalid'; message: string }
 
-export function serializeSave(save: SaveV3): string {
+export function serializeSave(save: SaveV4): string {
   return JSON.stringify(save)
 }
 
@@ -27,7 +29,7 @@ export function parseSave(raw: unknown): ParseResult {
   if (record.schemaVersion === 1 || record.schemaVersion === 2) {
     return { ok: false, reason: 'legacy', message: '這是舊版的策略存檔，沒辦法匯入。現在這局夜市還在，沒有被換掉。' }
   }
-  if (record.schemaVersion !== SCHEMA_VERSION) {
+  if (record.schemaVersion !== 3 && record.schemaVersion !== SCHEMA_VERSION) {
     return { ok: false, reason: 'invalid', message: '不認得的存檔版本' }
   }
   if (record.playerDog !== 'white' && record.playerDog !== 'brown') {
@@ -40,29 +42,67 @@ export function parseSave(raw: unknown): ParseResult {
     return { ok: false, reason: 'invalid', message: '存檔缺少街道' }
   }
   const street = record.street as Record<string, unknown>
+  const migrate = record.schemaVersion === 3
   if (!usableStreet(street)) {
     const repaired = repairStreet(street)
     if (!repaired) return { ok: false, reason: 'invalid', message: '存檔的街道不完整' }
-    return {
-      ok: true,
-      save: {
-        schemaVersion: 3,
-        playerDog: record.playerDog,
-        whiteName: record.whiteName,
-        brownName: record.brownName,
-        savedAt: finiteNumber(record.savedAt) ?? Date.now(),
-        street: clampStreet(repaired),
-      },
-    }
+    return { ok: true, save: finishSave(record, repaired, migrate) }
   }
+  return { ok: true, save: finishSave(record, street as unknown as Street, migrate) }
+}
+
+function knownProduct(id: string): boolean {
+  return Object.values(gameConfig.products).some((list) => list.some((item) => item.id === id))
+}
+
+function finishSave(record: Record<string, unknown>, street: Street, migrate: boolean): SaveV4 {
+  const clamped = clampStreet(street)
   return {
-    ok: true,
-    save: {
-      ...(record as unknown as SaveV3),
-      savedAt: finiteNumber(record.savedAt) ?? Date.now(),
-      street: clampStreet((record as unknown as SaveV3).street),
-    },
+    schemaVersion: 4,
+    playerDog: record.playerDog as 'white' | 'brown',
+    whiteName: record.whiteName as string,
+    brownName: record.brownName as string,
+    savedAt: finiteNumber(record.savedAt) ?? Date.now(),
+    street: withGrowth(clamped, migrate),
   }
+}
+
+function withGrowth(street: Street, migrate: boolean): Street {
+  const seen = new Set<Species>(street.seenSpecies ?? [])
+  if (migrate) {
+    for (const spec of gameConfig.species) {
+      if (spec.unlock.kind === 'start') seen.add(spec.id)
+    }
+    for (const visitor of street.visitors ?? []) seen.add(visitor.species)
+    for (const letter of street.letters ?? []) seen.add(letter.species)
+  }
+  const seenSpecies = [...seen]
+  const level = migrate ? inferMarketLevel(street, gameConfig) : (street.marketLevel ?? inferMarketLevel(street, gameConfig))
+  const floor = gameConfig.marketLevels.find((row) => row.level === level)?.bustleXp ?? 0
+  const bustleXp = migrate ? Math.max(street.bustleXp ?? 0, floor) : (street.bustleXp ?? floor)
+  const trending = (street.trending ?? []).filter((id) => knownProduct(id))
+  const seenProducts = migrate ? productsAlreadyForSale(street) : (street.seenProducts ?? [])
+  return {
+    ...street,
+    marketLevel: level,
+    bustleXp,
+    seenSpecies,
+    seenProducts,
+    ackedSpecies: migrate ? seenSpecies : (street.ackedSpecies ?? seenSpecies),
+    pendingToasts: street.pendingToasts ?? [],
+    levelUpBanner: street.levelUpBanner ?? null,
+    speciesSatisfaction: street.speciesSatisfaction ?? {},
+    trending: trending.length > 0 ? trending.slice(0, 1) : ['vanilla'],
+  }
+}
+
+function productsAlreadyForSale(street: Street): string[] {
+  const ids = new Set<string>(street.seenProducts ?? [])
+  for (const place of street.slots ?? []) {
+    if (!place?.stallType) continue
+    for (const product of productsFor(place.stallType, place.level ?? 1, gameConfig)) ids.add(product.id)
+  }
+  return [...ids]
 }
 
 function catalogTicket(ticket: Ticket): Ticket | null {
@@ -103,7 +143,7 @@ function clampBox(value: unknown): BoxState | null {
   }
 }
 
-function clampStreet(street: SaveV3['street']): SaveV3['street'] {
+function clampStreet(street: Street): Street {
   if (street.box == null) return street
   return { ...street, box: clampBox(street.box) }
 }
@@ -133,7 +173,7 @@ function usableStreet(street: Record<string, unknown>): boolean {
   )
 }
 
-function repairStreet(street: Record<string, unknown>): SaveV3['street'] | null {
+function repairStreet(street: Record<string, unknown>): Street | null {
   if (!Array.isArray(street.slots) || !Array.isArray(street.visitors) || !Array.isArray(street.staff) || !Array.isArray(street.arrivals)) {
     return null
   }
@@ -145,5 +185,5 @@ function repairStreet(street: Record<string, unknown>): SaveV3['street'] | null 
     street.stock != null && typeof street.stock === 'object' && !Array.isArray(street.stock)
       ? (street.stock as Record<string, number>)
       : {}
-  return { ...(street as unknown as SaveV3['street']), money, tick, stock }
+  return { ...(street as unknown as Street), money, tick, stock }
 }

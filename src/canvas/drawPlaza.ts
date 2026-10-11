@@ -1,5 +1,5 @@
 import { glowAlpha } from './fx'
-import { bobOffset, coverTransform, depthSort, glowRadii, PLAZA_H, PLAZA_W, toScreen, type SceneSprite, type SlotFrame } from './plaza'
+import { bobOffset, coverTransform, depthSort, glowRadii, PLAZA_H, PLAZA_W, toScreen, type CoverTransform, type SceneSprite, type SlotFrame } from './plaza'
 
 export function drawPlaza(
   ctx: CanvasRenderingContext2D,
@@ -11,8 +11,8 @@ export function drawPlaza(
   timeMs: number,
   frames: readonly { frame: SlotFrame; selected: boolean; glow?: boolean }[] = [],
   spark: { x: number; y: number; t: number } | null = null,
+  cover: CoverTransform = coverTransform(viewW, viewH),
 ): void {
-  const cover = coverTransform(viewW, viewH)
   ctx.clearRect(0, 0, viewW, viewH)
   if (background) {
     ctx.drawImage(background, cover.offsetX, cover.offsetY, PLAZA_W * cover.scale, PLAZA_H * cover.scale)

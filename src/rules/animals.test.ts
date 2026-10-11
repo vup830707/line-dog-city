@@ -1,11 +1,31 @@
 import { describe, expect, it } from 'vitest'
 import { gameConfig } from '../config'
-import { expectedVisits } from './ambience'
+import { ambienceScore, expectedVisits } from './ambience'
 import { bearCanVisit, foxCanVisit, letterFor, satisfactionOf, speciesWeight } from './animals'
-import { decor, ownedSet, stall, streetWith } from './fixtures'
+import { decor, stall, streetWith } from './fixtures'
 import type { BoxState, Species, Weather } from './types'
 
-const EVERYDAY: Species[] = ['cat', 'rabbit', 'hamster', 'sparrow', 'otter', 'hedgehog']
+const STARTERS: Species[] = ['cat', 'rabbit', 'hamster', 'sparrow']
+
+function unlockOtter(street: ReturnType<typeof streetWith>) {
+  const slots = street.slots.slice()
+  slots[0] = decor('seat', 'seat-a')
+  slots[1] = decor('seat', 'seat-b')
+  return { ...street, slots }
+}
+
+function unlockHedgehog(street: ReturnType<typeof streetWith>) {
+  const slots = street.slots.slice()
+  slots[0] = { ...stall('ice', 'ice-3'), level: 3 }
+  return { ...street, slots }
+}
+
+function unlockFox(day: number, grades: Array<'A' | 'B' | 'C' | 'D'>) {
+  const slots = streetWith().slots.slice()
+  slots[0] = stall('ichiban', 'ichiban')
+  for (let i = 1; i <= 8; i += 1) slots[i] = decor('lantern', `lantern-${i}`)
+  return streetWith({ slots, day, weather: 'sunny', phase: 'mid', box: boxWith(grades) })
+}
 const WEATHERS: Weather[] = ['sunny', 'hot', 'cold', 'rain']
 
 function boxWith(grades: Array<'A' | 'B' | 'C' | 'D'>): BoxState {
@@ -29,33 +49,33 @@ describe('animal preferences', () => {
     expect(speciesWeight('hamster', rain, gameConfig)).toBeGreaterThan(0)
   })
 
-  it('opens the fox only on a festival while A or B remains', () => {
-    const festival = streetWith({ day: 15, box: boxWith(['A']) })
-    const quiet = streetWith({ day: 1, box: boxWith(['A', 'B']) })
-    const leftovers = streetWith({ day: 15, box: boxWith(['D']) })
-    expect(foxCanVisit(festival, gameConfig)).toBe(true)
-    expect(speciesWeight('fox', festival, gameConfig)).toBeGreaterThan(0)
-    expect(foxCanVisit(quiet, gameConfig)).toBe(false)
-    expect(speciesWeight('fox', quiet, gameConfig)).toBe(0)
-    expect(foxCanVisit(leftovers, gameConfig)).toBe(false)
+  it('lets the red panda visit once ichiban and eight decorations are out, and doubles that on a festival with A or B left', () => {
+    const quiet = unlockFox(1, ['A'])
+    const festival = unlockFox(15, ['A'])
+    const leftovers = unlockFox(15, ['D'])
+    const locked = streetWith({ day: 15, box: boxWith(['A']) })
+    expect(foxCanVisit(quiet, gameConfig)).toBe(true)
+    expect(speciesWeight('fox', quiet, gameConfig)).toBeGreaterThan(0)
+    expect(speciesWeight('fox', festival, gameConfig)).toBe(speciesWeight('fox', quiet, gameConfig) * 2)
+    expect(speciesWeight('fox', leftovers, gameConfig)).toBe(speciesWeight('fox', quiet, gameConfig))
+    expect(foxCanVisit(locked, gameConfig)).toBe(false)
+    expect(speciesWeight('fox', locked, gameConfig)).toBe(0)
   })
 
-  it('opens the bear only when the wish pond is placed, the set is complete, and ambience is high enough', () => {
-    const ids = gameConfig.figures.map((figure) => figure.id)
+  it('opens the raccoon when the wish pond is placed and bustle reaches the threshold', () => {
+    const unlock = gameConfig.species.find((item) => item.id === 'bear')?.unlock
+    const line = unlock?.kind === 'wishAmbience' ? unlock.ambience : 0
     const slots = streetWith().slots.slice()
-    slots[3] = stall('wish', 'wish')
-    const busy = slots.slice()
-    busy[0] = decor('star', 'star-a')
-    busy[1] = decor('star', 'star-b')
-    busy[2] = decor('star', 'star-c')
-    busy[4] = decor('star', 'star-d')
-    const ready = streetWith({ slots: busy, collection: ownedSet(ids), cleanliness: 100 })
-    const noStall = streetWith({ collection: ownedSet(ids), cleanliness: 100 })
-    const dirty = streetWith({ slots, collection: ownedSet(ids), cleanliness: 0 })
+    slots[15] = stall('wish', 'wish')
+    for (let i = 0; i < 8; i += 1) slots[i] = decor('lantern', `lantern-${i}`)
+    const ready = streetWith({ slots, cleanliness: 0 })
+    const noStall = streetWith({ cleanliness: 100 })
+    const quiet = streetWith({ slots: [stall('wish', 'wish')], cleanliness: 100 })
+    expect(ambienceScore(ready, gameConfig)).toBeGreaterThanOrEqual(line)
     expect(bearCanVisit(ready, gameConfig)).toBe(true)
     expect(speciesWeight('bear', ready, gameConfig)).toBeGreaterThan(0)
     expect(bearCanVisit(noStall, gameConfig)).toBe(false)
-    expect(bearCanVisit(dirty, gameConfig)).toBe(false)
+    expect(bearCanVisit(quiet, gameConfig)).toBe(false)
   })
 
   it('writes a letter only after the favourite stall, nearby decor, and satisfaction line up', () => {
@@ -91,12 +111,12 @@ describe('animal preferences', () => {
     const rain = streetWith({ weather: 'rain', phase: 'mid' })
     const sun = streetWith({ weather: 'sunny', phase: 'mid' })
     expect(speciesWeight('cat', rain, gameConfig)).toBeGreaterThan(speciesWeight('cat', sun, gameConfig))
-    expect(speciesWeight('otter', rain, gameConfig)).toBeGreaterThan(speciesWeight('otter', sun, gameConfig))
+    expect(speciesWeight('otter', unlockOtter(rain), gameConfig)).toBeGreaterThan(speciesWeight('otter', unlockOtter(sun), gameConfig))
     expect(speciesWeight('rabbit', sun, gameConfig)).toBeGreaterThan(speciesWeight('rabbit', rain, gameConfig))
     const floor = gameConfig.baseVisitsPerPhase * gameConfig.ambienceFloor
     for (const weather of WEATHERS) {
       const street = streetWith({ weather, phase: 'mid' })
-      for (const species of EVERYDAY) expect(speciesWeight(species, street, gameConfig)).toBeGreaterThan(0)
+      for (const species of STARTERS) expect(speciesWeight(species, street, gameConfig)).toBeGreaterThan(0)
       const visits = expectedVisits({ ambience: 0, festival: false, weather }, gameConfig)
       expect(visits).toBeGreaterThanOrEqual(floor)
       expect(visits).toBe(expectedVisits({ ambience: 0, festival: false }, gameConfig))
@@ -110,10 +130,12 @@ describe('animal preferences', () => {
     expect(speciesWeight('sparrow', dusk, gameConfig)).toBeGreaterThan(speciesWeight('sparrow', late, gameConfig))
     expect(speciesWeight('cat', dusk, gameConfig)).toBeGreaterThan(speciesWeight('cat', mid, gameConfig))
     expect(speciesWeight('rabbit', mid, gameConfig)).toBeGreaterThan(speciesWeight('rabbit', dusk, gameConfig))
-    expect(speciesWeight('hedgehog', late, gameConfig)).toBeGreaterThan(speciesWeight('hedgehog', dusk, gameConfig))
+    expect(speciesWeight('hedgehog', unlockHedgehog(late), gameConfig)).toBeGreaterThan(
+      speciesWeight('hedgehog', unlockHedgehog(dusk), gameConfig),
+    )
     const floor = gameConfig.baseVisitsPerPhase * gameConfig.ambienceFloor
     for (const street of [dusk, mid, late]) {
-      for (const species of EVERYDAY) expect(speciesWeight(species, street, gameConfig)).toBeGreaterThan(0)
+      for (const species of STARTERS) expect(speciesWeight(species, street, gameConfig)).toBeGreaterThan(0)
       const visits = expectedVisits({ ambience: 0, festival: false }, gameConfig)
       expect(visits).toBeGreaterThanOrEqual(floor)
     }
@@ -121,11 +143,11 @@ describe('animal preferences', () => {
   })
 
   it('changes the fox weight and the visit count on a festival without going under the ambience floor', () => {
-    const festival = streetWith({ day: 15, weather: 'sunny', phase: 'mid', box: boxWith(['A']) })
-    const quiet = streetWith({ day: 1, weather: 'sunny', phase: 'mid', box: boxWith(['A']) })
+    const festival = unlockFox(15, ['A'])
+    const quiet = unlockFox(1, ['A'])
     expect(speciesWeight('fox', festival, gameConfig)).toBeGreaterThan(speciesWeight('fox', quiet, gameConfig))
-    expect(speciesWeight('fox', quiet, gameConfig)).toBe(0)
-    for (const species of EVERYDAY) expect(speciesWeight(species, festival, gameConfig)).toBeGreaterThan(0)
+    expect(speciesWeight('fox', quiet, gameConfig)).toBeGreaterThan(0)
+    for (const species of STARTERS) expect(speciesWeight(species, festival, gameConfig)).toBeGreaterThan(0)
     const floor = gameConfig.baseVisitsPerPhase * gameConfig.ambienceFloor
     const calm = expectedVisits({ ambience: 0, festival: false }, gameConfig)
     const busy = expectedVisits({ ambience: 0, festival: true }, gameConfig)
@@ -135,50 +157,38 @@ describe('animal preferences', () => {
     expect(busy).toBeCloseTo(floor * gameConfig.festivalBonus)
   })
 
-  it('triggers the fox when a festival still has an A or B prize', () => {
-    const festival = streetWith({ day: 15, box: boxWith(['B']) })
+  it('doubles the red panda on a festival while A or B remains, and still lets them visit otherwise', () => {
+    const festival = unlockFox(15, ['B'])
+    const quiet = unlockFox(1, ['A', 'B'])
+    const leftovers = unlockFox(22, ['C', 'D'])
+    const empty = unlockFox(30, ['D'])
+    empty.box = null
     expect(foxCanVisit(festival, gameConfig)).toBe(true)
-    expect(speciesWeight('fox', festival, gameConfig)).toBeGreaterThan(0)
+    expect(speciesWeight('fox', festival, gameConfig)).toBe(speciesWeight('fox', quiet, gameConfig) * 2)
+    expect(foxCanVisit(quiet, gameConfig)).toBe(true)
+    expect(speciesWeight('fox', leftovers, gameConfig)).toBe(speciesWeight('fox', quiet, gameConfig))
+    expect(foxCanVisit(empty, gameConfig)).toBe(true)
+    expect(speciesWeight('fox', empty, gameConfig)).toBe(speciesWeight('fox', quiet, gameConfig))
   })
 
-  it('does not trigger the fox off a festival or after A and B are gone', () => {
-    const quiet = streetWith({ day: 1, box: boxWith(['A', 'B']) })
-    const leftovers = streetWith({ day: 22, box: boxWith(['C', 'D']) })
-    const empty = streetWith({ day: 30, box: null })
-    expect(foxCanVisit(quiet, gameConfig)).toBe(false)
-    expect(speciesWeight('fox', quiet, gameConfig)).toBe(0)
-    expect(foxCanVisit(leftovers, gameConfig)).toBe(false)
-    expect(speciesWeight('fox', leftovers, gameConfig)).toBe(0)
-    expect(foxCanVisit(empty, gameConfig)).toBe(false)
-  })
-
-  it('triggers the cloud bear when the wish pond, the full set, and the ambience target line up', () => {
-    const ids = gameConfig.figures.map((figure) => figure.id)
+  it('triggers the raccoon from the wish pond and bustle, without asking for the figure set again', () => {
     const slots = streetWith().slots.slice()
-    slots[3] = stall('wish', 'wish')
-    const busy = slots.slice()
-    busy[0] = decor('star', 'star-a')
-    busy[1] = decor('star', 'star-b')
-    busy[2] = decor('star', 'star-c')
-    busy[4] = decor('star', 'star-d')
-    const ready = streetWith({ slots: busy, collection: ownedSet(ids), cleanliness: gameConfig.ambienceTarget })
+    slots[15] = stall('wish', 'wish')
+    for (let i = 0; i < 8; i += 1) slots[i] = decor('lantern', `lantern-${i}`)
+    const ready = streetWith({ slots, collection: {}, cleanliness: 0 })
     expect(bearCanVisit(ready, gameConfig)).toBe(true)
     expect(speciesWeight('bear', ready, gameConfig)).toBeGreaterThan(0)
   })
 
-  it('does not trigger the cloud bear when the pond, the set, or the ambience is missing', () => {
-    const ids = gameConfig.figures.map((figure) => figure.id)
+  it('does not trigger the raccoon when the pond or the bustle is missing', () => {
     const slots = streetWith().slots.slice()
     slots[3] = stall('wish', 'wish')
-    const noStall = streetWith({ collection: ownedSet(ids), cleanliness: 100 })
-    const incomplete = streetWith({ slots, collection: { temple: 1 }, cleanliness: 100 })
-    const dirty = streetWith({ slots, collection: ownedSet(ids), cleanliness: 0 })
+    const noStall = streetWith({ cleanliness: 100 })
+    const quiet = streetWith({ slots, cleanliness: 0 })
     expect(bearCanVisit(noStall, gameConfig)).toBe(false)
     expect(speciesWeight('bear', noStall, gameConfig)).toBe(0)
-    expect(bearCanVisit(incomplete, gameConfig)).toBe(false)
-    expect(speciesWeight('bear', incomplete, gameConfig)).toBe(0)
-    expect(bearCanVisit(dirty, gameConfig)).toBe(false)
-    expect(speciesWeight('bear', dirty, gameConfig)).toBe(0)
+    expect(bearCanVisit(quiet, gameConfig)).toBe(false)
+    expect(speciesWeight('bear', quiet, gameConfig)).toBe(0)
   })
 
   it('writes a letter only above letterSatisfaction', () => {

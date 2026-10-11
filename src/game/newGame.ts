@@ -1,7 +1,9 @@
 import { ambienceScore, expectedVisits } from '../rules/ambience'
+import { visitCapFor } from '../rules/market'
+import { rollLimitedProduct } from '../rules/products'
 import { createRng } from '../rules/rng'
 import { scheduleArrivals } from '../rules/street'
-import type { DecorType, GameConfig, Placement, SaveV3, Species, StallType, Street, Visitor } from '../rules/types'
+import type { DecorType, GameConfig, Placement, SaveV4, Species, StallType, Street, Visitor } from '../rules/types'
 import { isFestival, rollWeather } from '../rules/weather'
 
 export const DEFAULT_WHITE_NAME = '小白'
@@ -26,14 +28,14 @@ function hashSeed(text: string): number {
 export function createNewGame(
   input: { playerDog?: 'white' | 'brown'; whiteName?: string; brownName?: string; now?: number; seed?: number } = {},
   config: GameConfig,
-): SaveV3 {
+): SaveV4 {
   const playerDog = input.playerDog ?? DEFAULT_PLAYER_DOG
   const whiteName = cleanName(input.whiteName ?? DEFAULT_WHITE_NAME)
   const brownName = cleanName(input.brownName ?? DEFAULT_BROWN_NAME)
   if (!whiteName || !brownName) throw new Error('名字要 1 到 8 個字')
   const rng = createRng(input.seed ?? hashSeed(`${playerDog}|${whiteName}|${brownName}|${input.now ?? 0}`))
   const weather = rollWeather(rng)
-  const first = config.flavors[Math.floor(rng.next() * config.flavors.length)]?.id ?? 'fly'
+  const limited = rollLimitedProduct(config, rng)
   const opening = openingPlaza(config)
   const street: Street = {
     tick: 0,
@@ -60,15 +62,28 @@ export function createNewGame(
     box: null,
     boxRestock: 0,
     arrivals: [],
-    trending: [first],
+    trending: [limited],
     rngState: rng.getState(),
     nextVisitor: opening.visitors.length + 1,
     offlineNote: null,
     lastOfflineTicks: 0,
+    marketLevel: 1,
+    bustleXp: 0,
+    seenSpecies: opening.seen,
+    seenProducts: [],
+    ackedSpecies: opening.seen,
+    pendingToasts: [],
+    levelUpBanner: null,
+    speciesSatisfaction: {},
   }
   street.arrivals = scheduleArrivals(
     expectedVisits(
-      { ambience: ambienceScore(street, config), cleanliness: street.cleanliness, festival: isFestival(street.day, config) },
+      {
+        ambience: ambienceScore(street, config),
+        cleanliness: street.cleanliness,
+        festival: isFestival(street.day, config),
+        visitCap: visitCapFor(street.marketLevel, config),
+      },
       config,
     ),
     config.phaseMinutes,
@@ -76,7 +91,7 @@ export function createNewGame(
   )
   street.rngState = rng.getState()
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     playerDog,
     whiteName,
     brownName,
@@ -85,8 +100,18 @@ export function createNewGame(
   }
 }
 
-/** A full market on the back arc and sides. The opening is a gift, so it does not spend coins. */
-function openingPlaza(config: GameConfig): { slots: (Placement | null)[]; stock: Record<string, number>; visitors: Visitor[] } {
+/**
+ * Gifted opening: ice and the charge station share the back stall row so the
+ * charge neighbor bonus (the next slot index) has a real stall to walk to.
+ * The bench sits in the front row, in front of slot 4, where a fortune stall
+ * later counts as 「長椅旁」 by plaza distance. It does not spend coins.
+ */
+function openingPlaza(config: GameConfig): {
+  slots: (Placement | null)[]
+  stock: Record<string, number>
+  visitors: Visitor[]
+  seen: Species[]
+} {
   const slots: (Placement | null)[] = Array.from({ length: config.streetSlots }, () => null)
   const stock: Record<string, number> = {}
   const place = (index: number, kind: 'stall' | 'decor', id: StallType | DecorType) => {
@@ -99,15 +124,10 @@ function openingPlaza(config: GameConfig): { slots: (Placement | null)[]; stock:
       slots[index] = { uid, kind: 'decor', decorType: id as DecorType, level: 1 }
     }
   }
-  place(0, 'decor', 'lantern')
   place(1, 'stall', 'ice')
-  place(2, 'stall', 'can')
-  place(3, 'decor', 'seat')
-  place(4, 'stall', 'fortune')
-  place(5, 'stall', 'ichiban')
-  place(6, 'decor', 'lantern')
-  place(7, 'decor', 'flower')
-  place(8, 'stall', 'charge')
+  place(2, 'stall', 'charge')
+  place(10, 'decor', 'lantern')
+  place(12, 'decor', 'seat')
 
   const guest = (n: number, species: Species, slot: number, wander = false): Visitor => ({
     id: `open-${n}`,
@@ -122,21 +142,16 @@ function openingPlaza(config: GameConfig): { slots: (Placement | null)[]; stock:
     fortune: null,
     drewGrade: null,
   })
+  const seen: Species[] = ['rabbit', 'hamster', 'cat', 'sparrow']
   return {
     slots,
     stock,
-    visitors: [
-      guest(1, 'rabbit', 1),
-      guest(2, 'hamster', 2),
-      guest(3, 'otter', 8),
-      guest(4, 'cat', 4),
-      guest(5, 'hedgehog', 4),
-      guest(6, 'sparrow', 5, true),
-    ],
+    seen,
+    visitors: [guest(1, 'rabbit', 1), guest(2, 'hamster', 1, true), guest(3, 'cat', 2), guest(4, 'sparrow', 10, true)],
   }
 }
 
-export function renameDogs(save: SaveV3, whiteName: string, brownName: string): SaveV3 | null {
+export function renameDogs(save: SaveV4, whiteName: string, brownName: string): SaveV4 | null {
   const white = cleanName(whiteName)
   const brown = cleanName(brownName)
   if (!white || !brown) return null

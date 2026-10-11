@@ -6,7 +6,7 @@ import {
   artSources,
   BG_SRC,
   bobOffset,
-  coverTransform,
+  plazaTransform,
   layoutScene,
   PLAZA_SLOTS,
   screenRect,
@@ -37,6 +37,8 @@ import type { SaveV3, Species, Street } from '../rules/types'
 import { renameDogs } from '../game/newGame'
 import { BuildStrip } from './BuildStrip'
 import { PhoneCharm, PhoneOverlay, type PhoneApp } from './PhoneMenu'
+import { BANNER_SRC, PRODUCT_SRC } from '../assets/growthArt'
+import { productsFor, upgradeAdds } from '../rules/products'
 import { StallCard } from './StallCard'
 import { WEATHER_LABEL } from './labels'
 
@@ -118,7 +120,17 @@ export function StreetScreen({
   const upgradeReady = street.slots.some((place, index) => place?.kind === 'stall' && upgradeBlock(street, index, gameConfig) === null)
   const selected = selectedSlot != null ? street.slots[selectedSlot] : null
   const animal = street.visitors.find((visitor) => visitor.id === selectedAnimal) ?? null
-  const cover = coverTransform(view.w, view.h)
+  const cover = plazaTransform(view.w, view.h, buildMode)
+  const freshSpecies = street.seenSpecies.some((id) => !street.ackedSpecies.includes(id))
+  const toastText = street.pendingToasts[street.pendingToasts.length - 1] ?? ''
+  const saveRef = useRef(save)
+  saveRef.current = save
+  useEffect(() => {
+    if (!toastText) return
+    const current = saveRef.current
+    setNotice(toastText)
+    onChange({ ...current, street: { ...current.street, pendingToasts: [] } })
+  }, [toastText, onChange])
   const far = toScreen(PLAZA_SLOTS[0] ?? { x: 0, y: 0 }, cover)
   const near = toScreen(PLAZA_SLOTS[8] ?? { x: 0, y: 0 }, cover)
 
@@ -210,7 +222,7 @@ export function StreetScreen({
         else {
           const built = scene.find((item) => item.id === `slot-${fx.slot}`)
           if (built) built.drawH *= buildPopScale(elapsed, duration)
-          const foot = toScreen(PLAZA_SLOTS[fx.slot] ?? { x: 0, y: 0 }, coverTransform(width, height))
+          const foot = toScreen(PLAZA_SLOTS[fx.slot] ?? { x: 0, y: 0 }, plazaTransform(width, height, buildModeRef.current))
           spark = { x: foot.x, y: foot.y, t: elapsed / duration }
         }
       }
@@ -223,11 +235,12 @@ export function StreetScreen({
           const stallType = place?.kind === 'stall' ? place.stallType : null
           return [{ frame: slotFrame(index, stallType), selected, glow: glowing }]
         })
-        drawPlaza(ctx, width, height, imagesRef.current.get(BG_SRC), imagesRef.current, scene, now, frames, spark)
+        const viewCover = plazaTransform(width, height, buildModeRef.current)
+        drawPlaza(ctx, width, height, imagesRef.current.get(BG_SRC), imagesRef.current, scene, now, frames, spark, viewCover)
       }
       const layer = hitsRef.current
       if (layer) {
-        const coverNow = coverTransform(width, height)
+        const coverNow = plazaTransform(width, height, buildModeRef.current)
         layer.querySelectorAll<HTMLButtonElement>('[data-visitor]').forEach((button) => {
           const sprite = scene.find((item) => item.id === `visitor-${button.dataset.visitor}`)
           if (!sprite) return
@@ -438,6 +451,17 @@ export function StreetScreen({
           {street.offlineNote}
         </p>
       ) : null}
+      {street.levelUpBanner != null ? (
+        <button
+          type="button"
+          className="level-banner"
+          data-testid="level-banner"
+          onClick={() => onChange({ ...save, street: { ...street, levelUpBanner: null } })}
+        >
+          <img src={`${artRoot}${BANNER_SRC}`} alt="" />
+          夜市升到 Lv.{street.levelUpBanner}！
+        </button>
+      ) : null}
       {notice ? (
         <p className="toast" data-testid="toast">
           {notice}
@@ -453,6 +477,13 @@ export function StreetScreen({
           key={selected.uid}
           title={`${gameConfig.stallLabels[selected.stallType]} Lv.${selected.level}`}
           goods={goodsLine(street, selectedSlot)}
+          products={productsFor(selected.stallType, selected.level, gameConfig).map((item) => ({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            src: PRODUCT_SRC[item.id] ?? '',
+          }))}
+          upgradeLabel={upgradeAdds(selected.stallType, selected.level, gameConfig)}
           anchor={screenRect(slotFrame(selectedSlot, selected.stallType), cover)}
           view={view}
           upgradeReason={upgradeBlock(street, selectedSlot, gameConfig)}
@@ -501,7 +532,9 @@ export function StreetScreen({
           }
         />
       ) : null}
-      {animal && !buildMode ? <AnimalCard species={animal.species} satisfaction={animal.satisfaction} fortune={animal.fortune} /> : null}
+      {animal && !buildMode ? (
+        <AnimalCard street={street} species={animal.species} satisfaction={animal.satisfaction} fortune={animal.fortune} />
+      ) : null}
       {buildMode ? (
         <BuildStrip
           offers={offers}
@@ -517,7 +550,7 @@ export function StreetScreen({
         />
       ) : null}
       <PhoneCharm
-        badge={unread > 0 || upgradeReady}
+        badge={unread > 0 || upgradeReady || freshSpecies}
         reduceMotion={reduceRef.current}
         open={phone !== 'closed'}
         onClick={() => {
@@ -539,7 +572,12 @@ export function StreetScreen({
           onClose={closePhone}
           onBack={() => setPhoneApp(null)}
           onBuild={startBuild}
-          onOpenApp={setPhoneApp}
+          onOpenApp={(app) => {
+            setPhoneApp(app)
+            if (app === 'collection' && freshSpecies) {
+              onChange({ ...save, street: { ...street, ackedSpecies: [...street.seenSpecies] } })
+            }
+          }}
           onChange={onChange}
           onRename={onRename}
           onImport={onImport}
@@ -571,15 +609,28 @@ export function StreetScreen({
   )
 }
 
-function AnimalCard({ species, satisfaction, fortune }: { species: Species; satisfaction: number; fortune: string | null }) {
+function AnimalCard({
+  street,
+  species,
+  satisfaction,
+  fortune,
+}: {
+  street: Street
+  species: Species
+  satisfaction: number
+  fortune: string | null
+}) {
   const spec = gameConfig.species.find((item) => item.id === species)
+  const favourite = spec ? Object.values(gameConfig.products).flat().find((item) => item.id === spec.product) : undefined
+  const known = spec ? street.seenProducts.includes(spec.product) : false
+  const score = street.speciesSatisfaction[species] ?? satisfaction
+  const letters = street.letters.filter((letter) => letter.species === species)
   return (
     <article className="hud-card animal-card" data-testid="animal-card">
       <h2>{spec?.name}</h2>
-      <p>
-        喜歡 {spec ? gameConfig.stallLabels[spec.stall] : ''} 和 {spec ? gameConfig.decorLabels[spec.decor] : ''}
-      </p>
-      <p>這次的滿意度 {Math.round(satisfaction * 100)}</p>
+      <p data-testid="animal-favorite">最愛 {known && favourite ? favourite.name : '？'}</p>
+      <p>滿意度 {Math.round(score * 100)}</p>
+      {letters.length === 0 ? <p>還沒有留下信。</p> : letters.map((letter) => <p key={letter.id}>{letter.body}</p>)}
       {fortune ? <p>{fortune}</p> : null}
     </article>
   )
