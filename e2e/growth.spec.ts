@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { openMarket } from './openMarket'
+import { saveScreenshot } from './shot'
 
 const viewports = [
   { width: 1280, height: 720 },
@@ -75,5 +76,5 @@ test('growth screens show blockers, a level-3 stall, the codex, and the market l
 })
 
 async function shot(page: Page, name: string) {
-  await page.screenshot({ path: `/opt/cursor/artifacts/growth/${name}.png` })
+  await saveScreenshot(page, `/opt/cursor/artifacts/growth/${name}.png`)
 }

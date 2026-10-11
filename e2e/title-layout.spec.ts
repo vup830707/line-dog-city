@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { waitForTitleArt } from './shot'
 
 const dogs = { x: 470, y: 545, x2: 850, y2: 705 }
 
@@ -39,6 +40,7 @@ test('the title keeps both dogs in frame and the sign off their bodies', async (
 })
 
 async function measure(page: Page) {
+  await waitForTitleArt(page)
   return page.evaluate((dog) => {
     const img = document.querySelector<HTMLImageElement>('.title-bg-unlit')
     const button = document.querySelector<HTMLElement>('[data-testid="title-start"]')

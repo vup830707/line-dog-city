@@ -4,6 +4,7 @@ import { gameConfig } from '../config'
 import { stall, streetWith, visitor } from '../rules/fixtures'
 import {
   ANIMAL_ART,
+  CUSTOMER_H,
   PATH_ENTRANCE,
   PLAZA_PATH,
   PLAZA_SLOTS,
@@ -11,7 +12,10 @@ import {
   artSources,
   layoutScene,
   queueSpot,
+  walkFacing,
+  walkMirror,
 } from './plaza'
+import type { HireSpecies, Species } from '../rules/types'
 import {
   blendWalk,
   bobOffset,
@@ -91,7 +95,11 @@ describe('tick interpolation', () => {
     expect(walker).toBeTruthy()
     expect(Math.hypot(walker!.x - PATH_ENTRANCE.x, walker!.y - PATH_ENTRANCE.y)).toBeLessThan(4)
     expect(walker!.bob).toBe(true)
-    expect(walker!.src).toBe(ANIMAL_ART.otter.src)
+    expect(walker!.src).toMatch(/\/walk\/otter-(front|back)-1\.png$/)
+    expect(walker!.aspect).toBeCloseTo(414 / 512)
+    expect(walker!.footOffset).toBeCloseTo((512 - 500) / 512)
+    expect(walker!.drawH / CUSTOMER_H).toBeGreaterThanOrEqual(0.85)
+    expect(walker!.drawH / CUSTOMER_H).toBeLessThanOrEqual(1)
 
     const standing = layoutScene(streetWith({ slots, visitors: [visitor('cat', 3, 3)], staff: [] }), 400)
     const cat = standing.find((sprite) => sprite.id === 'visitor-v-cat')
@@ -120,26 +128,113 @@ describe('walk frames', () => {
     expect(srcAt(2000 / 6, 'front', true)).toMatch(/front-3\.png$/)
     expect(srcAt(3000 / 6, 'back', true)).toMatch(/back-2\.png$/)
     expect(srcAt(0, 'back', false)).toMatch(/back-2\.png$/)
-    expect(selectArtFrame(ANIMAL_ART.otter, 'front', 200, true, 6).src).toBe(ANIMAL_ART.otter.src)
-    expect(ANIMAL_ART.otter.frames).toBeUndefined()
-    expect(ANIMAL_ART.fox.frames).toBeUndefined()
+    expect(selectArtFrame({ src: 'assets/plain.png', aspect: 1 }, 'front', 200, true, 6).src).toBe('assets/plain.png')
     expect(bobOffset(1000 / 6, 0, false, 6)).toBe(0)
   })
 
-  it('preloads every current walk frame and leaves the others as a map change', () => {
+  it('gives every walkable visitor and staff a sheet, sized by height and foot', () => {
+    const visitors: Species[] = ['cat', 'rabbit', 'hamster', 'sparrow', 'otter', 'hedgehog', 'fox', 'bear']
+    const staff: Array<HireSpecies | 'white-puppy' | 'brown-puppy'> = ['munia', 'ferret', 'white-puppy', 'brown-puppy']
+    const fileById: Record<string, string> = {
+      cat: 'cat',
+      rabbit: 'rabbit',
+      hamster: 'hamster',
+      sparrow: 'duck',
+      otter: 'otter',
+      hedgehog: 'hedgehog',
+      fox: 'red-panda',
+      bear: 'raccoon',
+      munia: 'munia',
+      ferret: 'ferret',
+      'white-puppy': 'white-puppy',
+      'brown-puppy': 'brown-puppy',
+    }
     const sources = artSources()
-    for (const actor of Object.values(WALK_ACTORS)) {
+    for (const id of [...visitors, ...staff]) {
+      const actor = WALK_ACTORS[id]
+      expect(actor?.file, id).toBe(fileById[id])
+      expect(actor?.height).toBe(512)
+      expect(actor?.foot).toBe(500)
       for (const facing of ['front', 'back'] as const) {
         for (const frame of [1, 2, 3]) {
-          const src = `assets/art25/walk/${actor.file}-${facing}-${frame}.png`
-          expect(sources).toContain(src)
-          expect(existsSync(`public/${src}`)).toBe(true)
+          const src = `assets/art25/walk/${actor?.file}-${facing}-${frame}.png`
+          expect(sources, src).toContain(src)
         }
       }
     }
-    expect(sources.some((src) => src.includes('/walk/otter-'))).toBe(false)
-    expect(sources.some((src) => src.includes('/walk/ferret-'))).toBe(false)
-    expect(sources.some((src) => src.includes('/walk/munia-'))).toBe(false)
+    for (const id of visitors) {
+      const art = ANIMAL_ART[id]
+      const actor = WALK_ACTORS[id]
+      expect(art.frames?.front?.map((frame) => frame.src)).toEqual([1, 2, 3].map((n) => `assets/art25/walk/${actor?.file}-front-${n}.png`))
+      expect(art.frames?.back?.map((frame) => frame.src)).toEqual([1, 2, 3].map((n) => `assets/art25/walk/${actor?.file}-back-${n}.png`))
+      expect(art.drawH).toBe(CUSTOMER_H)
+      expect(art.footOffset).toBeCloseTo((512 - 500) / 512)
+      expect(art.frames?.front[0]?.aspect).toBeCloseTo((actor?.width ?? 0) / 512)
+    }
+    const hires = layoutScene(
+      streetWith({
+        visitors: [],
+        staff: [
+          { id: 'hire-munia', name: '文鳥', kind: 'hire', hireSpecies: 'munia', job: 'greet', level: 1 },
+          { id: 'hire-ferret', name: '雪貂', kind: 'hire', hireSpecies: 'ferret', job: 'rest', level: 1 },
+        ],
+      }),
+      0,
+    )
+    expect(hires.find((sprite) => sprite.id === 'staff-hire-munia')?.src).toMatch(/\/walk\/munia-(front|back)-2\.png$/)
+    expect(hires.find((sprite) => sprite.id === 'staff-hire-ferret')?.src).toMatch(/\/walk\/ferret-(front|back)-2\.png$/)
+    for (const id of ['staff-hire-munia', 'staff-hire-ferret'] as const) {
+      const person = hires.find((sprite) => sprite.id === id)
+      expect(person?.footOffset).toBeCloseTo((512 - 500) / 512)
+      expect(person?.drawH).toBeGreaterThan(CUSTOMER_H * 0.8)
+      expect(person?.drawH).toBeLessThan(CUSTOMER_H * 1.05)
+    }
+  })
+
+  it('faces every walker along dx, using that sheet\'s authored direction', () => {
+    const authored: Record<string, { frontFacesRight: boolean; backFacesRight: boolean }> = {
+      cat: { frontFacesRight: true, backFacesRight: false },
+      rabbit: { frontFacesRight: false, backFacesRight: true },
+      hamster: { frontFacesRight: false, backFacesRight: true },
+      sparrow: { frontFacesRight: false, backFacesRight: false },
+      'white-puppy': { frontFacesRight: false, backFacesRight: false },
+      'brown-puppy': { frontFacesRight: true, backFacesRight: false },
+      hedgehog: { frontFacesRight: true, backFacesRight: true },
+      otter: { frontFacesRight: false, backFacesRight: true },
+      bear: { frontFacesRight: false, backFacesRight: true },
+      fox: { frontFacesRight: false, backFacesRight: true },
+      ferret: { frontFacesRight: false, backFacesRight: false },
+      munia: { frontFacesRight: false, backFacesRight: true },
+    }
+    expect(Object.keys(WALK_ACTORS).sort()).toEqual(Object.keys(authored).sort())
+    const shownRight = (nativeRight: boolean, mirror: boolean) => nativeRight !== mirror
+    for (const [id, flags] of Object.entries(authored)) {
+      const actor = WALK_ACTORS[id]
+      expect(actor?.frontFacesRight, id).toBe(flags.frontFacesRight)
+      expect(actor?.backFacesRight, id).toBe(flags.backFacesRight)
+      for (const facing of ['front', 'back'] as const) {
+        const nativeRight = facing === 'front' ? flags.frontFacesRight : flags.backFacesRight
+        const dy = facing === 'back' ? -6 : 1
+        const right = walkFacing(4, dy, actor)
+        const left = walkFacing(-4, dy, actor)
+        expect(right.facing, `${id} ${facing} right`).toBe(facing)
+        expect(left.facing, `${id} ${facing} left`).toBe(facing)
+        expect(shownRight(nativeRight, right.mirror), `${id} ${facing} walks right`).toBe(true)
+        expect(shownRight(nativeRight, left.mirror), `${id} ${facing} walks left`).toBe(false)
+        expect(walkMirror(0, facing, flags), `${id} ${facing} vertical`).toBe(false)
+      }
+    }
+  })
+
+  it('finds every walk actor frame under public/', () => {
+    for (const actor of Object.values(WALK_ACTORS)) {
+      for (const facing of ['front', 'back'] as const) {
+        for (const frame of [1, 2, 3]) {
+          const src = `public/assets/art25/walk/${actor.file}-${facing}-${frame}.png`
+          expect(existsSync(src), src).toBe(true)
+        }
+      }
+    }
   })
 })
 

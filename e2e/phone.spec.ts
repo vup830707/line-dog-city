@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { openMarket } from './openMarket'
+import { saveScreenshot } from './shot'
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -175,7 +176,7 @@ async function expectPhoneTargets(page: Page) {
 }
 
 async function shot(page: Page, name: string) {
-  await page.screenshot({ path: `/opt/cursor/artifacts/${name}.png` })
+  await saveScreenshot(page, `/opt/cursor/artifacts/${name}.png`)
 }
 
 async function phoneSettled(page: Page) {
