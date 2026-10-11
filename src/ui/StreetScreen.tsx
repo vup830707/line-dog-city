@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { assetMap } from '../assets/assetMap'
 import { drawPlaza } from '../canvas/drawPlaza'
 import { buildPopScale } from '../canvas/fx'
@@ -6,7 +6,12 @@ import {
   artSources,
   BG_SRC,
   bobOffset,
+  clampPan,
+  panRange,
+  panToShowSlots,
+  PAN_TAP_SLOP,
   plazaTransform,
+  type CameraPan,
   layoutScene,
   PATH_ENTRANCE,
   PLAZA_PATH,
@@ -51,6 +56,11 @@ import { WEATHER_LABEL } from './labels'
 const artRoot = import.meta.env.BASE_URL
 const SEEN_LETTERS = 'puppy-seen-letter-ids'
 const REDUCE_MOTION = 'puppy-reduce-motion'
+const PAN_IGNORE = '.hud, .phone, .phone-scrim, .phone-charm, .build-strip, .stall-card, .animal-card, .offline-note, .level-banner, .confirm-layer, .toast, .restock-hint'
+
+function plazaGestureTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && !target.closest(PAN_IGNORE)
+}
 
 function readSeenLetters(): Set<string> {
   try {
@@ -83,6 +93,8 @@ export function StreetScreen({
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const imagesRef = useRef(new Map<string, HTMLImageElement>())
   const [view, setView] = useState({ w: 1280, h: 720 })
+  const [pan, setPan] = useState<CameraPan>({ x: 0, y: 0 })
+  const [pannedOnce, setPannedOnce] = useState(false)
   const [artReady, setArtReady] = useState(false)
   const [phone, setPhone] = useState<'closed' | 'open' | 'closing'>('closed')
   const [phoneApp, setPhoneApp] = useState<PhoneApp | null>(null)
@@ -109,6 +121,23 @@ export function StreetScreen({
   const hudRef = useRef<HTMLElement | null>(null)
   const glowSlotsRef = useRef<number[]>([])
   const buildModeRef = useRef(false)
+  const panRef = useRef<CameraPan>({ x: 0, y: 0 })
+  const dragRef = useRef<{
+    id: number
+    x: number
+    y: number
+    pan: CameraPan
+    moved: boolean
+    lastX: number
+    lastY: number
+    lastT: number
+    vx: number
+    vy: number
+  } | null>(null)
+  const suppressClickRef = useRef(false)
+  const coastRef = useRef(0)
+  const easeRef = useRef(0)
+  const pannedOnceRef = useRef(false)
   const buildFxRef = useRef<{ slot: number; start: number } | null>(null)
   const reduceRef = useRef(false)
   const motionRef = useRef<{
@@ -135,7 +164,8 @@ export function StreetScreen({
   const upgradeReady = street.slots.some((place, index) => place?.kind === 'stall' && upgradeBlock(street, index, gameConfig) === null)
   const selected = selectedSlot != null ? street.slots[selectedSlot] : null
   const animal = street.visitors.find((visitor) => visitor.id === selectedAnimal) ?? null
-  const cover = plazaTransform(view.w, view.h, buildMode)
+  const cover = plazaTransform(view.w, view.h, buildMode, pan)
+  const cameraRange = panRange(view.w, view.h)
   const freshSpecies = street.seenSpecies.some((id) => !street.ackedSpecies.includes(id))
   const toastText = street.pendingToasts[street.pendingToasts.length - 1] ?? ''
   const saveRef = useRef(save)
@@ -269,6 +299,7 @@ export function StreetScreen({
         pose: motion.pose,
       })
       const glow = new Set(glowSlotsRef.current)
+      const viewCover = plazaTransform(width, height, buildModeRef.current, panRef.current)
       let spark: { x: number; y: number; t: number } | null = null
       const fx = buildFxRef.current
       if (fx) {
@@ -278,7 +309,7 @@ export function StreetScreen({
         else {
           const built = scene.find((item) => item.id === `slot-${fx.slot}`)
           if (built) built.drawH *= buildPopScale(elapsed, duration)
-          const foot = toScreen(PLAZA_SLOTS[fx.slot] ?? { x: 0, y: 0 }, plazaTransform(width, height, buildModeRef.current))
+          const foot = toScreen(PLAZA_SLOTS[fx.slot] ?? { x: 0, y: 0 }, viewCover)
           spark = { x: foot.x, y: foot.y, t: elapsed / duration }
         }
       }
@@ -291,12 +322,11 @@ export function StreetScreen({
           const stallType = place?.kind === 'stall' ? place.stallType : null
           return [{ frame: slotFrame(index, stallType), selected, glow: glowing }]
         })
-        const viewCover = plazaTransform(width, height, buildModeRef.current)
         drawPlaza(ctx, width, height, imagesRef.current.get(BG_SRC), imagesRef.current, scene, now, frames, spark, viewCover)
       }
       const layer = hitsRef.current
       if (layer) {
-        const coverNow = plazaTransform(width, height, buildModeRef.current)
+        const coverNow = viewCover
         layer.querySelectorAll<HTMLButtonElement>('[data-visitor]').forEach((button) => {
           const sprite = scene.find((item) => item.id === `visitor-${button.dataset.visitor}`)
           if (!sprite) return
@@ -329,6 +359,57 @@ export function StreetScreen({
     localStorage.setItem(SEEN_LETTERS, JSON.stringify(ids))
     setSeenLetters(new Set(ids))
   }, [phoneApp, letterKey])
+
+  useEffect(() => {
+    return () => {
+      if (coastRef.current) window.cancelAnimationFrame(coastRef.current)
+      if (easeRef.current) window.cancelAnimationFrame(easeRef.current)
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    const next = clampPan(view.w, view.h, panRef.current)
+    if (next.x === panRef.current.x && next.y === panRef.current.y) return
+    panRef.current = next
+    setPan(next)
+  }, [view.w, view.h])
+
+  const glowKey = glowSlots.join(',')
+  useEffect(() => {
+    if (!buildMode || dragRef.current) return
+    const slots = glowSlotsRef.current
+    if (slots.length === 0) return
+    const next = panToShowSlots(view.w, view.h, panRef.current, slots, true)
+    if (next.x === panRef.current.x && next.y === panRef.current.y) return
+    if (easeRef.current) window.cancelAnimationFrame(easeRef.current)
+    if (coastRef.current) window.cancelAnimationFrame(coastRef.current)
+    coastRef.current = 0
+    const from = panRef.current
+    if (reduceRef.current) {
+      panRef.current = next
+      setPan(next)
+      return
+    }
+    const start = performance.now()
+    const step = (now: number) => {
+      if (dragRef.current) return
+      const t = Math.min(1, (now - start) / 280)
+      const eased = 1 - (1 - t) * (1 - t)
+      const sample = clampPan(viewRef.current.w, viewRef.current.h, {
+        x: from.x + (next.x - from.x) * eased,
+        y: from.y + (next.y - from.y) * eased,
+      })
+      panRef.current = sample
+      setPan(sample)
+      if (t < 1) easeRef.current = window.requestAnimationFrame(step)
+      else easeRef.current = 0
+    }
+    easeRef.current = window.requestAnimationFrame(step)
+    return () => {
+      if (easeRef.current) window.cancelAnimationFrame(easeRef.current)
+      easeRef.current = 0
+    }
+  }, [buildMode, glowKey, view.w, view.h])
 
   useEffect(() => {
     if (!buildItem) return
@@ -413,6 +494,105 @@ export function StreetScreen({
     setReduceMotion(on)
   }
 
+  function stopCoast() {
+    if (coastRef.current) window.cancelAnimationFrame(coastRef.current)
+    if (easeRef.current) window.cancelAnimationFrame(easeRef.current)
+    coastRef.current = 0
+    easeRef.current = 0
+  }
+
+  function commitPan(next: CameraPan): CameraPan {
+    const clamped = clampPan(viewRef.current.w, viewRef.current.h, next)
+    if (clamped.x === panRef.current.x && clamped.y === panRef.current.y) return panRef.current
+    panRef.current = clamped
+    setPan(clamped)
+    return clamped
+  }
+
+  function coast(vx: number, vy: number) {
+    if (Math.hypot(vx, vy) < 0.12) return
+    let vxNow = vx
+    let vyNow = vy
+    let last = performance.now()
+    const step = (now: number) => {
+      const dt = Math.min(34, now - last)
+      last = now
+      const decay = Math.pow(0.9, dt / 16)
+      vxNow *= decay
+      vyNow *= decay
+      const before = panRef.current
+      const next = commitPan({ x: before.x + vxNow * dt, y: before.y + vyNow * dt })
+      if ((next.x === before.x && next.y === before.y) || Math.hypot(vxNow, vyNow) < 0.02) {
+        coastRef.current = 0
+        return
+      }
+      coastRef.current = window.requestAnimationFrame(step)
+    }
+    coastRef.current = window.requestAnimationFrame(step)
+  }
+
+  function onPlazaPointerDown(event: ReactPointerEvent) {
+    if (!event.isPrimary || event.button !== 0) return
+    const range = panRange(viewRef.current.w, viewRef.current.h)
+    if (range.maxX === 0 && range.minX === 0 && range.maxY === 0 && range.minY === 0) return
+    if (!plazaGestureTarget(event.target)) return
+    stopCoast()
+    dragRef.current = {
+      id: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      pan: panRef.current,
+      moved: false,
+      lastX: event.clientX,
+      lastY: event.clientY,
+      lastT: event.timeStamp,
+      vx: 0,
+      vy: 0,
+    }
+  }
+
+  function onPlazaPointerMove(event: ReactPointerEvent) {
+    const drag = dragRef.current
+    if (!drag || drag.id !== event.pointerId) return
+    const dx = event.clientX - drag.x
+    const dy = event.clientY - drag.y
+    if (!drag.moved && Math.hypot(dx, dy) < PAN_TAP_SLOP) return
+    if (!drag.moved) {
+      drag.moved = true
+      shellRef.current?.setPointerCapture(event.pointerId)
+      if (!pannedOnceRef.current) {
+        pannedOnceRef.current = true
+        setPannedOnce(true)
+      }
+    }
+    const dt = event.timeStamp - drag.lastT
+    if (dt > 0) {
+      drag.vx = (event.clientX - drag.lastX) / dt
+      drag.vy = (event.clientY - drag.lastY) / dt
+    }
+    drag.lastX = event.clientX
+    drag.lastY = event.clientY
+    drag.lastT = event.timeStamp
+    commitPan({ x: drag.pan.x + dx, y: drag.pan.y + dy })
+    event.preventDefault()
+  }
+
+  function onPlazaPointerUp(event: ReactPointerEvent) {
+    const drag = dragRef.current
+    if (!drag || drag.id !== event.pointerId) return
+    dragRef.current = null
+    if (!drag.moved) return
+    suppressClickRef.current = true
+    coast(drag.vx, drag.vy)
+  }
+
+  function onPlazaClickCapture(event: ReactMouseEvent) {
+    if (!suppressClickRef.current) return
+    suppressClickRef.current = false
+    event.preventDefault()
+    event.stopPropagation()
+  }
+
   return (
     <div
       className="plaza-shell"
@@ -426,6 +606,14 @@ export function StreetScreen({
       data-art-ready={artReady ? '1' : '0'}
       data-tick={street.tick}
       data-reduce-motion={reduceRef.current ? '1' : '0'}
+      data-pan-x={pan.x.toFixed(1)}
+      data-pan-y={pan.y.toFixed(1)}
+      data-pan-max-x={cameraRange.maxX.toFixed(1)}
+      onPointerDown={onPlazaPointerDown}
+      onPointerMove={onPlazaPointerMove}
+      onPointerUp={onPlazaPointerUp}
+      onPointerCancel={onPlazaPointerUp}
+      onClickCapture={onPlazaClickCapture}
       onContextMenu={(event) => {
         if (!buildMode) return
         event.preventDefault()
@@ -442,6 +630,16 @@ export function StreetScreen({
           setSelectedAnimal(null)
         }}
       />
+      {cameraRange.maxX > 0 && pan.x < cameraRange.maxX - 1 ? (
+        <div className={pannedOnce ? 'pan-hint pan-hint-left' : 'pan-hint pan-hint-left is-fresh'} data-testid="pan-hint-left" aria-hidden="true">
+          <span className="pan-chevron" />
+        </div>
+      ) : null}
+      {cameraRange.maxX > 0 && pan.x > cameraRange.minX + 1 ? (
+        <div className={pannedOnce ? 'pan-hint pan-hint-right' : 'pan-hint pan-hint-right is-fresh'} data-testid="pan-hint-right" aria-hidden="true">
+          <span className="pan-chevron" />
+        </div>
+      ) : null}
       {PLAZA_SLOTS.map((_, index) => {
         const place = street.slots[index]
         const stallType = place?.kind === 'stall' ? place.stallType : null
