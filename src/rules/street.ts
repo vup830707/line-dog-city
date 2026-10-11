@@ -1,5 +1,6 @@
 import { FORTUNE_LINES } from '../content/fortunes'
 import { ambienceScore, expectedVisits, visitAmbience } from './ambience'
+import { applyPurchaseAffinity } from './affinity'
 import { decorNearby, letterFor, pickSpecies, satisfactionOf, speciesDef } from './animals'
 import { eligibleSlots, openBox, placeItem } from './actions'
 import { accrueBustle, stallMarketLevel, visitCapFor } from './market'
@@ -7,6 +8,7 @@ import { customerDraw } from './ichiban'
 import { chooseProduct, ichibanRestockFor, productNet, rollLimitedProduct } from './products'
 import { createRng, sampleCount } from './rng'
 import { applyStaff, greetLevel, stockCap } from './staff'
+import { describeNightEvent, rollNightEvent } from './events'
 import { isFestival, nextPhase, rollWeather } from './weather'
 import type { GameConfig, Grade, Species, Street, Visitor } from './types'
 
@@ -232,8 +234,14 @@ function shop(street: Street, visitor: Visitor, config: GameConfig, rng: ReturnT
     ...street.speciesSatisfaction,
     [visitor.species]: Math.max(street.speciesSatisfaction[visitor.species] ?? 0, satisfaction),
   }
+  const paid = applyPurchaseAffinity(
+    { ...street, money, stock, box, collection, ownedDecor, letters, sentTopics, seenProducts, speciesSatisfaction },
+    visitor.species,
+    satisfaction,
+    config,
+  )
   return {
-    street: { ...street, money, stock, box, collection, ownedDecor, letters, sentTopics, seenProducts, speciesSatisfaction },
+    street: paid,
     visitor: { ...visitor, status, target, charged, liked, satisfaction, spent, fortune, drewGrade, productId: product.id },
   }
 }
@@ -268,6 +276,9 @@ function advancePhase(street: Street, config: GameConfig, rng: ReturnType<typeof
   let wishUsed = grown.wishUsed
   let wishMessage = grown.wishMessage
   let trending = grown.trending
+  let nightEvent = grown.nightEvent
+  let eventLog = grown.eventLog
+  let pendingToasts = grown.pendingToasts
   if (grown.phase === 'late') {
     day = (grown.day % config.calendarLength) + 1
     weather = pendingWeather ?? rollWeather(rng)
@@ -275,9 +286,16 @@ function advancePhase(street: Street, config: GameConfig, rng: ReturnType<typeof
     wishUsed = false
     wishMessage = null
     trending = [rollLimitedProduct(config, rng)]
+    const rolled = rollNightEvent(grown.rngState, day, grown, config)
+    nightEvent = rolled
+    if (rolled) {
+      const note = describeNightEvent(rolled, grown.tick, config)
+      eventLog = [...eventLog, note].slice(-60)
+      pendingToasts = [...pendingToasts, note.title]
+    }
   }
   const cleanliness = Math.max(0, grown.cleanliness - config.cleanDropPerPhase - grown.arrivals.length * config.cleanDropPerVisitor)
-  const draft = { ...grown, phase, day, weather, cleanliness }
+  const draft = { ...grown, phase, day, weather, cleanliness, nightEvent, eventLog, pendingToasts }
   const arrivals = scheduleArrivals(
     expectedVisits(
       {

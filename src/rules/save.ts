@@ -1,15 +1,18 @@
 import { gameConfig } from '../config'
 import { inferMarketLevel } from './market'
 import { productsFor } from './products'
-import type { BoxState, SaveV4, Species, Street, Ticket } from './types'
+import type { BoxState, DecorType, EventNote, NightEvent, SaveV5, Species, Street, Ticket } from './types'
 
-export const SCHEMA_VERSION = 4
+export const SCHEMA_VERSION = 5
 
 export type ParseResult =
-  | { ok: true; save: SaveV4 }
+  | { ok: true; save: SaveV5 }
   | { ok: false; reason: 'legacy' | 'invalid'; message: string }
 
-export function serializeSave(save: SaveV4): string {
+const DECOR_IDS = new Set<DecorType>(['lantern', 'seat', 'sign', 'flower', 'star', 'string'])
+const EVENT_KINDS = new Set(['rain', 'festival-eve', 'merchant'])
+
+export function serializeSave(save: SaveV5): string {
   return JSON.stringify(save)
 }
 
@@ -29,7 +32,7 @@ export function parseSave(raw: unknown): ParseResult {
   if (record.schemaVersion === 1 || record.schemaVersion === 2) {
     return { ok: false, reason: 'legacy', message: '這是舊版的策略存檔，沒辦法匯入。現在這局夜市還在，沒有被換掉。' }
   }
-  if (record.schemaVersion !== 3 && record.schemaVersion !== SCHEMA_VERSION) {
+  if (record.schemaVersion !== 3 && record.schemaVersion !== 4 && record.schemaVersion !== SCHEMA_VERSION) {
     return { ok: false, reason: 'invalid', message: '不認得的存檔版本' }
   }
   if (record.playerDog !== 'white' && record.playerDog !== 'brown') {
@@ -42,32 +45,38 @@ export function parseSave(raw: unknown): ParseResult {
     return { ok: false, reason: 'invalid', message: '存檔缺少街道' }
   }
   const street = record.street as Record<string, unknown>
-  const migrate = record.schemaVersion === 3
   if (!usableStreet(street)) {
     const repaired = repairStreet(street)
     if (!repaired) return { ok: false, reason: 'invalid', message: '存檔的街道不完整' }
-    return { ok: true, save: finishSave(record, repaired, migrate) }
+    return { ok: true, save: finishSave(record, repaired) }
   }
-  return { ok: true, save: finishSave(record, street as unknown as Street, migrate) }
+  return { ok: true, save: finishSave(record, street as unknown as Street) }
 }
 
 function knownProduct(id: string): boolean {
   return Object.values(gameConfig.products).some((list) => list.some((item) => item.id === id))
 }
 
-function finishSave(record: Record<string, unknown>, street: Street, migrate: boolean): SaveV4 {
+function finishSave(record: Record<string, unknown>, street: Street): SaveV5 {
   const clamped = clampStreet(street)
+  const version = record.schemaVersion
   return {
-    schemaVersion: 4,
+    schemaVersion: SCHEMA_VERSION,
     playerDog: record.playerDog as 'white' | 'brown',
     whiteName: record.whiteName as string,
     brownName: record.brownName as string,
     savedAt: finiteNumber(record.savedAt) ?? Date.now(),
-    street: withGrowth(clamped, migrate),
+    street: withGrowth(clamped, version === 3, version === SCHEMA_VERSION),
   }
 }
 
-function withGrowth(street: Street, migrate: boolean): Street {
+/**
+ * v4 saves predate affinity. Hearts start at 0.
+ * Seen species are not converted into hearts: a new plaza already marks four
+ * regulars as seen, and backfilling would hand out letters the moment an old
+ * save loads.
+ */
+function withGrowth(street: Street, migrate: boolean, trustAffinity: boolean): Street {
   const seen = new Set<Species>(street.seenSpecies ?? [])
   if (migrate) {
     for (const spec of gameConfig.species) {
@@ -93,7 +102,67 @@ function withGrowth(street: Street, migrate: boolean): Street {
     levelUpBanner: street.levelUpBanner ?? null,
     speciesSatisfaction: street.speciesSatisfaction ?? {},
     trending: trending.length > 0 ? trending.slice(0, 1) : ['vanilla'],
+    affinity: trustAffinity ? clampCountMap(street.affinity) : {},
+    affinityProgress: trustAffinity ? clampCountMap(street.affinityProgress) : {},
+    giftTokens: trustAffinity ? clampGifts(street.giftTokens) : [],
+    nightEvent: trustAffinity ? clampEvent(street.nightEvent) : null,
+    eventLog: trustAffinity ? clampEventLog(street.eventLog) : [],
   }
+}
+
+function clampCountMap(value: unknown): Partial<Record<Species, number>> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const out: Partial<Record<Species, number>> = {}
+  const record = value as Record<string, unknown>
+  for (const spec of gameConfig.species) {
+    const raw = record[spec.id]
+    if (typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0) continue
+    out[spec.id] = Math.floor(raw)
+  }
+  return out
+}
+
+function clampGifts(value: unknown): DecorType[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is DecorType => typeof item === 'string' && DECOR_IDS.has(item as DecorType))
+}
+
+function clampEvent(value: unknown): NightEvent | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const event = value as NightEvent
+  if (!EVENT_KINDS.has(event.kind)) return null
+  const offer =
+    event.offer && typeof event.offer.figureId === 'string' && Number.isFinite(event.offer.price)
+      ? { figureId: event.offer.figureId, price: Math.max(0, Math.floor(event.offer.price)) }
+      : null
+  return {
+    day: Number.isFinite(event.day) ? event.day : 1,
+    kind: event.kind,
+    festival: typeof event.festival === 'string' ? event.festival : null,
+    offer,
+    bought: event.bought === true,
+  }
+}
+
+function clampEventLog(value: unknown): EventNote[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const note = item as EventNote
+    if (typeof note.id !== 'string' || !EVENT_KINDS.has(note.kind) || typeof note.title !== 'string' || typeof note.body !== 'string') {
+      return []
+    }
+    return [
+      {
+        id: note.id,
+        day: Number.isFinite(note.day) ? note.day : 1,
+        kind: note.kind,
+        title: note.title,
+        body: note.body,
+        tick: Number.isFinite(note.tick) ? note.tick : 0,
+      },
+    ]
+  })
 }
 
 function productsAlreadyForSale(street: Street): string[] {

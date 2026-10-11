@@ -27,6 +27,7 @@ export interface BuildOffer {
   lockReason: string | null
   shortfall: number
   affordable: boolean
+  gift: boolean
 }
 
 export function shortfallText(shortfall: number): string {
@@ -45,6 +46,7 @@ function offer(input: {
   placed: boolean
   lockReason: string | null
   money: number
+  gift?: boolean
 }): BuildOffer {
   const shortfall = input.locked || input.placed ? 0 : Math.max(0, input.cost - input.money)
   return {
@@ -60,6 +62,7 @@ function offer(input: {
     lockReason: input.lockReason,
     shortfall,
     affordable: !input.locked && !input.placed && shortfall === 0,
+    gift: input.gift === true,
   }
 }
 
@@ -95,17 +98,19 @@ export function buildOffers(street: Street, config: GameConfig): BuildOffer[] {
     const setLocked = decorType === 'star' && !setReady
     const locked = levelLocked || setLocked
     const lockReason = levelLocked ? `夜市 Lv.${needed}` : setLocked ? setReason : null
+    const gifted = street.giftTokens.includes(decorType)
     return offer({
       id: decorType,
       kind: 'decor',
       decorType,
       name: config.decorLabels[decorType],
       cost: decorPrice(street, decorType, config),
-      effect: `熱鬧度 +${config.decorScore[decorType]}`,
+      effect: gifted ? `熟客送來的禮物，熱鬧度 +${config.decorScore[decorType]}` : `熱鬧度 +${config.decorScore[decorType]}`,
       locked,
       placed: false,
       lockReason,
       money: street.money,
+      gift: gifted,
     })
   })
   return [...stalls, ...decor]

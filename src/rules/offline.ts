@@ -1,5 +1,5 @@
-import { runTicks } from './street'
-import type { GameConfig, Street } from './types'
+import { streetTick } from './street'
+import type { DecorType, GameConfig, Species, Street } from './types'
 
 export function offlineCapTicks(config: GameConfig): number {
   return Math.floor((config.offlineCapHours * 3_600_000) / config.tickMs)
@@ -23,13 +23,69 @@ export function offlineDurationLabel(ticks: number, config: GameConfig): string 
   return parts.join(' ')
 }
 
+export function offlineSummary(input: {
+  ticks: number
+  earned: number
+  config: GameConfig
+  visitors: readonly Species[]
+  letters: number
+  gifts: readonly DecorType[]
+  events: readonly string[]
+}): string {
+  const note = `你不在的時候，夜市自己轉了 ${offlineDurationLabel(input.ticks, input.config)}（上限 ${input.config.offlineCapHours} 小時），賺了 ${input.earned} 幣。`
+  const extras: string[] = []
+  if (input.visitors.length > 0) {
+    const names = input.visitors.map((id) => input.config.species.find((item) => item.id === id)?.name ?? id)
+    extras.push(`來過：${names.join('、')}。`)
+  }
+  if (input.letters > 0) extras.push(`新信件 ${input.letters} 封。`)
+  if (input.gifts.length > 0) {
+    const names = input.gifts.map((id) => input.config.decorLabels[id])
+    extras.push(`收到禮物：${names.join('、')}。`)
+  }
+  if (input.events.length > 0) extras.push(`夜裡：${input.events.join('、')}。`)
+  return note + extras.join('')
+}
+
+function addedGifts(before: readonly DecorType[], after: readonly DecorType[]): DecorType[] {
+  const left = [...before]
+  const added: DecorType[] = []
+  for (const gift of after) {
+    const index = left.indexOf(gift)
+    if (index >= 0) left.splice(index, 1)
+    else added.push(gift)
+  }
+  return added
+}
+
 export function applyOffline(street: Street, elapsedMs: number, config: GameConfig): { street: Street; ticks: number; earned: number } {
   const ticks = offlineTickCount(elapsedMs, config)
-  const next = runTicks(street, config, ticks)
+  const letterIds = new Set(street.letters.map((letter) => letter.id))
+  const giftsBefore = street.giftTokens
+  const eventsBefore = street.eventLog.length
+  const seen = new Set<Species>()
+  const known = new Set(street.visitors.map((visitor) => visitor.id))
+  let next = street
+  for (let i = 0; i < ticks; i += 1) {
+    next = streetTick(next, config)
+    for (const visitor of next.visitors) {
+      if (!known.has(visitor.id)) seen.add(visitor.species)
+      known.add(visitor.id)
+    }
+  }
   const earned = next.money - street.money
+  const letters = next.letters.filter((letter) => !letterIds.has(letter.id)).length
   const note =
     ticks > 0
-      ? `你不在的時候，夜市自己轉了 ${offlineDurationLabel(ticks, config)}（上限 ${config.offlineCapHours} 小時），賺了 ${earned} 幣。`
+      ? offlineSummary({
+          ticks,
+          earned,
+          config,
+          visitors: [...seen],
+          letters,
+          gifts: addedGifts(giftsBefore, next.giftTokens),
+          events: next.eventLog.slice(eventsBefore).map((item) => item.title),
+        })
       : null
   return { ticks, earned, street: { ...next, offlineNote: note, lastOfflineTicks: ticks } }
 }

@@ -11,6 +11,8 @@ export function streetWith(patch: Partial<Street> = {}, config: GameConfig = gam
     visitors: [],
     stock: {},
     box: null,
+    nightEvent: null,
+    eventLog: [],
     ...patch,
     slots: patch.slots ?? slots,
   }

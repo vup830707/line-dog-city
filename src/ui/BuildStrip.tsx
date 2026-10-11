@@ -62,7 +62,7 @@ export function BuildStrip({
             >
               <img src={src ? `${artRoot}${src}` : assetMap.phone.coin} alt="" />
               <span className="build-name">{offer.name}</span>
-              <span className="build-cost">{offer.cost} 幣</span>
+              <span className="build-cost">{offer.gift ? '禮物' : `${offer.cost} 幣`}</span>
               <span className="build-effect">{offer.effect}</span>
               {offer.shortfall > 0 ? (
                 <span className="build-shortfall" data-testid={`build-shortfall-${offer.id}`}>

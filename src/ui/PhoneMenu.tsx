@@ -6,7 +6,9 @@ import { gameConfig } from '../config'
 import { assignJob, hireBlock, hireStaff, trainBlock, trainStaff } from '../rules/actions'
 import { restockStaffWarning } from '../rules/staff'
 import { isWishPondUnlocked, ownedCount } from '../rules/collection'
+import { affinityPoints, heartFills } from '../rules/affinity'
 import { ambienceScore } from '../rules/ambience'
+import { shownWeather } from '../rules/events'
 import { levelRow, nextLevelRow } from '../rules/market'
 import type { Job, SaveV3, Species, Weather } from '../rules/types'
 import { festivalName, forecastLine } from '../rules/weather'
@@ -88,7 +90,7 @@ export function PhoneOverlay({
   onClosed: () => void
 }) {
   const screen = assetMap.phone.screen
-  const weather = save.street.weather
+  const weather = shownWeather(save.street)
   return (
     <div className="phone-layer">
       <button type="button" className="phone-scrim" data-testid="phone-scrim" aria-label="關閉手機" onClick={onClose} />
@@ -328,10 +330,12 @@ function CollectionApp({ save }: { save: SaveV3 }) {
         <div className="collection-grid" data-testid="codex-animals">
           {gameConfig.species.map((item) => {
             const seen = save.street.seenSpecies.includes(item.id)
+            const hearts = seen ? heartFills(save.street.affinity[item.id] ?? 0, gameConfig.affinityLetters) : []
             return (
               <button key={item.id} type="button" data-testid={`codex-animal-${item.id}`} onClick={() => setSpecies(item.id)}>
                 {seen ? <img src={`${artRoot}${ANIMAL_ART[item.id].src}`} alt="" /> : null}
                 <span>{seen ? item.name : '？？？'}</span>
+                {seen ? <AffinityHearts species={item.id} fills={hearts} affinity={save.street.affinity[item.id] ?? 0} /> : null}
               </button>
             )
           })}
@@ -364,9 +368,23 @@ function CodexAnimal({ save, species }: { save: SaveV3; species: Species }) {
   const favourite = spec ? Object.values(gameConfig.products).flat().find((item) => item.id === spec.product) : undefined
   const known = spec ? save.street.seenProducts.includes(spec.product) : false
   const letters = save.street.letters.filter((letter) => letter.species === species)
+  const affinity = save.street.affinity[species] ?? 0
+  const progress = save.street.affinityProgress[species] ?? 0
+  const points = affinityPoints(affinity, progress, gameConfig.affinityStride)
+  const fills = heartFills(points, gameConfig.affinityLetters)
+  const top = gameConfig.affinityLetters[gameConfig.affinityLetters.length - 1] ?? 1
+  const meter = Math.max(0, Math.min(1, points / top))
   return (
-    <article data-testid="codex-animal-card">
+    <article className="codex-detail" data-testid="codex-animal-card">
       <h3>{spec?.name}</h3>
+      <AffinityHearts species={species} fills={fills} affinity={affinity} />
+      <p data-testid={`affinity-count-${species}`}>好感 {affinity}</p>
+      <p data-testid={`affinity-progress-${species}`}>
+        滿意的光顧 {progress}/{Math.max(1, gameConfig.affinityStride)}
+      </p>
+      <span className="affinity-meter" data-testid={`affinity-meter-${species}`}>
+        <i style={{ width: `${Math.round(meter * 100)}%` }} />
+      </span>
       <p>最愛 {known && favourite ? favourite.name : '？'}</p>
       <p>滿意度 {Math.round((save.street.speciesSatisfaction[species] ?? 0) * 100)}</p>
       {letters.length === 0 ? <p>還沒有留下信。</p> : letters.map((letter) => <p key={letter.id}>{letter.body}</p>)}
@@ -374,14 +392,33 @@ function CodexAnimal({ save, species }: { save: SaveV3; species: Species }) {
   )
 }
 
+function AffinityHearts({ species, fills, affinity }: { species: Species; fills: number[]; affinity: number }) {
+  return (
+    <span className="hearts" data-testid={`affinity-${species}`} data-affinity={affinity}>
+      {fills.map((fill, index) => (
+        <i key={index} className={fill >= 1 ? 'on' : undefined}>
+          {fill >= 1 ? '♥' : '♡'}
+        </i>
+      ))}
+    </span>
+  )
+}
+
 function LettersApp({ save }: { save: SaveV3 }) {
+  const empty = save.street.letters.length === 0 && save.street.eventLog.length === 0
   return (
     <div className="phone-panel" data-testid="letter-panel">
-      {save.street.letters.length === 0 ? <p>還沒有信件。</p> : null}
+      {empty ? <p>還沒有信件。</p> : null}
       {save.street.letters.map((letter) => (
         <article key={letter.id} className="letter-sheet" data-testid="letter-card" style={{ backgroundImage: `url(${assetMap.phone.letterPaper})` }}>
           <h3>{gameConfig.species.find((item) => item.id === letter.species)?.name}</h3>
           <p>{letter.body}</p>
+        </article>
+      ))}
+      {save.street.eventLog.map((note) => (
+        <article key={note.id} className="letter-sheet" data-testid="event-note" style={{ backgroundImage: `url(${assetMap.phone.letterPaper})` }}>
+          <h3>{note.title}</h3>
+          <p>{note.body}</p>
         </article>
       ))}
     </div>
@@ -480,7 +517,11 @@ function productName(id: string | undefined): string {
 
 function MarketApp({ save }: { save: SaveV3 }) {
   const festival = festivalName(save.street.day, gameConfig)
-  const weather = save.street.weather
+  const weather = shownWeather(save.street)
+  const tonight = save.street.nightEvent
+  const eventLine = tonight
+    ? save.street.eventLog.find((note) => note.day === tonight.day && note.kind === tonight.kind)?.title ?? '今晚有一件小事'
+    : '今晚還沒有小事'
   const row = levelRow(save.street.marketLevel, gameConfig)
   const next = nextLevelRow(save.street.marketLevel, gameConfig)
   const span = next ? Math.max(1, next.bustleXp - row.bustleXp) : 1
@@ -511,6 +552,7 @@ function MarketApp({ save }: { save: SaveV3 }) {
         {WEATHER_LABEL[weather as Weather]}
       </p>
       <p data-testid="market-festival">{festival ? `節日 ${festival}` : '今天沒有節日'}</p>
+      <p data-testid="market-event">{eventLine}</p>
       <p data-testid="market-forecast">{forecastLine(save.street.pendingWeather, WEATHER_LABEL)}</p>
       <p data-testid="market-bustle">熱鬧度 {ambienceScore(save.street, gameConfig)}</p>
       <p data-testid="market-limited">今夜限定 {productName(save.street.trending[0])}</p>

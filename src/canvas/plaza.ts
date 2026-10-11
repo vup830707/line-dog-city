@@ -1,5 +1,6 @@
 import { gameConfig } from '../config'
 import { BLOCKER_SRC, OVERLAY_SRC, PRODUCT_SRC } from '../assets/growthArt'
+import { merchantProgress } from '../rules/events'
 import { isSlotOpen } from '../rules/market'
 import { assignStaffTargets, type WorkTarget } from '../rules/staff'
 import type { DecorType, HireSpecies, Job, Species, StallType, Street, Visitor } from '../rules/types'
@@ -521,6 +522,7 @@ export const WALK_ACTORS: Record<string, { file: string; width: number; height: 
   fox: { file: 'red-panda', width: 424, height: 512, foot: 500, frontFacesRight: false, backFacesRight: true },
   ferret: { file: 'ferret', width: 450, height: 512, foot: 500, frontFacesRight: false, backFacesRight: false },
   munia: { file: 'munia', width: 456, height: 512, foot: 500, frontFacesRight: false, backFacesRight: true },
+  merchant: { file: 'merchant', width: 474, height: 512, foot: 500, frontFacesRight: false, backFacesRight: false },
 }
 
 function actorPiece(base: ArtPiece, actorId: string): ArtPiece {
@@ -583,6 +585,16 @@ function animal(id: Species, src: string, width: number, height: number): ArtPie
 }
 
 /** Game species keep their rules. A few use the closest finished sprite. */
+export const FESTIVAL_LIGHTS: Record<string, string> = {
+  元宵: 'assets/art25/festival/lantern-lights.png',
+  中秋: 'assets/art25/festival/midautumn-lights.png',
+  跨年: 'assets/art25/festival/newyear-lights.png',
+}
+
+export const MERCHANT_STAND = { x: 900, y: 780 }
+
+export const MERCHANT_ART: ArtPiece = actorPiece(piece('assets/art25/animals/merchant.png', 498, 512, CUSTOMER_H), 'merchant')
+
 export const ANIMAL_ART: Record<Species, ArtPiece> = {
   cat: animal('cat', 'assets/art25/animals/cat.png', 438, 512),
   rabbit: animal('rabbit', 'assets/art25/animals/rabbit.png', 280, 512),
@@ -1028,6 +1040,40 @@ export function layoutScene(street: Street, timeMs = 0, motion?: SceneMotion): S
     })
   })
 
+  if (street.nightEvent?.kind === 'merchant') {
+    const pose = merchantProgress(street.phase, street.phaseTick, alpha, gameConfig.phaseMinutes)
+    const stand = MERCHANT_STAND
+    let point = stand
+    let tangent = { x: 0, y: 1 }
+    let walking = false
+    if (pose.mode === 'in') {
+      const walked = blendWalk(PLAZA_PATH, PATH_ENTRANCE, stand, pose.t)
+      point = walked.point
+      tangent = walked.tangent
+      walking = pose.t < 0.98
+    } else if (pose.mode === 'out') {
+      const walked = blendWalk(PLAZA_PATH, stand, PATH_EXIT, pose.t)
+      point = walked.point
+      tangent = walked.tangent
+      walking = pose.t > 0.02 && pose.t < 0.98
+    }
+    const art = MERCHANT_ART
+    const lean = walkSheetOf(art)
+    const facing = Math.hypot(tangent.x, tangent.y) > 0.5 ? walkFacing(tangent.x, tangent.y, lean) : { facing: 'front' as const, mirror: false }
+    const frame = selectArtFrame(art, facing.facing, timeMs, walking && !reduce, gameConfig.walkFps)
+    const sheet: ArtPiece = { ...art, src: frame.src, aspect: frame.aspect }
+    poseIntent.set('merchant', { art, fallback: facing, glance: null })
+    people.push({
+      ...sprite('merchant', sheet, point, {
+        shadow: true,
+        bob: walking && !reduce,
+        mirror: facing.mirror,
+        seed: 2.2,
+      }, depthScale(point.y)),
+      footOffset: art.footOffset ?? 0,
+    })
+  }
+
   const prevPeople = previous ? peopleAt(previous, timeMs, leaving, reduce) : null
   separateCharacters(people, props)
   if (prevPeople) {
@@ -1129,9 +1175,11 @@ export function artSources(): string[] {
     ...Object.values(HIRE_ART),
     ...Object.values(OVERLAY_ART),
     ...BLOCKER_ART,
+    MERCHANT_ART,
   ]) {
     collectArt(srcs, art)
   }
+  for (const src of Object.values(FESTIVAL_LIGHTS)) srcs.add(src)
   for (const actorId of Object.keys(WALK_ACTORS)) {
     if (!actorId.endsWith('-puppy')) continue
     const sheet = actorPiece(piece(BG_SRC, 1, 1, 1), actorId)

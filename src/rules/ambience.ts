@@ -1,3 +1,4 @@
+import { eventAmbienceBonus } from './events'
 import type { GameConfig, Street } from './types'
 
 /** Bustle from decorations and stall looks. Cleanliness is a multiplier, not part of this sum. */
@@ -8,7 +9,7 @@ export function ambienceScore(street: Street, config: GameConfig): number {
     if (slot.kind === 'decor' && slot.decorType) score += config.decorScore[slot.decorType]
     if (slot.kind === 'stall') score += config.lookByLevel[slot.level - 1] ?? 0
   }
-  return score
+  return score + eventAmbienceBonus(street, config)
 }
 
 /** 1 when the street is fully clean, and `1 - cleanlinessWeight` when it is filthy. */

@@ -205,6 +205,7 @@ describe('walk frames', () => {
       fox: { frontFacesRight: false, backFacesRight: true },
       ferret: { frontFacesRight: false, backFacesRight: false },
       munia: { frontFacesRight: false, backFacesRight: true },
+      merchant: { frontFacesRight: false, backFacesRight: false },
     }
     expect(Object.keys(WALK_ACTORS).sort()).toEqual(Object.keys(authored).sort())
     const shownRight = (nativeRight: boolean, mirror: boolean) => nativeRight !== mirror

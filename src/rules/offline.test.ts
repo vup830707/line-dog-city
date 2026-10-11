@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { gameConfig } from '../config'
-import { applyOffline, offlineTickCount } from './offline'
+import { applyOffline, offlineSummary, offlineTickCount } from './offline'
 import { runTicks } from './street'
 import { streetWith } from './fixtures'
 
@@ -60,6 +60,26 @@ describe('offline earnings', () => {
     expect(nan.street.lastOfflineTicks).toBe(0)
     expect(nan.street.money).toBe(800)
     expect(nan.street.offlineNote).toBeNull()
+  })
+
+  it('lists animals, letters, and gifts in the summary', () => {
+    const note = offlineSummary({
+      ticks: 90,
+      earned: 24,
+      config: gameConfig,
+      visitors: ['sparrow', 'rabbit'],
+      letters: 1,
+      gifts: ['lantern'],
+      events: ['突然下雨了'],
+    })
+    expect(note).toContain('賺了 24 幣')
+    expect(note).toContain('來過：夜鴨子、月兔。')
+    expect(note).toContain('新信件 1 封。')
+    expect(note).toContain('收到禮物：燈籠。')
+    expect(note).toContain('夜裡：突然下雨了。')
+    const start = streetWith({ arrivals: [0], staff: [], rngState: 3, phaseTick: 0 })
+    const offline = applyOffline(start, 8 * gameConfig.tickMs, gameConfig)
+    expect(offline.street.offlineNote).toContain('來過：')
   })
 
   it('caps catch-up at 8 hours even when more time has passed', () => {

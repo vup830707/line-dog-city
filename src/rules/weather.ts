@@ -12,6 +12,12 @@ export function festivalName(day: number, config: GameConfig): string | null {
   return config.festivals.find((festival) => festival.day === day)?.name ?? null
 }
 
+/** The next festival after `day`, wrapping to the first day of the calendar. */
+export function upcomingFestival(day: number, config: GameConfig): { day: number; name: string } | null {
+  const sorted = [...config.festivals].sort((a, b) => a.day - b.day)
+  return sorted.find((festival) => festival.day > day) ?? sorted[0] ?? null
+}
+
 export function nextPhase(phase: Phase): Phase {
   const index = PHASES.indexOf(phase)
   return PHASES[(index + 1) % PHASES.length] ?? 'dusk'

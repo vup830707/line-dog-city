@@ -86,6 +86,31 @@ export interface Letter {
   tick: number
 }
 
+export type NightEventKind = 'rain' | 'festival-eve' | 'merchant'
+
+export interface MerchantOffer {
+  figureId: string
+  price: number
+}
+
+/** One positive night event. Absent fields stay null. */
+export interface NightEvent {
+  day: number
+  kind: NightEventKind
+  festival: string | null
+  offer: MerchantOffer | null
+  bought: boolean
+}
+
+export interface EventNote {
+  id: string
+  day: number
+  kind: NightEventKind
+  title: string
+  body: string
+  tick: number
+}
+
 export interface Street {
   tick: number
   day: number
@@ -121,10 +146,18 @@ export interface Street {
   pendingToasts: string[]
   levelUpBanner: number | null
   speciesSatisfaction: Partial<Record<Species, number>>
+  /** Whole hearts. One heart is `affinityStride` satisfied purchases. */
+  affinity: Partial<Record<Species, number>>
+  /** Satisfied purchases toward the next heart. */
+  affinityProgress: Partial<Record<Species, number>>
+  /** Decorations a regular gave the player. Placing one costs nothing. */
+  giftTokens: DecorType[]
+  nightEvent: NightEvent | null
+  eventLog: EventNote[]
 }
 
-export interface SaveV4 {
-  schemaVersion: 4
+export interface SaveV5 {
+  schemaVersion: 5
   playerDog: 'white' | 'brown'
   whiteName: string
   brownName: string
@@ -132,8 +165,9 @@ export interface SaveV4 {
   street: Street
 }
 
-/** Current on-disk save. v3 files are migrated on read. */
-export type SaveV3 = SaveV4
+/** Current on-disk save. v3 and v4 files are migrated on read. */
+export type SaveV4 = SaveV5
+export type SaveV3 = SaveV5
 
 export interface ProductDef {
   id: string
@@ -199,6 +233,22 @@ export interface GameConfig {
   refundRate: number
   festivalBonus: number
   letterAt: number
+  /** Hearts at which a regular sends their 2nd letter, 3rd letter, then a gift. */
+  affinityLetters: number[]
+  /**
+   * Satisfied purchases that fill one heart.
+   * A one-minute night would otherwise deliver the second letter in minutes.
+   */
+  affinityStride: number
+  /** Chance of at most one positive event when a night begins. */
+  eventChance: number
+  /** Bustle added on a festival eve. Visits can rise; they never fall. */
+  eventBustle: number
+  /** Extra weight for animals who already like rain, during a sudden shower. */
+  rainLoverBonus: number
+  /** Extra weight for animals who like benches, during a sudden shower. */
+  rainSeatBonus: number
+  merchantPrice: number
   decorationDuplicateValue: number
   duplicateValue: Record<Grade, number>
   satisfaction: {

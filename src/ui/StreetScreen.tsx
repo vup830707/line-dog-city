@@ -31,6 +31,7 @@ import { gameConfig } from '../config'
 import {
   buyBox,
   buyBoxBlock,
+  buyFromMerchant,
   castWish,
   closeBox,
   eligibleSlots,
@@ -42,13 +43,14 @@ import {
 } from '../rules/actions'
 import { buildOffers } from '../rules/build'
 import { refundAmount } from '../rules/ichiban'
+import { hangingFestival, shownWeather } from '../rules/events'
 import { parseSave } from '../rules/save'
 import { emptyShelfHint, stockCap } from '../rules/staff'
 import type { SaveV3, Species, Street } from '../rules/types'
 import { renameDogs } from '../game/newGame'
 import { BuildStrip } from './BuildStrip'
 import { PhoneCharm, PhoneOverlay, type PhoneApp } from './PhoneMenu'
-import { BANNER_SRC, PRODUCT_SRC } from '../assets/growthArt'
+import { BANNER_SRC, FIGURE_SRC, PRODUCT_SRC } from '../assets/growthArt'
 import { productsFor, upgradeAdds } from '../rules/products'
 import { StallCard } from './StallCard'
 import { WEATHER_LABEL } from './labels'
@@ -161,8 +163,8 @@ export function StreetScreen({
   buildModeRef.current = buildMode
   reduceRef.current = reduceMotion || prefersReducedMotion()
   const selectedOfferId = buildItem ? (buildItem.kind === 'stall' ? buildItem.stallType : buildItem.decorType) : null
-  const letterKey = street.letters.map((letter) => letter.id).join('|')
-  const unread = street.letters.filter((letter) => !seenLetters.has(letter.id)).length
+  const letterKey = [...street.letters.map((letter) => letter.id), ...street.eventLog.map((note) => note.id)].join('|')
+  const unread = [...street.letters.map((letter) => letter.id), ...street.eventLog.map((note) => note.id)].filter((id) => !seenLetters.has(id)).length
   const upgradeReady = street.slots.some((place, index) => place?.kind === 'stall' && upgradeBlock(street, index, gameConfig) === null)
   const selected = selectedSlot != null ? street.slots[selectedSlot] : null
   const animal = street.visitors.find((visitor) => visitor.id === selectedAnimal) ?? null
@@ -324,7 +326,14 @@ export function StreetScreen({
           const stallType = place?.kind === 'stall' ? place.stallType : null
           return [{ frame: slotFrame(index, stallType), selected, glow: glowing }]
         })
-        drawPlaza(ctx, width, height, imagesRef.current.get(BG_SRC), imagesRef.current, scene, now, frames, spark, viewCover)
+        const moodStreet = streetRef.current
+        drawPlaza(ctx, width, height, imagesRef.current.get(BG_SRC), imagesRef.current, scene, now, frames, spark, viewCover, {
+          weather: moodStreet.weather,
+          phase: moodStreet.phase,
+          festival: hangingFestival(moodStreet, gameConfig),
+          reduceMotion: reduce,
+          showRain: shownWeather(moodStreet) === 'rain',
+        })
       }
       const layer = hitsRef.current
       if (layer) {
@@ -620,6 +629,8 @@ export function StreetScreen({
       data-near-slot-y={Math.round(near.y)}
       data-art-ready={artReady ? '1' : '0'}
       data-tick={street.tick}
+      data-weather={shownWeather(street)}
+      data-festival={hangingFestival(street, gameConfig) ?? ''}
       data-reduce-motion={reduceRef.current ? '1' : '0'}
       data-pan-x={pan.x.toFixed(1)}
       data-pan-y={pan.y.toFixed(1)}
@@ -721,8 +732,8 @@ export function StreetScreen({
           {street.money} 幣
         </p>
         <p className="hud-chip weather-chip" data-testid="weather">
-          <img src={assetMap.phone.weather[street.weather]} alt="" />
-          {WEATHER_LABEL[street.weather]}
+          <img src={assetMap.phone.weather[shownWeather(street)]} alt="" />
+          {WEATHER_LABEL[shownWeather(street)]}
         </p>
       </header>
       {street.offlineNote ? (
@@ -745,6 +756,26 @@ export function StreetScreen({
         <p className="toast" data-testid="toast">
           {notice}
         </p>
+      ) : null}
+      {street.nightEvent?.kind === 'merchant' && street.nightEvent.offer && !street.nightEvent.bought ? (
+        <aside className="merchant-card" data-testid="merchant-offer">
+          <h2>神秘商人</h2>
+          <p>{gameConfig.figures.find((figure) => figure.id === street.nightEvent?.offer?.figureId)?.name ?? '稀有造型'}</p>
+          {FIGURE_SRC[street.nightEvent.offer.figureId] ? (
+            <img src={`${artRoot}${FIGURE_SRC[street.nightEvent.offer.figureId]}`} alt="" />
+          ) : null}
+          <button
+            type="button"
+            data-testid="merchant-buy"
+            disabled={street.money < street.nightEvent.offer.price}
+            onClick={() => {
+              const result = buyFromMerchant(street, gameConfig)
+              if (result.ok) onChange({ ...save, street: result.street })
+            }}
+          >
+            {street.nightEvent.offer.price} 幣帶走
+          </button>
+        </aside>
       ) : null}
       {emptyShelfHint(street) ? (
         <p className={notice ? 'restock-hint below-toast' : 'restock-hint'} data-testid="restock-hint">

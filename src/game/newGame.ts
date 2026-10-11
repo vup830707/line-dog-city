@@ -75,6 +75,11 @@ export function createNewGame(
     pendingToasts: [],
     levelUpBanner: null,
     speciesSatisfaction: {},
+    affinity: {},
+    affinityProgress: {},
+    giftTokens: [],
+    nightEvent: null,
+    eventLog: [],
   }
   street.arrivals = scheduleArrivals(
     expectedVisits(
@@ -91,7 +96,7 @@ export function createNewGame(
   )
   street.rngState = rng.getState()
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     playerDog,
     whiteName,
     brownName,
