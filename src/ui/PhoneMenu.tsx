@@ -6,7 +6,7 @@ import { gameConfig } from '../config'
 import { assignJob, hireBlock, hireStaff, trainBlock, trainStaff } from '../rules/actions'
 import { restockStaffWarning } from '../rules/staff'
 import { isWishPondUnlocked, ownedCount } from '../rules/collection'
-import { affinityPoints, heartFills } from '../rules/affinity'
+import { affinityPoints, heartCost, heartFills } from '../rules/affinity'
 import { ambienceScore } from '../rules/ambience'
 import { shownWeather } from '../rules/events'
 import { levelRow, nextLevelRow } from '../rules/market'
@@ -380,7 +380,7 @@ function CodexAnimal({ save, species }: { save: SaveV3; species: Species }) {
       <AffinityHearts species={species} fills={fills} affinity={affinity} />
       <p data-testid={`affinity-count-${species}`}>好感 {affinity}</p>
       <p data-testid={`affinity-progress-${species}`}>
-        滿意的光顧 {progress}/{Math.max(1, gameConfig.affinityStride)}
+        好感進度 {progress}/{heartCost(affinity, gameConfig)}
       </p>
       <span className="affinity-meter" data-testid={`affinity-meter-${species}`}>
         <i style={{ width: `${Math.round(meter * 100)}%` }} />

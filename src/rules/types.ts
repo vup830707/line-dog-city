@@ -89,7 +89,8 @@ export interface Letter {
 export type NightEventKind = 'rain' | 'festival-eve' | 'merchant'
 
 export interface MerchantOffer {
-  figureId: string
+  figureId: string | null
+  decorType: DecorType | null
   price: number
 }
 
@@ -104,6 +105,8 @@ export interface NightEvent {
 
 export interface EventNote {
   id: string
+  /** Monotonic. The log only keeps the latest notes, so the summary cannot use array length. */
+  seq: number
   day: number
   kind: NightEventKind
   title: string
@@ -154,6 +157,8 @@ export interface Street {
   giftTokens: DecorType[]
   nightEvent: NightEvent | null
   eventLog: EventNote[]
+  /** Next event note sequence. Increases even after the log drops old notes. */
+  eventSeq: number
 }
 
 export interface SaveV5 {
@@ -236,10 +241,16 @@ export interface GameConfig {
   /** Hearts at which a regular sends their 2nd letter, 3rd letter, then a gift. */
   affinityLetters: number[]
   /**
-   * Satisfied purchases that fill one heart.
-   * A one-minute night would otherwise deliver the second letter in minutes.
+   * Pip cost of the first heart. Later hearts cost more when `affinityHeartGrowth` is above 0,
+   * so the 25th heart arrives hours after the third.
    */
   affinityStride: number
+  /** No pips below this satisfaction. A dirty opening purchase can sit near 0.2. */
+  affinityMin: number
+  /** pips = round(affinityPipBase * satisfaction). A full score earns the most. */
+  affinityPipBase: number
+  /** Added to the heart-cost multiplier for each heart already earned. */
+  affinityHeartGrowth: number
   /** Chance of at most one positive event when a night begins. */
   eventChance: number
   /** Bustle added on a festival eve. Visits can rise; they never fall. */
@@ -248,7 +259,11 @@ export interface GameConfig {
   rainLoverBonus: number
   /** Extra weight for animals who like benches, during a sudden shower. */
   rainSeatBonus: number
-  merchantPrice: number
+  /**
+   * Merchant skin price is this times the expected coin cost of one ichiban dog skin
+   * (pull price × tickets in the box ÷ skin tickets). Kept between 1.5 and 2.
+   */
+  merchantPriceMultiplier: number
   decorationDuplicateValue: number
   duplicateValue: Record<Grade, number>
   satisfaction: {

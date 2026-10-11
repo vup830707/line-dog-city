@@ -278,6 +278,7 @@ function advancePhase(street: Street, config: GameConfig, rng: ReturnType<typeof
   let trending = grown.trending
   let nightEvent = grown.nightEvent
   let eventLog = grown.eventLog
+  let eventSeq = grown.eventSeq ?? 0
   let pendingToasts = grown.pendingToasts
   if (grown.phase === 'late') {
     day = (grown.day % config.calendarLength) + 1
@@ -289,13 +290,14 @@ function advancePhase(street: Street, config: GameConfig, rng: ReturnType<typeof
     const rolled = rollNightEvent(grown.rngState, day, grown, config)
     nightEvent = rolled
     if (rolled) {
-      const note = describeNightEvent(rolled, grown.tick, config)
+      eventSeq += 1
+      const note = describeNightEvent(rolled, grown.tick, config, eventSeq)
       eventLog = [...eventLog, note].slice(-60)
       pendingToasts = [...pendingToasts, note.title]
     }
   }
   const cleanliness = Math.max(0, grown.cleanliness - config.cleanDropPerPhase - grown.arrivals.length * config.cleanDropPerVisitor)
-  const draft = { ...grown, phase, day, weather, cleanliness, nightEvent, eventLog, pendingToasts }
+  const draft = { ...grown, phase, day, weather, cleanliness, nightEvent, eventLog, eventSeq, pendingToasts }
   const arrivals = scheduleArrivals(
     expectedVisits(
       {

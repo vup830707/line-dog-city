@@ -106,8 +106,15 @@ function withGrowth(street: Street, migrate: boolean, trustAffinity: boolean): S
     affinityProgress: trustAffinity ? clampCountMap(street.affinityProgress) : {},
     giftTokens: trustAffinity ? clampGifts(street.giftTokens) : [],
     nightEvent: trustAffinity ? clampEvent(street.nightEvent) : null,
-    eventLog: trustAffinity ? clampEventLog(street.eventLog) : [],
+    ...eventFields(street, trustAffinity),
   }
+}
+
+function eventFields(street: Street, trustAffinity: boolean): { eventLog: EventNote[]; eventSeq: number } {
+  if (!trustAffinity) return { eventLog: [], eventSeq: 0 }
+  const log = clampEventLog(street.eventLog)
+  const stored = typeof street.eventSeq === 'number' && Number.isFinite(street.eventSeq) ? Math.floor(street.eventSeq) : 0
+  return { eventLog: log.notes, eventSeq: Math.max(stored, log.seq) }
 }
 
 function clampCountMap(value: unknown): Partial<Record<Species, number>> {
@@ -131,10 +138,7 @@ function clampEvent(value: unknown): NightEvent | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const event = value as NightEvent
   if (!EVENT_KINDS.has(event.kind)) return null
-  const offer =
-    event.offer && typeof event.offer.figureId === 'string' && Number.isFinite(event.offer.price)
-      ? { figureId: event.offer.figureId, price: Math.max(0, Math.floor(event.offer.price)) }
-      : null
+  const offer = clampOffer(event.offer)
   return {
     day: Number.isFinite(event.day) ? event.day : 1,
     kind: event.kind,
@@ -144,9 +148,19 @@ function clampEvent(value: unknown): NightEvent | null {
   }
 }
 
-function clampEventLog(value: unknown): EventNote[] {
-  if (!Array.isArray(value)) return []
-  return value.flatMap((item) => {
+function clampOffer(value: unknown): NightEvent['offer'] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const offer = value as { figureId?: unknown; decorType?: unknown; price?: unknown }
+  if (typeof offer.price !== 'number' || !Number.isFinite(offer.price)) return null
+  const figureId = typeof offer.figureId === 'string' && offer.figureId ? offer.figureId : null
+  const decorType = typeof offer.decorType === 'string' && DECOR_IDS.has(offer.decorType as DecorType) ? (offer.decorType as DecorType) : null
+  if (!figureId && !decorType) return null
+  return { figureId, decorType, price: Math.max(0, Math.floor(offer.price)) }
+}
+
+function clampEventLog(value: unknown): { notes: EventNote[]; seq: number } {
+  if (!Array.isArray(value)) return { notes: [], seq: 0 }
+  const notes = value.flatMap((item) => {
     if (!item || typeof item !== 'object') return []
     const note = item as EventNote
     if (typeof note.id !== 'string' || !EVENT_KINDS.has(note.kind) || typeof note.title !== 'string' || typeof note.body !== 'string') {
@@ -155,6 +169,7 @@ function clampEventLog(value: unknown): EventNote[] {
     return [
       {
         id: note.id,
+        seq: Number.isFinite(note.seq) && note.seq > 0 ? Math.floor(note.seq) : 0,
         day: Number.isFinite(note.day) ? note.day : 1,
         kind: note.kind,
         title: note.title,
@@ -163,6 +178,13 @@ function clampEventLog(value: unknown): EventNote[] {
       },
     ]
   })
+  let seq = notes.reduce((max, note) => Math.max(max, note.seq), 0)
+  const numbered = notes.map((note) => {
+    if (note.seq > 0) return note
+    seq += 1
+    return { ...note, seq }
+  })
+  return { notes: numbered.slice(-60), seq }
 }
 
 function productsAlreadyForSale(street: Street): string[] {

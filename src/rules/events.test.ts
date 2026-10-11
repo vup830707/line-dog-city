@@ -6,12 +6,17 @@ import { speciesWeight } from './animals'
 import { ambienceScore, expectedVisits } from './ambience'
 import {
   eventSpeciesMultiplier,
+  expectedIchibanSkinCost,
   hangingFestival,
+  ichibanDogSkins,
+  merchantAsk,
   merchantPose,
+  pickMerchantOffer,
   presentNightEvent,
   rollNightEvent,
   shownWeather,
 } from './events'
+import { createRng } from './rng'
 import { streetWith } from './fixtures'
 import { runTicks } from './street'
 describe('night events', () => {
@@ -69,15 +74,32 @@ describe('night events', () => {
     expect(eve.pendingToasts.at(-1)).toContain('燈')
   })
 
-  it('sells one rare figure for coins and refuses a short purse', () => {
-    const visit = presentNightEvent(streetWith({ money: 1000, collection: {} }), 'merchant', gameConfig)
-    const offer = visit.nightEvent?.offer
-    expect(offer).not.toBeNull()
-    expect(gameConfig.figures.some((figure) => figure.id === offer?.figureId)).toBe(true)
+  it('sells one missing dog skin, or a gift decoration when the set is complete', () => {
+    const skins = ichibanDogSkins(gameConfig)
+    expect(skins).toHaveLength(8)
+    const expected = expectedIchibanSkinCost(gameConfig)
+    const price = merchantAsk(gameConfig)
+    expect(gameConfig.merchantPriceMultiplier).toBeGreaterThanOrEqual(1.5)
+    expect(gameConfig.merchantPriceMultiplier).toBeLessThanOrEqual(2)
+    expect(price).toBe(Math.round(expected * gameConfig.merchantPriceMultiplier))
+    expect(price).toBeGreaterThan(expected * 1.5 - 1)
+    expect(price).toBeLessThan(expected * 2 + 1)
+
+    const missing = skins[3] ?? 'pajama'
+    const owned = Object.fromEntries(skins.filter((id) => id !== missing).map((id) => [id, 1]))
+    const offer = pickMerchantOffer(owned, createRng(1), gameConfig)
+    expect(offer.figureId).toBe(missing)
+    expect(offer.decorType).toBeNull()
+    expect(offer.price).toBe(price)
+
+    const visit = presentNightEvent(streetWith({ money: 5000, collection: {} }), 'merchant', gameConfig)
+    const tonight = visit.nightEvent?.offer
+    expect(tonight?.figureId).toBeTruthy()
+    expect(skins).toContain(tonight?.figureId)
     const bought = buyFromMerchant(visit, gameConfig)
     expect(bought.ok).toBe(true)
-    expect(bought.street.money).toBe(1000 - (offer?.price ?? 0))
-    expect(bought.street.collection[offer?.figureId ?? '']).toBe(1)
+    expect(bought.street.money).toBe(5000 - (tonight?.price ?? 0))
+    expect(bought.street.collection[tonight?.figureId ?? '']).toBe(1)
     expect(bought.street.nightEvent?.bought).toBe(true)
     const twice = buyFromMerchant(bought.street, gameConfig)
     expect(twice.ok).toBe(false)
@@ -87,6 +109,20 @@ describe('night events', () => {
     expect(poor.ok).toBe(false)
     expect(poor.street.money).toBe(1)
     expect(poor.street.collection).toEqual({})
+
+    const complete = Object.fromEntries(skins.map((id) => [id, 1]))
+    const gift = pickMerchantOffer(complete, createRng(4), gameConfig)
+    expect(gift.figureId).toBeNull()
+    expect(gift.decorType).toBeTruthy()
+    expect(gift.price).toBe(0)
+    const gifted = presentNightEvent(streetWith({ money: 10, collection: complete }), 'merchant', gameConfig)
+    const taken = buyFromMerchant(gifted, gameConfig)
+    expect(taken.ok).toBe(true)
+    expect(taken.street.money).toBe(10)
+    expect(taken.street.collection).toEqual(complete)
+    expect(taken.street.giftTokens).toEqual([gifted.nightEvent?.offer?.decorType])
+    const again = buyFromMerchant(taken.street, gameConfig)
+    expect(again.ok).toBe(false)
   })
 
   it('walks the merchant in at dusk, holds them at mid, and walks them out late', () => {

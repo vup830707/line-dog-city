@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { gameConfig } from '../config'
+import { createNewGame } from '../game/newGame'
 import { applyOffline, offlineSummary, offlineTickCount } from './offline'
 import { runTicks } from './street'
 import { streetWith } from './fixtures'
@@ -80,6 +81,17 @@ describe('offline earnings', () => {
     const start = streetWith({ arrivals: [0], staff: [], rngState: 3, phaseTick: 0 })
     const offline = applyOffline(start, 8 * gameConfig.tickMs, gameConfig)
     expect(offline.street.offlineNote).toContain('來過：')
+  })
+
+  it('still lists the night line after the event log is full', () => {
+    const fresh = createNewGame({ playerDog: 'white', whiteName: '雪球', brownName: '可可', now: 1, seed: 2 }, gameConfig).street
+    const played = runTicks(fresh, gameConfig, 20_000)
+    expect(played.eventLog.length).toBe(60)
+    expect(played.eventSeq).toBeGreaterThan(60)
+    const away = applyOffline(played, 2 * 3_600_000, gameConfig)
+    expect(away.street.offlineNote).toContain('夜裡')
+    const quiet = applyOffline(fresh, 2 * 3_600_000, gameConfig)
+    expect(quiet.street.offlineNote).toContain('夜裡')
   })
 
   it('caps catch-up at 8 hours even when more time has passed', () => {

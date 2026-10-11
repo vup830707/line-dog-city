@@ -97,14 +97,21 @@ export function buyFromMerchant(street: Street, config: GameConfig): ActionResul
   if (event.bought) return fail(street, '商人已經把東西交給你了')
   const price = event.offer.price
   if (street.money < price) return fail(street, `還差 ${price - street.money} 幣`)
-  const figureId = event.offer.figureId
-  const name = config.figures.find((figure) => figure.id === figureId)?.name ?? '稀有造型'
+  const offer = event.offer
+  const figureId = offer.figureId
+  const decorType = offer.decorType
+  const name = figureId
+    ? (config.figures.find((figure) => figure.id === figureId)?.name ?? '稀有造型')
+    : decorType
+      ? config.decorLabels[decorType]
+      : '禮物'
   return {
     ok: true,
     street: {
       ...street,
       money: street.money - price,
-      collection: { ...street.collection, [figureId]: (street.collection[figureId] ?? 0) + 1 },
+      collection: figureId ? { ...street.collection, [figureId]: (street.collection[figureId] ?? 0) + 1 } : street.collection,
+      giftTokens: decorType ? [...street.giftTokens, decorType] : street.giftTokens,
       nightEvent: { ...event, bought: true },
       pendingToasts: [...street.pendingToasts, `收下了${name}。`],
     },

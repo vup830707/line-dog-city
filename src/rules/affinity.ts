@@ -6,11 +6,27 @@ import type { DecorType, GameConfig, Species, Street } from './types'
 export type AffinityReward = { kind: 'letter'; tier: 2 | 3 } | { kind: 'gift' }
 
 /**
- * Hearts fill from satisfied purchases.
- * `affinityStride` purchases become one heart, so a regular who is happy
- * every visit on a one-minute night does not collect letters in the first few minutes.
+ * Hearts fill from purchase pips.
+ * A score below `affinityMin` earns nothing. At or above it,
+ * pips = round(affinityPipBase * satisfaction), so a full score earns the most.
+ * The first heart costs `affinityStride` pips. Each heart already earned
+ * raises the next cost by `affinityHeartGrowth`, so later hearts take longer.
  * Letters and the gift still fire at `affinityLetters` (3, 10, 25 hearts).
  */
+export function affinityPips(satisfaction: number, config: GameConfig): number {
+  if (!(satisfaction >= config.affinityMin)) return 0
+  const base = Number.isFinite(config.affinityPipBase) ? config.affinityPipBase : 0
+  return Math.max(0, Math.round(base * satisfaction))
+}
+
+/** Pips required to earn the next heart after `hearts` are already filled. */
+export function heartCost(hearts: number, config: GameConfig): number {
+  const stride = Math.max(1, Math.floor(config.affinityStride))
+  const growth = Number.isFinite(config.affinityHeartGrowth) ? Math.max(0, config.affinityHeartGrowth) : 0
+  const earned = Math.max(0, Math.floor(hearts))
+  return Math.max(1, Math.round(stride * (1 + earned * growth)))
+}
+
 export function affinityPoints(affinity: number, progress: number, stride: number): number {
   const step = Math.max(1, stride)
   return Math.max(0, affinity) + Math.max(0, progress) / step
@@ -51,27 +67,29 @@ export function giftDecorFor(species: Species, street: Street, config: GameConfi
 }
 
 export function applyPurchaseAffinity(street: Street, species: Species, satisfaction: number, config: GameConfig): Street {
-  if (satisfaction < config.letterAt) return street
-  return grantSatisfiedVisit(street, species, config)
+  return addAffinityPips(street, species, affinityPips(satisfaction, config), config)
 }
 
+/** One pip. Threshold tests use this with a stride of 1 and no heart growth. */
 export function grantSatisfiedVisit(street: Street, species: Species, config: GameConfig): Street {
-  const stride = Math.max(1, Math.floor(config.affinityStride))
-  const progress = (street.affinityProgress[species] ?? 0) + 1
-  if (progress < stride) {
-    return { ...street, affinityProgress: { ...street.affinityProgress, [species]: progress } }
+  return addAffinityPips(street, species, 1, config)
+}
+
+export function addAffinityPips(street: Street, species: Species, pips: number, config: GameConfig): Street {
+  if (pips <= 0) return street
+  let hearts = street.affinity[species] ?? 0
+  let progress = (street.affinityProgress[species] ?? 0) + pips
+  const before = hearts
+  while (progress >= heartCost(hearts, config)) {
+    progress -= heartCost(hearts, config)
+    hearts += 1
   }
-  const gained = Math.floor(progress / stride)
-  const remain = progress % stride
-  const before = street.affinity[species] ?? 0
-  const after = before + gained
-  const rewards = rewardsForAffinity(before, after, config.affinityLetters)
   const next: Street = {
     ...street,
-    affinity: { ...street.affinity, [species]: after },
-    affinityProgress: { ...street.affinityProgress, [species]: remain },
+    affinity: { ...street.affinity, [species]: hearts },
+    affinityProgress: { ...street.affinityProgress, [species]: progress },
   }
-  return grantRewards(next, species, rewards, config)
+  return grantRewards(next, species, rewardsForAffinity(before, hearts, config.affinityLetters), config)
 }
 
 function grantRewards(street: Street, species: Species, rewards: readonly AffinityReward[], config: GameConfig): Street {

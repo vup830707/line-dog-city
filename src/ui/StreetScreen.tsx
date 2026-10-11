@@ -760,8 +760,14 @@ export function StreetScreen({
       {street.nightEvent?.kind === 'merchant' && street.nightEvent.offer && !street.nightEvent.bought ? (
         <aside className="merchant-card" data-testid="merchant-offer">
           <h2>神秘商人</h2>
-          <p>{gameConfig.figures.find((figure) => figure.id === street.nightEvent?.offer?.figureId)?.name ?? '稀有造型'}</p>
-          {FIGURE_SRC[street.nightEvent.offer.figureId] ? (
+          <p>
+            {street.nightEvent.offer.figureId
+              ? (gameConfig.figures.find((figure) => figure.id === street.nightEvent?.offer?.figureId)?.name ?? '稀有造型')
+              : street.nightEvent.offer.decorType
+                ? gameConfig.decorLabels[street.nightEvent.offer.decorType]
+                : '一份禮物'}
+          </p>
+          {street.nightEvent.offer.figureId && FIGURE_SRC[street.nightEvent.offer.figureId] ? (
             <img src={`${artRoot}${FIGURE_SRC[street.nightEvent.offer.figureId]}`} alt="" />
           ) : null}
           <button
@@ -773,7 +779,7 @@ export function StreetScreen({
               if (result.ok) onChange({ ...save, street: result.street })
             }}
           >
-            {street.nightEvent.offer.price} 幣帶走
+            {street.nightEvent.offer.price > 0 ? `${street.nightEvent.offer.price} 幣帶走` : '收下禮物'}
           </button>
         </aside>
       ) : null}

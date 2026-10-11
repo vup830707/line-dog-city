@@ -1,9 +1,8 @@
 import { createRng, type Rng } from './rng'
 import { festivalName, upcomingFestival } from './weather'
-import type { EventNote, GameConfig, NightEvent, NightEventKind, Phase, Species, Street, Weather } from './types'
+import type { DecorType, EventNote, GameConfig, MerchantOffer, NightEvent, NightEventKind, Phase, Species, Street, Weather } from './types'
 
-/** Rare ichiban figures the fennec merchant may sell. */
-export const MERCHANT_FIGURES = ['temple', 'dreamIce', 'starCap', 'weatherCan'] as const
+const GIFT_DECORS: DecorType[] = ['lantern', 'seat', 'sign', 'flower', 'star', 'string']
 
 /**
  * Events use a day seed derived from the street RNG.
@@ -31,23 +30,61 @@ export function buildNightEvent(kind: NightEventKind, day: number, street: Stree
       day,
       kind,
       festival: null,
-      offer: { figureId: pickMerchantFigure(street.collection, rng), price: Math.max(0, config.merchantPrice) },
+      offer: pickMerchantOffer(street.collection, rng, config),
       bought: false,
     }
   }
   return { day, kind: 'rain', festival: null, offer: null, bought: false }
 }
 
-export function pickMerchantFigure(collection: Record<string, number>, rng: Rng): string {
-  const unowned = MERCHANT_FIGURES.filter((id) => (collection[id] ?? 0) < 1)
-  const pool = unowned.length > 0 ? unowned : MERCHANT_FIGURES
-  return pool[Math.floor(rng.next() * pool.length)] ?? 'starCap'
+/** Dog skins in the ichiban box. Stickers and the last prize are not skins. */
+export function ichibanDogSkins(config: GameConfig): string[] {
+  const ids: string[] = []
+  for (const box of config.ichiban.boxes) {
+    for (const prize of box.prizes) {
+      if (prize.figureId && !ids.includes(prize.figureId)) ids.push(prize.figureId)
+    }
+  }
+  return ids
 }
 
-export function describeNightEvent(event: NightEvent, tick: number, config: GameConfig): EventNote {
+/** Pull price times tickets in the box, divided by the skin tickets. */
+export function expectedIchibanSkinCost(config: GameConfig): number {
+  let tickets = 0
+  let skins = 0
+  for (const box of config.ichiban.boxes) {
+    for (const prize of box.prizes) {
+      const count = Math.max(0, prize.count)
+      tickets += count
+      if (prize.figureId) skins += count
+    }
+  }
+  const pull = Math.max(0, config.prices.ichiban)
+  if (skins <= 0) return pull
+  return (tickets * pull) / skins
+}
+
+export function merchantAsk(config: GameConfig): number {
+  const mult = Number.isFinite(config.merchantPriceMultiplier) ? config.merchantPriceMultiplier : 1.75
+  return Math.max(0, Math.round(expectedIchibanSkinCost(config) * mult))
+}
+
+/** One missing dog skin, or a placeable decoration once every skin is owned. */
+export function pickMerchantOffer(collection: Record<string, number>, rng: Rng, config: GameConfig): MerchantOffer {
+  const unowned = ichibanDogSkins(config).filter((id) => (collection[id] ?? 0) < 1)
+  if (unowned.length > 0) {
+    const figureId = unowned[Math.floor(rng.next() * unowned.length)] ?? unowned[0] ?? null
+    return { figureId, decorType: null, price: merchantAsk(config) }
+  }
+  const decorType = GIFT_DECORS[Math.floor(rng.next() * GIFT_DECORS.length)] ?? 'lantern'
+  return { figureId: null, decorType, price: 0 }
+}
+
+export function describeNightEvent(event: NightEvent, tick: number, config: GameConfig, seq: number): EventNote {
   if (event.kind === 'rain') {
     return {
-      id: `event-${event.day}-rain`,
+      id: `event-${seq}`,
+      seq,
       day: event.day,
       kind: event.kind,
       title: '突然下雨了',
@@ -58,7 +95,8 @@ export function describeNightEvent(event: NightEvent, tick: number, config: Game
   if (event.kind === 'festival-eve') {
     const name = event.festival ?? '節日'
     return {
-      id: `event-${event.day}-festival-eve`,
+      id: `event-${seq}`,
+      seq,
       day: event.day,
       kind: event.kind,
       title: '節日前夜，燈先掛上了',
@@ -66,13 +104,19 @@ export function describeNightEvent(event: NightEvent, tick: number, config: Game
       tick,
     }
   }
-  const figure = config.figures.find((item) => item.id === event.offer?.figureId)?.name ?? '稀有造型'
+  const offer = event.offer
+  const figure = config.figures.find((item) => item.id === offer?.figureId)?.name
+  const decor = offer?.decorType ? config.decorLabels[offer.decorType] : null
+  const brought = figure ? `「${figure}」` : decor ? `一份${decor}` : '一件禮物'
   return {
-    id: `event-${event.day}-merchant`,
+    id: `event-${seq}`,
+    seq,
     day: event.day,
     kind: event.kind,
     title: '神秘商人走進來了',
-    body: `耳廓狐商人帶來「${figure}」，今晚結束前可以用金幣換。`,
+    body: figure
+      ? `耳廓狐商人帶來${brought}，今晚結束前可以用金幣換。`
+      : `耳廓狐商人帶來${brought}，今晚可以收下。`,
     tick,
   }
 }
@@ -122,13 +166,15 @@ export function merchantProgress(phase: Phase, phaseTick: number, alpha: number,
 /** Debug and screenshots. Replaces tonight's event and announces it. */
 export function presentNightEvent(street: Street, kind: NightEventKind, config: GameConfig): Street {
   const event = buildNightEvent(kind, street.day, street, config, createRng(eventSeed(street.rngState, street.day)))
-  const note = describeNightEvent(event, street.tick, config)
+  const seq = (street.eventSeq ?? 0) + 1
+  const note = describeNightEvent(event, street.tick, config, seq)
   return {
     ...street,
     phase: kind === 'merchant' ? 'mid' : kind === 'rain' ? 'late' : street.phase,
     phaseTick: kind === 'merchant' ? Math.max(1, Math.floor(config.phaseMinutes / 2)) : street.phaseTick,
     nightEvent: event,
-    eventLog: [...street.eventLog.filter((item) => item.id !== note.id), note],
+    eventSeq: seq,
+    eventLog: [...street.eventLog.filter((item) => item.id !== note.id), note].slice(-60),
     pendingToasts: [...street.pendingToasts, note.title],
   }
 }

@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { gameConfig } from '../config'
 import { placeItem } from './actions'
-import { applyPurchaseAffinity, giftDecorFor, grantSatisfiedVisit, heartFills, rewardsForAffinity } from './affinity'
-import { decor, stall, streetWith } from './fixtures'
-import { runTicks } from './street'
-import type { GameConfig, Species } from './types'
+import { affinityPips, applyPurchaseAffinity, giftDecorFor, grantSatisfiedVisit, heartCost, heartFills, rewardsForAffinity } from './affinity'
+import { streetWith } from './fixtures'
+import type { GameConfig } from './types'
 
-const strideOne: GameConfig = { ...gameConfig, affinityStride: 1, affinityLetters: [3, 10, 25] }
+const strideOne: GameConfig = { ...gameConfig, affinityStride: 1, affinityHeartGrowth: 0, affinityLetters: [3, 10, 25] }
 
 describe('affinity', () => {
   it('sends the second letter, third letter, and a placeable gift at 3, 10, and 25', () => {
@@ -41,14 +40,31 @@ describe('affinity', () => {
     expect(again.letters.filter((letter) => letter.topic.startsWith('rabbit:affinity'))).toHaveLength(2)
   })
 
-  it('ignores a purchase that is not satisfied and batches hearts with the stride', () => {
+  it('pays pips in proportion to satisfaction and makes later hearts cost more', () => {
     const street = streetWith()
-    const cold = applyPurchaseAffinity(street, 'sparrow', gameConfig.letterAt - 0.01, gameConfig)
+    const cold = applyPurchaseAffinity(street, 'sparrow', gameConfig.affinityMin - 0.01, gameConfig)
     expect(cold.affinityProgress.sparrow ?? 0).toBe(0)
-    expect(cold.affinity.sparrow ?? 0).toBe(0)
+    expect(affinityPips(gameConfig.affinityMin - 0.01, gameConfig)).toBe(0)
+
+    const low = affinityPips(gameConfig.affinityMin, gameConfig)
+    const mid = affinityPips(0.6, gameConfig)
+    const full = affinityPips(1, gameConfig)
+    const overflowing = affinityPips(1.2, gameConfig)
+    expect(low).toBeGreaterThan(0)
+    expect(mid).toBeGreaterThan(low)
+    expect(full).toBeGreaterThan(mid)
+    expect(overflowing).toBeGreaterThanOrEqual(full)
+    expect(applyPurchaseAffinity(street, 'hamster', 0.2, gameConfig).affinityProgress.hamster).toBe(low)
+
+    expect(heartCost(1, gameConfig)).toBeGreaterThan(heartCost(0, gameConfig))
+    expect(heartCost(24, gameConfig)).toBeGreaterThan(heartCost(2, gameConfig))
+    const firstThree = heartCost(0, gameConfig) + heartCost(1, gameConfig) + heartCost(2, gameConfig)
+    let through = 0
+    for (let heart = 0; heart < 25; heart += 1) through += heartCost(heart, gameConfig)
+    expect(through / firstThree).toBeGreaterThan(8.33)
 
     let warm = street
-    const stride = gameConfig.affinityStride
+    const stride = heartCost(0, gameConfig)
     for (let i = 0; i < stride - 1; i += 1) warm = grantSatisfiedVisit(warm, 'sparrow', gameConfig)
     expect(warm.affinity.sparrow ?? 0).toBe(0)
     expect(warm.affinityProgress.sparrow).toBe(stride - 1)
@@ -69,103 +85,4 @@ describe('affinity', () => {
     expect(placed.street.slots[11]?.decorType).toBe('lantern')
     expect(placed.street.giftTokens).toEqual([])
   })
-
-  it('reaches each heart over hours for a common regular and a rare one', () => {
-    const pace = measurePace()
-    const [common3, common10, common25] = pace.sparrow
-    const [rare3, rare10, rare25] = pace.fox
-    expect(common3).toBeGreaterThan(2)
-    expect(common3).toBeLessThan(4)
-    expect(common10).toBeGreaterThan(common3)
-    expect(common25).toBeGreaterThan(common10)
-    expect(common25).toBeLessThan(30)
-    expect(rare3).toBeGreaterThan(0.9)
-    expect(rare10).toBeGreaterThan(rare3)
-    expect(rare25).toBeGreaterThan(rare10)
-    expect(rare25).toBeLessThan(12)
-    expect(pace.sparrowPurchases).toBeGreaterThan(0)
-    expect(pace.foxPurchases).toBeGreaterThan(0)
-  })
 })
-
-function measurePace() {
-  const ticks = gameConfig.phaseMinutes * 3 * 4
-  const sparrow = satisfiedPurchases(openingPlaza(), ticks, 'sparrow')
-  const fox = satisfiedPurchases(foxPlaza(), ticks, 'fox')
-  const hours = (purchases: number, hearts: number) => {
-    if (purchases <= 0) return Number.POSITIVE_INFINITY
-    const perTick = purchases / ticks
-    const need = hearts * gameConfig.affinityStride
-    return (need / perTick) * (gameConfig.tickMs / 3_600_000)
-  }
-  const thresholds = gameConfig.affinityLetters
-  return {
-    sparrowPurchases: sparrow,
-    foxPurchases: fox,
-    sparrow: thresholds.map((hearts) => hours(sparrow, hearts)),
-    fox: thresholds.map((hearts) => hours(fox, hearts)),
-  }
-}
-
-function satisfiedPurchases(start: ReturnType<typeof streetWith>, ticks: number, species: Species) {
-  const done = runTicks(start, { ...gameConfig, eventChance: 0, ichibanIdleTicks: 100_000 }, ticks)
-  const hearts = done.affinity[species] ?? 0
-  const progress = done.affinityProgress[species] ?? 0
-  return hearts * gameConfig.affinityStride + progress
-}
-
-function openingPlaza() {
-  const slots = streetWith().slots.slice()
-  slots[1] = stall('ice', 'ice')
-  slots[10] = decor('lantern', 'lantern')
-  return streetWith({
-    slots,
-    stock: { ice: 400 },
-    staff: [{ id: 'dog-white', name: '小白', kind: 'dog', dog: 'white', job: 'restock', level: 1 }],
-    phase: 'late',
-    phaseTick: gameConfig.phaseMinutes,
-    day: 1,
-    rngState: 7,
-    marketLevel: 1,
-    arrivals: [],
-    visitors: [],
-  })
-}
-
-function foxPlaza() {
-  const slots = streetWith().slots.slice()
-  slots[1] = stall('ice', 'ice')
-  slots[2] = stall('can', 'can')
-  slots[4] = stall('ichiban', 'ichi')
-  slots[5] = decor('sign', 'sign')
-  for (const index of [0, 6, 8, 9, 10, 11, 12, 13]) slots[index] = decor('lantern', `lantern-${index}`)
-  const tickets = Array.from({ length: 80 }, () => ({
-    grade: 'C' as const,
-    figureId: 'pajama',
-    label: '睡衣小狗',
-    unitCost: 50,
-  }))
-  return streetWith({
-    slots,
-    stock: { ice: 400, can: 400 },
-    marketLevel: 5,
-    staff: [{ id: 'dog-white', name: '小白', kind: 'dog', dog: 'white', job: 'restock', level: 1 }],
-    phase: 'late',
-    phaseTick: gameConfig.phaseMinutes,
-    day: 4,
-    rngState: 11,
-    arrivals: [],
-    visitors: [],
-    box: {
-      boxId: 'set1',
-      name: '箱',
-      wholesale: 2670,
-      tickets,
-      lastPrize: { id: 'lantern', label: '夜市燈籠', unitCost: 200, awarded: false },
-      draws: 0,
-      income: 0,
-      paid: false,
-      idleTicks: 0,
-    },
-  })
-}

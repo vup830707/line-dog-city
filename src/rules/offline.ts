@@ -62,7 +62,7 @@ export function applyOffline(street: Street, elapsedMs: number, config: GameConf
   const ticks = offlineTickCount(elapsedMs, config)
   const letterIds = new Set(street.letters.map((letter) => letter.id))
   const giftsBefore = street.giftTokens
-  const eventsBefore = street.eventLog.length
+  const seqBefore = street.eventSeq ?? 0
   const seen = new Set<Species>()
   const known = new Set(street.visitors.map((visitor) => visitor.id))
   let next = street
@@ -84,7 +84,7 @@ export function applyOffline(street: Street, elapsedMs: number, config: GameConf
           visitors: [...seen],
           letters,
           gifts: addedGifts(giftsBefore, next.giftTokens),
-          events: next.eventLog.slice(eventsBefore).map((item) => item.title),
+          events: next.eventLog.filter((item) => item.seq > seqBefore).map((item) => item.title),
         })
       : null
   return { ticks, earned, street: { ...next, offlineNote: note, lastOfflineTicks: ticks } }

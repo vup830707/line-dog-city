@@ -80,6 +80,7 @@ export function createNewGame(
     giftTokens: [],
     nightEvent: null,
     eventLog: [],
+    eventSeq: 0,
   }
   street.arrivals = scheduleArrivals(
     expectedVisits(
