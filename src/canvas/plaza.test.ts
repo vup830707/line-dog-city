@@ -3,7 +3,6 @@ import { createNewGame } from '../game/newGame'
 import { gameConfig } from '../config'
 import { stall, streetWith, visitor } from '../rules/fixtures'
 import {
-  ANIMAL_ART,
   CUSTOMER_H,
   PLAZA_H,
   PLAZA_SLOTS,
@@ -119,7 +118,8 @@ describe('depth sort', () => {
     expect(order.indexOf(`slot-${far}`)).toBeLessThan(order.indexOf(`slot-${near}`))
     expect(order.indexOf(`slot-${far}`)).toBeLessThan(order.indexOf('visitor-v-cat'))
     expect(scene.find((sprite) => sprite.id === `slot-${far}`)?.src).toBe(STALL_ART.ice.src)
-    expect(scene.find((sprite) => sprite.id === 'visitor-v-cat')?.src).toBe(ANIMAL_ART.cat.src)
+    expect(scene.find((sprite) => sprite.id === 'visitor-v-cat')?.src).toBe('assets/art25/walk/cat-back-2.png')
+    expect(scene.find((sprite) => sprite.id === 'visitor-v-cat')?.bob).toBe(false)
     expect(scene.find((sprite) => sprite.id === 'visitor-v-cat')?.shadow).toBe(true)
     expect(scene.find((sprite) => sprite.id === `slot-${far}`)?.shadow).toBe(false)
   })
@@ -281,11 +281,14 @@ describe('walking poses', () => {
     expect(walkFacing(0, -4)).toEqual({ facing: 'back', mirror: false })
     expect(walkFacing(-6, 1).mirror).toBe(true)
     expect(walkFacing(-6, 1).facing).toBe('front')
+    expect(walkFacing(10, 0)).toEqual({ facing: 'front', mirror: false })
+    expect(walkFacing(-10, 0)).toEqual({ facing: 'front', mirror: true })
   })
 
-  it('bobs characters and returns to the baseline', () => {
-    expect(bobOffset(0, 0)).toBe(0)
-    expect(bobOffset((Math.PI / 2) * 160, 0)).toBeCloseTo(5)
-    expect(Math.abs(bobOffset(999, 1.2))).toBeLessThanOrEqual(5)
+  it('bobs only while walking, in time with a step, and returns to the baseline', () => {
+    expect(bobOffset(0, 0, true, 6)).toBe(0)
+    expect(bobOffset(1000 / 6, 0, true, 6)).toBeCloseTo(5)
+    expect(bobOffset(1000 / 6, 0, false, 6)).toBe(0)
+    expect(Math.abs(bobOffset(999, 1.2, true, 6))).toBeLessThanOrEqual(5)
   })
 })

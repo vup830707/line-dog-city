@@ -1,4 +1,4 @@
-import type { GameConfig, Street } from './types'
+import type { GameConfig, StaffMember, Street } from './types'
 
 export function restockInterval(level: number, config: GameConfig): number {
   const index = Math.min(config.restockEvery.length, Math.max(1, level)) - 1
@@ -65,6 +65,63 @@ function emptiestStall(street: Street, stock: Record<string, number>, config: Ga
     }
   })
   return bestUid
+}
+
+export type WorkTarget =
+  | { kind: 'stall'; slot: number }
+  | { kind: 'clean'; slot: number }
+  | { kind: 'greet' }
+  | { kind: 'rest'; slot: number | null }
+
+function restockSlot(street: Street, config: GameConfig): number | null {
+  const uid = emptiestStall(street, street.stock, config)
+  if (uid) {
+    const index = street.slots.findIndex((place) => place?.uid === uid)
+    if (index >= 0) return index
+  }
+  const first = street.slots.findIndex((place) => place?.kind === 'stall' && place.stallType && place.stallType !== 'ichiban')
+  return first >= 0 ? first : null
+}
+
+function pickCleanSlot(street: Street, avoid: Set<number>): number {
+  const occupied = street.slots.flatMap((place, index) => (place ? [index] : []))
+  const phase = street.phase === 'mid' ? 1 : street.phase === 'late' ? 2 : 0
+  const pool = occupied.filter((index) => !avoid.has(index))
+  const open = street.slots.map((_, index) => index).filter((index) => !avoid.has(index))
+  const choices = pool.length > 0 ? pool : open
+  const list = choices.length > 0 ? choices : [0]
+  return list[(street.day + phase) % list.length] ?? 0
+}
+
+/**
+ * Where each staff member should walk. Pure: it does not restock, sweep, or change the street.
+ * Restock goes to the emptiest shelf, sweeping to another spot, greeting to the entrance,
+ * and rest to a bench when one is out.
+ */
+export function assignStaffTargets(street: Street, config: GameConfig): { id: string; target: WorkTarget }[] {
+  const used = new Set<number>()
+  const shelf = restockSlot(street, config)
+  return street.staff.map((member) => ({ id: member.id, target: targetFor(street, member, shelf, used) }))
+}
+
+function targetFor(street: Street, member: StaffMember, shelf: number | null, used: Set<number>): WorkTarget {
+  if (member.job === 'greet') return { kind: 'greet' }
+  if (member.job === 'rest') {
+    const seat = street.slots.findIndex((slot) => slot?.kind === 'decor' && slot.decorType === 'seat')
+    return { kind: 'rest', slot: seat >= 0 ? seat : null }
+  }
+  if (member.job === 'restock') {
+    const slot = shelf ?? 0
+    used.add(slot)
+    return { kind: 'stall', slot }
+  }
+  const slot = pickCleanSlot(street, used)
+  used.add(slot)
+  return { kind: 'clean', slot }
+}
+
+export function staffWorkTarget(street: Street, member: StaffMember, config: GameConfig): WorkTarget {
+  return assignStaffTargets(street, config).find((item) => item.id === member.id)?.target ?? { kind: 'greet' }
 }
 
 /** Restock and clean. Neither spends coins; empty shelves simply wait. Sweeping happens once per phase. */

@@ -190,6 +190,10 @@ export interface GameConfig {
   buildAnimMs: number
   ichibanIdleTicks: number
   walkSpeed: number
+  walkFps: number
+  lookAroundChance: number
+  /** Pause range, milliseconds, when a walker looks left and right. */
+  lookAroundMs: number[]
   restockCostRatio: number
   wishSuccessRate: number
   refundRate: number

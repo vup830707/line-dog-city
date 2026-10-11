@@ -1,3 +1,4 @@
+import { gameConfig } from '../config'
 import { glowAlpha } from './fx'
 import { bobOffset, coverTransform, depthSort, glowRadii, PLAZA_H, PLAZA_W, toScreen, type CoverTransform, type SceneSprite, type SlotFrame } from './plaza'
 
@@ -29,27 +30,74 @@ export function drawPlaza(
     const foot = toScreen(sprite, cover)
     const height = sprite.drawH * cover.scale
     const width = height * sprite.aspect
-    const bob = sprite.bob ? bobOffset(timeMs, sprite.seed) * cover.scale : 0
+    const bob = sprite.bob ? bobOffset(timeMs, sprite.seed, true, gameConfig.walkFps) * cover.scale : 0
+    const footGap = (sprite.footOffset ?? 0) * height
     if (sprite.shadow) {
+      const squash = shadowSquash(bob, cover.scale)
       ctx.save()
       ctx.fillStyle = 'rgba(36, 28, 18, 0.28)'
       ctx.beginPath()
-      ctx.ellipse(foot.x, foot.y, Math.max(10, width * 0.22), Math.max(4, height * 0.055), 0, 0, Math.PI * 2)
+      ctx.ellipse(foot.x, foot.y, Math.max(10, width * 0.22), Math.max(4, height * 0.055) * squash, 0, 0, Math.PI * 2)
       ctx.fill()
       ctx.restore()
     }
     const image = images.get(sprite.src)
-    if (!image) continue
-    ctx.save()
-    ctx.translate(foot.x, foot.y + bob)
-    if (sprite.mirror) ctx.scale(-1, 1)
-    ctx.drawImage(image, -width / 2, -height, width, height)
-    ctx.restore()
+    if (image) {
+      ctx.save()
+      ctx.translate(foot.x, foot.y + bob)
+      if (sprite.mirror) ctx.scale(-1, 1)
+      ctx.drawImage(image, -width / 2, -height + footGap, width, height)
+      ctx.restore()
+    }
+    if (sprite.bubbleSrc || sprite.floatText) drawBubble(ctx, images, sprite, foot.x, foot.y + bob - height + footGap, height)
   }
   for (const mark of frames) {
     if (mark.glow) drawSlotMark(ctx, mark, cover, timeMs)
   }
   if (spark) drawSpark(ctx, spark)
+}
+
+/** Flatten the ground shadow a little while a foot is in the air. */
+function shadowSquash(bob: number, scale: number): number {
+  const amp = 5 * scale
+  if (amp <= 0) return 1
+  return 1 - 0.22 * Math.min(1, Math.abs(bob) / amp)
+}
+
+function drawBubble(
+  ctx: CanvasRenderingContext2D,
+  images: ReadonlyMap<string, HTMLImageElement>,
+  sprite: SceneSprite,
+  x: number,
+  top: number,
+  height: number,
+): void {
+  const size = Math.max(18, height * 0.42)
+  const cx = x + size * 0.15
+  const cy = top - size * 0.72
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(cx, cy, size * 0.62, 0, Math.PI * 2)
+  ctx.fillStyle = 'rgba(255, 250, 243, 0.94)'
+  ctx.fill()
+  ctx.strokeStyle = 'rgba(90, 62, 42, 0.35)'
+  ctx.lineWidth = 1.5
+  ctx.stroke()
+  if (sprite.bubbleSrc) {
+    const icon = images.get(sprite.bubbleSrc)
+    if (icon) ctx.drawImage(icon, cx - size * 0.42, cy - size * 0.42, size * 0.84, size * 0.84)
+  }
+  if (sprite.floatText) {
+    ctx.font = `700 ${Math.max(12, Math.round(size * 0.46))}px "WenQuanYi Micro Hei", "Noto Sans CJK TC", sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.lineWidth = 3
+    ctx.strokeStyle = '#6a4a32'
+    ctx.fillStyle = '#fff6c8'
+    ctx.strokeText(sprite.floatText, cx + size * 0.95, cy - size * 0.15)
+    ctx.fillText(sprite.floatText, cx + size * 0.95, cy - size * 0.15)
+  }
+  ctx.restore()
 }
 
 function drawSlotMark(
