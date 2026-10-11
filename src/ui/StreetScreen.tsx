@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { assetMap } from '../assets/assetMap'
 import { drawPlaza } from '../canvas/drawPlaza'
+import { stepLights, type LightState } from '../canvas/light'
 import { buildPopScale } from '../canvas/fx'
 import {
   artSources,
@@ -144,6 +145,7 @@ export function StreetScreen({
   const pannedOnceRef = useRef(false)
   const buildFxRef = useRef<{ slot: number; start: number } | null>(null)
   const reduceRef = useRef(false)
+  const lightRef = useRef<LightState | null>(null)
   const motionRef = useRef<{
     tick: number
     tickAt: number
@@ -327,13 +329,30 @@ export function StreetScreen({
           return [{ frame: slotFrame(index, stallType), selected, glow: glowing }]
         })
         const moodStreet = streetRef.current
+        const showRain = shownWeather(moodStreet) === 'rain'
+        const festival = hangingFestival(moodStreet, gameConfig)
+        const lights = stepLights(lightRef.current, {
+          now,
+          weather: moodStreet.weather,
+          phase: moodStreet.phase,
+          showRain,
+          festival,
+          phaseTick: moodStreet.phaseTick,
+          alpha,
+          tickMs: gameConfig.tickMs,
+          phaseMinutes: gameConfig.phaseMinutes,
+          lightFadeSec: gameConfig.lightFadeSec,
+          overlayFadeSec: gameConfig.garlandFadeSec,
+          reduceMotion: reduce,
+        })
+        lightRef.current = lights.state
         drawPlaza(ctx, width, height, imagesRef.current.get(BG_SRC), imagesRef.current, scene, now, frames, spark, viewCover, {
           weather: moodStreet.weather,
           phase: moodStreet.phase,
-          festival: hangingFestival(moodStreet, gameConfig),
+          festival,
           reduceMotion: reduce,
-          showRain: shownWeather(moodStreet) === 'rain',
-        })
+          showRain,
+        }, lights.frame)
       }
       const layer = hitsRef.current
       if (layer) {

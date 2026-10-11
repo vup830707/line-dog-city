@@ -61,20 +61,22 @@ export function BuildStrip({
               }}
             >
               <img src={src ? `${artRoot}${src}` : assetMap.phone.coin} alt="" />
-              <span className="build-name">{offer.name}</span>
-              <span className="build-cost">{offer.gift ? '禮物' : `${offer.cost} 幣`}</span>
-              <span className="build-effect">{offer.effect}</span>
-              {offer.shortfall > 0 ? (
-                <span className="build-shortfall" data-testid={`build-shortfall-${offer.id}`}>
-                  {shortfallText(offer.shortfall)}
-                </span>
-              ) : null}
-              {offer.lockReason ? (
-                <span className="build-lock" data-testid={`build-lock-${offer.id}`}>
-                  鎖 {offer.lockReason}
-                </span>
-              ) : null}
-              {offer.placed ? <span className="build-lock">已經在夜市裡</span> : null}
+              <span className="build-copy">
+                <span className="build-name">{offer.name}</span>
+                <span className="build-cost">{offer.gift ? '禮物' : `${offer.cost} 幣`}</span>
+                <span className="build-effect">{offer.effect}</span>
+                {offer.shortfall > 0 ? (
+                  <span className="build-status build-shortfall" data-testid={`build-shortfall-${offer.id}`}>
+                    {shortfallText(offer.shortfall)}
+                  </span>
+                ) : null}
+                {offer.lockReason ? (
+                  <span className="build-status build-lock" data-testid={`build-lock-${offer.id}`}>
+                    鎖 {offer.lockReason}
+                  </span>
+                ) : null}
+                {offer.placed ? <span className="build-status build-lock">已經在夜市裡</span> : null}
+              </span>
             </button>
           )
         })}

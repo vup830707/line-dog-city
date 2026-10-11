@@ -225,6 +225,10 @@ export interface GameConfig {
   cleanlinessWeight: number
   saveEveryTicks: number
   titleLightMs: number
+  /** Seconds to cross-fade the plaza tint after a phase or weather change. */
+  lightFadeSec: number
+  /** Seconds to fade festival lights and the rain overlay in or out. */
+  garlandFadeSec: number
   phoneHeightRatio: number
   buildAnimMs: number
   ichibanIdleTicks: number
