@@ -5,7 +5,7 @@ import { WALK_ACTORS } from './plaza'
 
 /**
  * Which way the unmirrored sheet faces, read from the pixels.
- * Near-straight frames (white-puppy-back-2) stay neutral.
+ * Near-straight frames (white-puppy-front-2) stay neutral.
  */
 type PixelFacing = 'left' | 'right' | 'neutral'
 
@@ -180,8 +180,8 @@ describe('walk sheet pixels face the authored way', () => {
     const seen = (file: string, side: 'front' | 'back') => pixelFacing(readPng(`public/assets/art25/walk/${file}.png`), side)
     expect(seen('white-puppy-front-1', 'front')).toBe('left')
     expect(seen('white-puppy-front-3', 'front')).toBe('left')
-    expect(seen('white-puppy-back-1', 'back')).toBe('left')
-    expect(seen('white-puppy-back-3', 'back')).toBe('left')
+    expect(seen('white-puppy-back-1', 'back')).toBe('right')
+    expect(seen('white-puppy-back-3', 'back')).toBe('right')
     expect(seen('brown-puppy-back-1', 'back')).toBe('right')
     expect(seen('brown-puppy-back-3', 'back')).toBe('right')
     expect(seen('hamster-back-1', 'back')).toBe('right')
