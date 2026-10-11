@@ -104,15 +104,123 @@ export function coverTransform(viewW: number, viewH: number): CoverTransform {
   }
 }
 
-/** Cover transform. In build mode, pan up until slots 9 and 14 clear the build strip. */
-export function plazaTransform(viewW: number, viewH: number, build = false): CoverTransform {
+/** Extra translation from the centred cover. Positive x moves the plaza right (a finger drag to the right). */
+export interface CameraPan {
+  x: number
+  y: number
+}
+
+/** A drag shorter than this is still a tap. */
+export const PAN_TAP_SLOP = 8
+
+export interface PanRange {
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
+}
+
+function axisPan(overflow: number): { min: number; max: number } {
+  if (overflow < 0.5) return { min: 0, max: 0 }
+  const half = overflow / 2
+  return { min: -half, max: half }
+}
+
+/** How far the camera can leave centre before a plaza edge would uncover the view. Zero on an axis that is not cropped. */
+export function panRange(viewW: number, viewH: number): PanRange {
+  const { scale } = coverTransform(viewW, viewH)
+  const x = axisPan(PLAZA_W * scale - viewW)
+  const y = axisPan(PLAZA_H * scale - viewH)
+  return { minX: x.min, maxX: x.max, minY: y.min, maxY: y.max }
+}
+
+export function clampPan(viewW: number, viewH: number, pan: CameraPan): CameraPan {
+  const range = panRange(viewW, viewH)
+  return {
+    x: Math.min(range.maxX, Math.max(range.minX, pan.x)),
+    y: Math.min(range.maxY, Math.max(range.minY, pan.y)),
+  }
+}
+
+/** Cover transform plus a camera pan. In build mode, shift up until slots 9 and 14 clear the build strip. */
+export function plazaTransform(viewW: number, viewH: number, build = false, pan: CameraPan = { x: 0, y: 0 }): CoverTransform {
   const cover = coverTransform(viewW, viewH)
-  if (!build) return cover
+  const clamped = clampPan(viewW, viewH, pan)
+  const shifted: CoverTransform = {
+    scale: cover.scale,
+    offsetX: cover.offsetX + clamped.x,
+    offsetY: cover.offsetY + clamped.y,
+  }
+  if (!build) return shifted
   const strip = buildStripRect(viewW, viewH)
-  const lowest = Math.max(...[9, 14].map((index) => (PLAZA_SLOTS[index]?.y ?? 0) * cover.scale + cover.offsetY))
+  const lowest = Math.max(...[9, 14].map((index) => (PLAZA_SLOTS[index]?.y ?? 0) * shifted.scale + shifted.offsetY))
   const limit = strip.top - 16
-  if (lowest <= limit) return cover
-  return { ...cover, offsetY: cover.offsetY - (lowest - limit) }
+  if (lowest <= limit) return shifted
+  return { ...shifted, offsetY: shifted.offsetY - (lowest - limit) }
+}
+
+const PAN_EDGE = 12
+
+function deltaToFit(start: number, size: number, viewStart: number, viewEnd: number): number {
+  if (viewEnd <= viewStart) return 0
+  const end = start + size
+  if (start >= viewStart && end <= viewEnd) return 0
+  if (size >= viewEnd - viewStart) return (viewStart + viewEnd) / 2 - (start + size / 2)
+  if (start < viewStart) return viewStart - start
+  return viewEnd - end
+}
+
+function hitInView(rect: ScreenRect, viewW: number, viewBottom: number): boolean {
+  const left = Math.max(rect.left, PAN_EDGE)
+  const right = Math.min(rect.left + rect.width, viewW - PAN_EDGE)
+  const top = Math.max(rect.top, PAN_EDGE)
+  const bottom = Math.min(rect.top + rect.height, viewBottom - PAN_EDGE)
+  return right - left >= Math.min(24, rect.width) && bottom - top >= Math.min(12, rect.height)
+}
+
+function slotHitFor(index: number, cover: CoverTransform, viewW: number, viewH: number, build: boolean): ScreenRect {
+  const frame = slotFrame(index, null)
+  return build ? glowSlotHit(frame, cover, viewW, viewH) : slotHitRect(frame, cover)
+}
+
+/**
+ * Smallest pan that brings a slot hit onto the view.
+ * If any listed slot is already reachable, the camera stays put.
+ */
+export function panToShowSlots(
+  viewW: number,
+  viewH: number,
+  pan: CameraPan,
+  slotIndexes: readonly number[],
+  build = false,
+): CameraPan {
+  const current = clampPan(viewW, viewH, pan)
+  if (slotIndexes.length === 0) return current
+  const viewBottom = build ? buildStripRect(viewW, viewH).top : viewH
+  const hitAt = (camera: CameraPan, index: number) => slotHitFor(index, plazaTransform(viewW, viewH, build, camera), viewW, viewH, build)
+  if (slotIndexes.some((index) => hitInView(hitAt(current, index), viewW, viewBottom))) return current
+  let best = current
+  let bestDist = Number.POSITIVE_INFINITY
+  let fallback = current
+  let fallbackDist = Number.POSITIVE_INFINITY
+  for (const index of slotIndexes) {
+    const hit = hitAt(current, index)
+    const shift = {
+      x: deltaToFit(hit.left, hit.width, PAN_EDGE, viewW - PAN_EDGE),
+      y: deltaToFit(hit.top, hit.height, PAN_EDGE, viewBottom - PAN_EDGE),
+    }
+    const candidate = clampPan(viewW, viewH, { x: current.x + shift.x, y: current.y + shift.y })
+    const dist = Math.hypot(candidate.x - current.x, candidate.y - current.y)
+    if (dist < fallbackDist) {
+      fallback = candidate
+      fallbackDist = dist
+    }
+    if (dist < bestDist && hitInView(hitAt(candidate, index), viewW, viewBottom)) {
+      best = candidate
+      bestDist = dist
+    }
+  }
+  return bestDist < Number.POSITIVE_INFINITY ? best : fallback
 }
 
 export function toScreen(point: PlazaPoint, cover: CoverTransform): PlazaPoint {
@@ -208,12 +316,16 @@ export function clearOfDock(rect: ScreenRect, dockTop: number): ScreenRect {
   }
 }
 
+/** Empty pads stay finger-sized on short landscape screens. */
+const MIN_SLOT_HIT = 44
+
 /** Click pad on the stall's feet. Tall sprite boxes overlap the next rank. */
 export function slotHitRect(frame: SlotFrame, cover: CoverTransform): ScreenRect {
   const foot = toScreen(frame, cover)
   const width = frame.rx * 2 * cover.scale
-  const above = frame.height * 0.2 * cover.scale
+  let above = frame.height * 0.2 * cover.scale
   const below = 8 * cover.scale
+  if (above + below < MIN_SLOT_HIT) above += MIN_SLOT_HIT - (above + below)
   return {
     left: foot.x - width / 2,
     top: foot.y - above,

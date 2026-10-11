@@ -13,6 +13,9 @@ import {
   characterFootprint,
   coverTransform,
   plazaTransform,
+  clampPan,
+  panRange,
+  panToShowSlots,
   depthSort,
   layoutScene,
   pathPoint,
@@ -26,6 +29,7 @@ import {
   slotHitRect,
   spriteScreenRect,
   standPoint,
+  toScreen,
   footprintsOverlap,
   facingFromStep,
   walkFacing,
@@ -241,6 +245,121 @@ describe('slot frames', () => {
     expect(rect.height).toBeCloseTo(sprite!.drawH)
     const path = pathPoint(sparrow?.position ?? 0)
     expect(Math.hypot(sprite!.x - path.x, sprite!.y - path.y)).toBeGreaterThan(20)
+  })
+})
+
+describe('plaza camera pan', () => {
+  it('disables panning when the cover already fills the view', () => {
+    for (const [viewW, viewH] of [
+      [1920, 1080],
+      [1280, 720],
+    ] as const) {
+      expect(panRange(viewW, viewH)).toEqual({ minX: 0, maxX: 0, minY: 0, maxY: 0 })
+      expect(clampPan(viewW, viewH, { x: 80, y: -40 })).toEqual({ x: 0, y: 0 })
+      expect(plazaTransform(viewW, viewH, false, { x: 80, y: -40 })).toEqual(coverTransform(viewW, viewH))
+    }
+  })
+
+  it('clamps horizontal pan on a portrait phone and vertical pan on a short wide view', () => {
+    const phone = panRange(390, 844)
+    expect(phone.maxX).toBeGreaterThan(200)
+    expect(phone.minX).toBeCloseTo(-phone.maxX)
+    expect(phone.minY).toBe(0)
+    expect(phone.maxY).toBe(0)
+    expect(clampPan(390, 844, { x: 9999, y: 40 })).toEqual({ x: phone.maxX, y: 0 })
+    expect(clampPan(390, 844, { x: -9999, y: -40 })).toEqual({ x: phone.minX, y: 0 })
+
+    const wide = panRange(1600, 700)
+    expect(wide.minX).toBe(0)
+    expect(wide.maxX).toBe(0)
+    expect(wide.maxY).toBeCloseTo(100, 0)
+    expect(clampPan(1600, 700, { x: 30, y: 9999 }).y).toBeCloseTo(wide.maxY)
+    expect(clampPan(1600, 700, { x: 30, y: 9999 }).x).toBe(0)
+  })
+
+  it('keeps the plaza edges flush with the screen at the pan limits', () => {
+    const range = panRange(390, 844)
+    const showLeft = plazaTransform(390, 844, false, { x: range.maxX, y: 0 })
+    const showRight = plazaTransform(390, 844, false, { x: range.minX, y: 0 })
+    expect(showLeft.offsetX).toBeCloseTo(0, 4)
+    expect(showLeft.offsetX + PLAZA_W * showLeft.scale).toBeGreaterThanOrEqual(390 - 0.01)
+    expect(showRight.offsetX + PLAZA_W * showRight.scale).toBeCloseTo(390, 4)
+    expect(showRight.offsetX).toBeLessThanOrEqual(0.01)
+
+    const short = panRange(1600, 700)
+    const showTop = plazaTransform(1600, 700, false, { x: 0, y: short.maxY })
+    expect(showTop.offsetY).toBeCloseTo(0, 4)
+    expect(showTop.offsetY + PLAZA_H * showTop.scale).toBeGreaterThanOrEqual(700 - 0.01)
+  })
+
+  it('shifts slot, glow, sprite, and anchor hits by the same offset as the camera', () => {
+    const pan = { x: 180, y: 40 }
+    const base = plazaTransform(390, 844, false)
+    const moved = plazaTransform(390, 844, false, pan)
+    expect(moved.offsetX - base.offsetX).toBeCloseTo(180, 4)
+    expect(moved.offsetY - base.offsetY).toBeCloseTo(0, 4)
+
+    const frame = slotFrame(8, 'ice')
+    const foot = toScreen(frame, moved)
+    const still = toScreen(frame, base)
+    const dx = foot.x - still.x
+    const dy = foot.y - still.y
+    expect(dx).toBeCloseTo(180, 4)
+    expect(dy).toBeCloseTo(0, 4)
+
+    const pairs = [
+      [slotHitRect(frame, base), slotHitRect(frame, moved)],
+      [glowSlotHit(frame, base, 390, 844), glowSlotHit(frame, moved, 390, 844)],
+      [screenRect(frame, base), screenRect(frame, moved)],
+    ] as const
+    for (const [from, to] of pairs) {
+      expect(to.left - from.left).toBeCloseTo(dx, 4)
+      expect(to.top - from.top).toBeCloseTo(dy, 4)
+      expect(to.left + to.width / 2).toBeCloseTo(foot.x, 4)
+    }
+
+    const scene = layoutScene(streetWith({ visitors: [visitor('cat', 8, 8)], staff: [] }), 0)
+    const sprite = scene.find((item) => item.id === 'visitor-v-cat')
+    expect(sprite).toBeTruthy()
+    const spriteFrom = spriteScreenRect(sprite!, base)
+    const spriteTo = spriteScreenRect(sprite!, moved)
+    expect(spriteTo.left - spriteFrom.left).toBeCloseTo(dx, 4)
+    expect(spriteTo.top - spriteFrom.top).toBeCloseTo(dy, 4)
+    expect(spriteTo.left + spriteTo.width / 2).toBeCloseTo(sprite!.x * moved.scale + moved.offsetX, 4)
+  })
+
+  it('keeps landscape slot hits at least 44px tall and leaves desktop pads alone', () => {
+    const desktopCover = coverTransform(1280, 720)
+    const desktopFrame = slotFrame(11, null)
+    const desktop = slotHitRect(desktopFrame, desktopCover)
+    expect(desktop.height).toBeCloseTo(desktopFrame.height * 0.2 * desktopCover.scale + 8 * desktopCover.scale)
+    expect(desktop.height).toBeGreaterThanOrEqual(44)
+    const phone = coverTransform(844, 390)
+    for (let index = 0; index < PLAZA_SLOTS.length; index += 1) {
+      expect(slotHitRect(slotFrame(index, null), phone).height).toBeGreaterThanOrEqual(44)
+    }
+  })
+
+  it('pans just enough to reveal an off-screen slot and leaves a visible one alone', () => {
+    const centered = { x: 0, y: 0 }
+    expect(panToShowSlots(390, 844, centered, [3], false)).toEqual(centered)
+    expect(panToShowSlots(390, 844, centered, [0, 3], false)).toEqual(centered)
+
+    const shown = panToShowSlots(390, 844, centered, [0], false)
+    expect(shown.x).toBeGreaterThan(0)
+    const cover = plazaTransform(390, 844, false, shown)
+    const hit = slotHitRect(slotFrame(0, null), cover)
+    expect(hit.left).toBeGreaterThanOrEqual(12 - 0.01)
+    expect(hit.left + hit.width).toBeLessThanOrEqual(390 - 12 + 0.01)
+
+    const wide = plazaTransform(390, 844, true, { x: 120, y: 0 })
+    const plain = plazaTransform(390, 844, false, { x: 120, y: 0 })
+    expect(wide.offsetX).toBeCloseTo(plain.offsetX, 4)
+    const strip = buildStripRect(390, 844)
+    for (const index of [9, 14]) {
+      const slot = PLAZA_SLOTS[index] as { x: number; y: number }
+      expect(slot.y * wide.scale + wide.offsetY).toBeLessThan(strip.top)
+    }
   })
 })
 

@@ -270,13 +270,15 @@ input {
   display: block;
   width: 100%;
   height: 100%;
+  touch-action: none;
+  user-select: none;
 }
 
 .hud {
   position: absolute;
   z-index: 5;
-  top: max(10px, 0.8vw);
-  left: max(12px, 1vw);
+  top: calc(max(10px, 0.8vw) + env(safe-area-inset-top, 0px));
+  left: calc(max(12px, 1vw) + env(safe-area-inset-left, 0px));
   display: flex;
   flex-wrap: nowrap;
   gap: max(8px, 0.5vw);
@@ -405,6 +407,8 @@ input {
   background: transparent;
   border-color: transparent;
   color: transparent;
+  touch-action: none;
+  user-select: none;
 }
 
 .animal-hit { border-radius: 999px; }
@@ -427,6 +431,7 @@ input {
 }
 
 .build-strip-bar, .build-cards { display: flex; gap: 8px; }
+.build-cards { touch-action: pan-x; }
 
 .build-strip-bar { flex-direction: column; justify-content: center; }
 
@@ -567,21 +572,71 @@ input {
 
 .animal-card { background: #fff4d8; }
 
-.banner { position: absolute; left: 16px; top: 8px; z-index: 6; }
-
-.phone-charm {
+.pan-hint {
   position: absolute;
-  z-index: 9;
-  right: 8px;
-  bottom: 0;
-  width: 92px;
-  height: 150px;
-  padding: 0;
-  border: none;
-  background: transparent;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: 0.42;
 }
 
-.phone-charm img {
+.pan-hint.is-fresh { animation: pan-hint-pulse 1.8s ease-in-out infinite; }
+
+.pan-hint-left, .pan-hint-right {
+  top: 46%;
+  width: 28px;
+  height: 64px;
+}
+
+.pan-hint-left { left: calc(2px + env(safe-area-inset-left, 0px)); }
+.pan-hint-right { right: calc(2px + env(safe-area-inset-right, 0px)); }
+
+.pan-hint-up, .pan-hint-down {
+  left: 50%;
+  width: 64px;
+  height: 28px;
+  transform: translateX(-50%);
+}
+
+.pan-hint-up { top: calc(8px + env(safe-area-inset-top, 0px)); }
+.pan-hint-down { bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+
+.pan-chevron {
+  width: 12px;
+  height: 12px;
+  border-left: 3px solid rgba(255, 246, 200, 0.92);
+  border-bottom: 3px solid rgba(255, 246, 200, 0.92);
+  filter: drop-shadow(0 1px 1px rgba(20, 16, 12, 0.45));
+}
+
+.pan-hint-left .pan-chevron { transform: rotate(45deg); margin-left: 6px; }
+.pan-hint-right .pan-chevron { transform: rotate(-135deg); margin-right: 6px; }
+.pan-hint-up .pan-chevron { transform: rotate(135deg); }
+.pan-hint-down .pan-chevron { transform: rotate(-45deg); }
+
+@keyframes pan-hint-pulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.72; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pan-hint.is-fresh { animation: none; }
+}
+
+.banner { position: absolute; left: 16px; top: 8px; z-index: 6; }
+
+.phone-charm-anchor {
+  position: absolute;
+  z-index: 9;
+  right: calc(8px + env(safe-area-inset-right, 0px));
+  bottom: env(safe-area-inset-bottom, 0px);
+  width: 92px;
+  height: 150px;
+  pointer-events: none;
+}
+
+.phone-charm-anchor img {
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -589,7 +644,19 @@ input {
   transform-origin: 50% 8%;
 }
 
-.phone-charm.sway img { animation: charm-sway 2.8s ease-in-out infinite; }
+.phone-charm-anchor img.sway { animation: charm-sway 2.8s ease-in-out infinite; }
+
+.phone-charm {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  pointer-events: auto;
+  clip-path: polygon(37px 0, 61px 0, 61px 72px, 88px 80px, 88px 146px, 4px 146px, 4px 80px, 37px 72px);
+}
 
 .phone-badge {
   position: absolute;
@@ -600,6 +667,7 @@ input {
   border-radius: 99px;
   background: #d64545;
   border: 2px solid #fffaf3;
+  pointer-events: auto;
 }
 
 .phone-layer { position: absolute; inset: 0; z-index: 8; }
@@ -616,8 +684,8 @@ input {
 
 .phone {
   position: absolute;
-  right: 12px;
-  bottom: 118px;
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  bottom: calc(118px + env(safe-area-inset-bottom, 0px));
   z-index: 1;
   aspect-ratio: 288 / 425;
   height: calc(var(--phone-ratio, 0.6) * 100%);
@@ -667,7 +735,7 @@ input {
   font-size: 15px;
 }
 
-.phone-body { flex: 1; min-height: 0; overflow: auto; padding: 4px 6px 6px; }
+.phone-body { flex: 1; min-height: 0; overflow: auto; padding: 4px 6px 6px; touch-action: auto; }
 
 .phone-apps {
   display: grid;
@@ -803,8 +871,8 @@ input {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .phone-charm img, .phone { animation: none; }
+  .phone-charm-anchor img, .phone { animation: none; }
 }
 
-[data-reduce-motion='1'] .phone-charm img,
+[data-reduce-motion='1'] .phone-charm-anchor img,
 [data-reduce-motion='1'] .phone { animation: none; }

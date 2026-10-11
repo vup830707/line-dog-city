@@ -37,17 +37,18 @@ export function PhoneCharm({
   onClick: () => void
 }) {
   return (
-    <button
-      type="button"
-      className={reduceMotion ? 'phone-charm' : 'phone-charm sway'}
-      data-testid="phone-charm"
-      aria-label={open ? '關閉手機' : '打開手機'}
-      aria-pressed={open}
-      onClick={onClick}
-    >
-      <img src={assetMap.phone.charm} alt="" />
-      {badge ? <span className="phone-badge" data-testid="phone-badge" /> : null}
-    </button>
+    <span className="phone-charm-anchor">
+      <img className={reduceMotion ? undefined : 'sway'} src={assetMap.phone.charm} alt="" />
+      <button
+        type="button"
+        className="phone-charm"
+        data-testid="phone-charm"
+        aria-label={open ? '關閉手機' : '打開手機'}
+        aria-pressed={open}
+        onClick={onClick}
+      />
+      {badge ? <span className="phone-badge" data-testid="phone-badge" onClick={onClick} /> : null}
+    </span>
   )
 }
 
