@@ -3,7 +3,6 @@ import { createNewGame } from '../game/newGame'
 import { gameConfig } from '../config'
 import { stall, streetWith, visitor } from '../rules/fixtures'
 import {
-  ANIMAL_ART,
   CUSTOMER_H,
   PLAZA_H,
   PLAZA_SLOTS,
@@ -28,6 +27,7 @@ import {
   spriteScreenRect,
   standPoint,
   footprintsOverlap,
+  facingFromStep,
   walkFacing,
 } from './plaza'
 
@@ -119,7 +119,8 @@ describe('depth sort', () => {
     expect(order.indexOf(`slot-${far}`)).toBeLessThan(order.indexOf(`slot-${near}`))
     expect(order.indexOf(`slot-${far}`)).toBeLessThan(order.indexOf('visitor-v-cat'))
     expect(scene.find((sprite) => sprite.id === `slot-${far}`)?.src).toBe(STALL_ART.ice.src)
-    expect(scene.find((sprite) => sprite.id === 'visitor-v-cat')?.src).toBe(ANIMAL_ART.cat.src)
+    expect(scene.find((sprite) => sprite.id === 'visitor-v-cat')?.src).toBe('assets/art25/walk/cat-back-2.png')
+    expect(scene.find((sprite) => sprite.id === 'visitor-v-cat')?.bob).toBe(false)
     expect(scene.find((sprite) => sprite.id === 'visitor-v-cat')?.shadow).toBe(true)
     expect(scene.find((sprite) => sprite.id === `slot-${far}`)?.shadow).toBe(false)
   })
@@ -281,11 +282,54 @@ describe('walking poses', () => {
     expect(walkFacing(0, -4)).toEqual({ facing: 'back', mirror: false })
     expect(walkFacing(-6, 1).mirror).toBe(true)
     expect(walkFacing(-6, 1).facing).toBe('front')
+    expect(walkFacing(10, 0)).toEqual({ facing: 'front', mirror: false })
+    expect(walkFacing(-10, 0)).toEqual({ facing: 'front', mirror: true })
   })
 
-  it('bobs characters and returns to the baseline', () => {
-    expect(bobOffset(0, 0)).toBe(0)
-    expect(bobOffset((Math.PI / 2) * 160, 0)).toBeCloseTo(5)
-    expect(Math.abs(bobOffset(999, 1.2))).toBeLessThanOrEqual(5)
+  it('keeps the last facing while standing or taking a tiny step', () => {
+    const held = { facing: 'back' as const, mirror: true }
+    expect(facingFromStep(0.1, -0.2, true, held)).toEqual(held)
+    expect(facingFromStep(0.7, -4.9, false, held)).toEqual(held)
+    expect(facingFromStep(0.7, -4.9, true, { facing: 'front', mirror: true })).toEqual({ facing: 'back', mirror: true })
+  })
+
+  it('selects back frames when staff walk up-screen, even if the path tangent points sideways', () => {
+    const street = createNewGame({ seed: 1, now: 1 }, gameConfig).street
+    const pose = new Map()
+    const at = (x: number, y: number) => ({ x, y, walking: true, faceX: 8, faceY: 1 })
+    const motion = (whiteY: number, brownY: number, whiteX = 600) => ({
+      pose,
+      staffAt: {
+        'dog-white': at(whiteX, whiteY),
+        'dog-brown': at(740, brownY),
+      },
+    })
+    layoutScene(street, 0, motion(800, 820))
+    const scene = layoutScene(street, 200, motion(795.1, 818.4, 600.7))
+    const white = scene.find((sprite) => sprite.id === 'staff-dog-white')
+    const brown = scene.find((sprite) => sprite.id === 'staff-dog-brown')
+    expect(white?.src).toMatch(/white-puppy-back-/)
+    expect(white?.mirror).toBe(true)
+    expect(brown?.src).toMatch(/brown-puppy-back-/)
+    expect(walkFacing(8, 1)).toEqual({ facing: 'front', mirror: false })
+  })
+
+  it('selects back frames when a walking visitor steps up-screen', () => {
+    const street = createNewGame({ seed: 1, now: 1 }, gameConfig).street
+    const pose = new Map()
+    layoutScene(street, 0, { pose })
+    const sample = pose.get('visitor-open-2')
+    expect(sample).toBeTruthy()
+    sample!.y += 6
+    sample!.facing = { facing: 'front', mirror: true }
+    const scene = layoutScene(street, 200, { pose })
+    expect(scene.find((sprite) => sprite.id === 'visitor-open-2')?.src).toMatch(/hamster-back-/)
+  })
+
+  it('bobs only while walking, in time with a step, and returns to the baseline', () => {
+    expect(bobOffset(0, 0, true, 6)).toBe(0)
+    expect(bobOffset(1000 / 6, 0, true, 6)).toBeCloseTo(5)
+    expect(bobOffset(1000 / 6, 0, false, 6)).toBe(0)
+    expect(Math.abs(bobOffset(999, 1.2, true, 6))).toBeLessThanOrEqual(5)
   })
 })

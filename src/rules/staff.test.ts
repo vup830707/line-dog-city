@@ -3,7 +3,7 @@ import { gameConfig } from '../config'
 import { satisfactionOf } from './animals'
 import { decor, stall, streetWith, visitor } from './fixtures'
 import { streetTick } from './street'
-import { applyStaff, cleanPower, emptyShelfHint, greetPower, restockInterval, restockStaffWarning } from './staff'
+import { applyStaff, cleanPower, emptyShelfHint, greetPower, restockInterval, restockStaffWarning, staffWorkTarget } from './staff'
 
 describe('staff jobs and levels', () => {
   it('restocks faster at higher levels and never charges coins', () => {
@@ -155,5 +155,36 @@ describe('staff jobs and levels', () => {
     })
     expect(emptyShelfHint(empty)).toBe('沒人補貨，攤位賣完了。')
     expect(restockStaffWarning(streetWith({ slots: [stall('ichiban', 'box')], staff: greeting.staff }))).toBeNull()
+  })
+
+  it('exposes a work target without changing the street', () => {
+    const slots = streetWith().slots.slice()
+    slots[1] = stall('ice', 'ice')
+    slots[4] = stall('can', 'can')
+    slots[12] = decor('seat', 'seat')
+    const street = streetWith({
+      day: 1,
+      phase: 'dusk',
+      slots,
+      stock: { ice: 0, can: 3 },
+      staff: [
+        { id: 'dog-white', name: '雪球', kind: 'dog', dog: 'white', job: 'restock', level: 1 },
+        { id: 'dog-brown', name: '可可', kind: 'dog', dog: 'brown', job: 'clean', level: 1 },
+        { id: 'hire-munia', name: '文鳥', kind: 'hire', hireSpecies: 'munia', job: 'greet', level: 1 },
+        { id: 'hire-ferret', name: '雪貂', kind: 'hire', hireSpecies: 'ferret', job: 'rest', level: 1 },
+      ],
+    })
+    const before = JSON.stringify(street)
+    const restock = staffWorkTarget(street, street.staff[0]!, gameConfig)
+    const clean = staffWorkTarget(street, street.staff[1]!, gameConfig)
+    const greet = staffWorkTarget(street, street.staff[2]!, gameConfig)
+    const rest = staffWorkTarget(street, street.staff[3]!, gameConfig)
+    expect(restock).toEqual({ kind: 'stall', slot: 1 })
+    expect(clean.kind).toBe('clean')
+    if (clean.kind === 'clean') expect(clean.slot).not.toBe(1)
+    expect(greet).toEqual({ kind: 'greet' })
+    expect(rest).toEqual({ kind: 'rest', slot: 12 })
+    expect(JSON.stringify(street)).toBe(before)
+    expect(staffWorkTarget(street, street.staff[0]!, gameConfig)).toEqual(restock)
   })
 })

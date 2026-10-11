@@ -8,14 +8,20 @@ import {
   bobOffset,
   plazaTransform,
   layoutScene,
+  PATH_ENTRANCE,
+  PLAZA_PATH,
   PLAZA_SLOTS,
   screenRect,
   glowSlotHit,
   slotFrame,
   slotHitRect,
   spriteScreenRect,
+  staffDestination,
   toScreen,
+  type PoseSample,
+  type StaffPlacement,
 } from '../canvas/plaza'
+import { staffWalkPoint, trackStalls, type StaffTrip } from '../canvas/walk'
 import { gameConfig } from '../config'
 import {
   buyBox,
@@ -105,6 +111,15 @@ export function StreetScreen({
   const buildModeRef = useRef(false)
   const buildFxRef = useRef<{ slot: number; start: number } | null>(null)
   const reduceRef = useRef(false)
+  const motionRef = useRef<{
+    tick: number
+    tickAt: number
+    previous: Street | null
+    current: Street | null
+    leaving: Map<string, number>
+    staff: Map<string, StaffTrip>
+    pose: Map<string, PoseSample>
+  }>({ tick: -1, tickAt: 0, previous: null, current: null, leaving: new Map(), staff: new Map(), pose: new Map() })
   const [hudBottom, setHudBottom] = useState(64)
   streetRef.current = street
   viewRef.current = view
@@ -211,7 +226,48 @@ export function StreetScreen({
         sized.dpr = dpr
       }
       const ctx = canvas.getContext('2d')
-      const scene = layoutScene(streetRef.current, now)
+      const streetNow = streetRef.current
+      const motion = motionRef.current
+      const reduce = reduceRef.current
+      trackStalls(motion.leaving, streetNow.visitors, PLAZA_SLOTS.length)
+      if (motion.tick !== streetNow.tick) {
+        motion.previous = motion.current
+        motion.current = streetNow
+        motion.tick = streetNow.tick
+        motion.tickAt = now
+      } else {
+        motion.current = streetNow
+      }
+      const alpha = motion.previous ? Math.min(1, Math.max(0, (now - motion.tickAt) / gameConfig.tickMs)) : 1
+      const staffAt: Record<string, StaffPlacement> = {}
+      for (const member of streetNow.staff) {
+        const dest = staffDestination(streetNow, member.id)
+        let trip = motion.staff.get(member.id)
+        if (!trip || trip.key !== dest.key) {
+          const from = trip ? staffWalkPoint(trip, now, PLAZA_PATH, reduce).point : PATH_ENTRANCE
+          trip = { key: dest.key, from, to: dest.point, started: now }
+          motion.staff.set(member.id, trip)
+        }
+        const visual = staffWalkPoint(trip, now, PLAZA_PATH, reduce)
+        staffAt[member.id] = {
+          x: visual.point.x,
+          y: visual.point.y,
+          walking: visual.walking,
+          faceX: visual.tangent.x,
+          faceY: visual.tangent.y,
+        }
+      }
+      for (const id of [...motion.staff.keys()]) {
+        if (!streetNow.staff.some((member) => member.id === id)) motion.staff.delete(id)
+      }
+      const scene = layoutScene(streetNow, now, {
+        alpha,
+        previous: motion.previous,
+        reduceMotion: reduce,
+        leavingFrom: motion.leaving,
+        staffAt,
+        pose: motion.pose,
+      })
       const glow = new Set(glowSlotsRef.current)
       let spark: { x: number; y: number; t: number } | null = null
       const fx = buildFxRef.current
@@ -244,7 +300,7 @@ export function StreetScreen({
         layer.querySelectorAll<HTMLButtonElement>('[data-visitor]').forEach((button) => {
           const sprite = scene.find((item) => item.id === `visitor-${button.dataset.visitor}`)
           if (!sprite) return
-          const bob = sprite.bob ? bobOffset(now, sprite.seed) * coverNow.scale : 0
+          const bob = sprite.bob ? bobOffset(now, sprite.seed, true, gameConfig.walkFps) * coverNow.scale : 0
           const rect = spriteScreenRect(sprite, coverNow, bob)
           button.style.left = `${rect.left}px`
           button.style.top = `${rect.top}px`
