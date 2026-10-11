@@ -26,7 +26,7 @@ test('capture the 2.5D plaza at 1920x1080 and 1280x720', async ({ page }) => {
   await expect(page.getByTestId('slot-1')).toBeVisible()
   await page.screenshot({ path: `${dir}/plaza-1920.png` })
 
-  await page.getByTestId('slot-5').click()
+  await page.getByTestId('slot-1').click()
   const money1920 = await page.getByTestId('money').boundingBox()
   const card1920 = await page.getByTestId('stall-card').boundingBox()
   expect(card1920).not.toBeNull()
@@ -35,7 +35,7 @@ test('capture the 2.5D plaza at 1920x1080 and 1280x720', async ({ page }) => {
   expect(card1920!.y).toBeGreaterThanOrEqual((money1920?.y ?? 0) + (money1920?.height ?? 0) - 1)
   expect(card1920!.x + card1920!.width).toBeLessThanOrEqual(1920)
   expect(card1920!.y + card1920!.height).toBeLessThanOrEqual(1080)
-  await expect(page.getByTestId('close-box')).toBeVisible()
+  await expect(page.getByTestId('stall-products')).toBeVisible()
   await page.screenshot({ path: `${dir}/stall-card-1920.png` })
 
   await page.setViewportSize({ width: 1280, height: 720 })

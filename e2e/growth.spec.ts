@@ -30,13 +30,18 @@ test('growth screens show blockers, a level-3 stall, the codex, and the market l
     await shot(page, `plaza-blockers-${viewport.width}`)
   }
 
-  await page.evaluate(() => window.__puppy?.setStallLevel(1, 3))
+  await page.evaluate(() => window.__puppy?.setStallLevel(1, 2))
   await page.getByTestId('slot-1').click()
-  await expect(page.getByTestId('stall-products')).toBeVisible()
   await expect(page.getByTestId('upgrade-stall')).toContainText('金邊')
   for (const viewport of viewports) {
     await page.setViewportSize(viewport)
     await shot(page, `stall-card-${viewport.width}`)
+  }
+  await page.evaluate(() => window.__puppy?.setStallLevel(1, 3))
+  await expect(page.getByTestId('stall-products')).toContainText('聖代')
+  await expect(page.getByTestId('upgrade-stall')).toContainText('已經升到最高')
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport)
     await shot(page, `lv3-overlays-${viewport.width}`)
   }
 
