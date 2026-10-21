@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { assetMap } from '../assets/assetMap'
 import { drawPlaza } from '../canvas/drawPlaza'
 import { stepLights, type LightState } from '../canvas/light'
@@ -59,7 +59,7 @@ import { WEATHER_LABEL } from './labels'
 const artRoot = import.meta.env.BASE_URL
 const SEEN_LETTERS = 'puppy-seen-letter-ids'
 const REDUCE_MOTION = 'puppy-reduce-motion'
-const PAN_IGNORE = '.hud, .phone, .phone-scrim, .phone-charm, .phone-badge, .build-strip, .stall-card, .animal-card, .offline-note, .level-banner, .confirm-layer, .toast, .restock-hint'
+const PAN_IGNORE = '.hud, .phone, .phone-scrim, .phone-charm, .phone-badge, .build-strip, .stall-card, .animal-card, .offline-layer, .offline-backdrop, .offline-note, .level-banner, .confirm-layer, .toast, .restock-hint'
 /** A mouse drag emits its click immediately. A touch drag does not, so ignore only that same-gesture click. */
 const CLICK_SUPPRESS_MS = 300
 
@@ -176,6 +176,7 @@ export function StreetScreen({
   const freshSpecies = street.seenSpecies.some((id) => !street.ackedSpecies.includes(id))
   const toastText = street.pendingToasts[street.pendingToasts.length - 1] ?? ''
   const saveRef = useRef(save)
+  const offlineCloseRef = useRef<HTMLButtonElement | null>(null)
   saveRef.current = save
   useEffect(() => {
     if (!toastText) return
@@ -460,8 +461,24 @@ export function StreetScreen({
   }, [buildItem, street])
 
   useEffect(() => {
+    if (!street.offlineNote) return
+    offlineCloseRef.current?.focus()
+  }, [street.offlineNote])
+
+  const dismissOffline = useCallback(() => {
+    const current = saveRef.current
+    if (!current.street.offlineNote) return
+    onChange({ ...current, savedAt: Date.now(), street: { ...current.street, offlineNote: null } })
+  }, [onChange])
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
+      if (saveRef.current.street.offlineNote) {
+        event.preventDefault()
+        dismissOffline()
+        return
+      }
       if (phone !== 'closed') {
         if (reduceMotion || prefersReducedMotion()) {
           setPhone('closed')
@@ -476,7 +493,7 @@ export function StreetScreen({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [phone, buildMode, reduceMotion])
+  }, [phone, buildMode, reduceMotion, dismissOffline])
 
   function commitPlace(slot: number, item: PlaceItem) {
     const result = placeItem(street, slot, item, gameConfig)
@@ -767,9 +784,26 @@ export function StreetScreen({
         </p>
       </header>
       {street.offlineNote ? (
-        <p className="offline-note" data-testid="offline-note" data-offline-ticks={street.lastOfflineTicks}>
-          {street.offlineNote}
-        </p>
+        <div className="offline-layer">
+          <button type="button" className="offline-backdrop" data-testid="offline-backdrop" aria-label="關閉" onClick={dismissOffline} />
+          <div
+            className="offline-note"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="offline-note-text"
+            data-testid="offline-note"
+            data-offline-ticks={street.lastOfflineTicks}
+          >
+            <div className="offline-body">
+              <p id="offline-note-text">{street.offlineNote}</p>
+            </div>
+            <div className="offline-footer">
+              <button type="button" data-testid="offline-close" ref={offlineCloseRef} onClick={dismissOffline}>
+                好
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
       {street.levelUpBanner != null ? (
         <button

@@ -4,6 +4,7 @@ import { createNewGame } from '../game/newGame'
 import { applyOffline, offlineSummary, offlineTickCount } from './offline'
 import { runTicks } from './street'
 import { streetWith } from './fixtures'
+import type { EventNote, NightEventKind } from './types'
 
 describe('offline earnings', () => {
   it('matches the same number of seeded ticks and stops at 8 hours', () => {
@@ -71,16 +72,74 @@ describe('offline earnings', () => {
       visitors: ['sparrow', 'rabbit'],
       letters: 1,
       gifts: ['lantern'],
-      events: ['突然下雨了'],
+      events: [{ kind: 'rain' }],
     })
     expect(note).toContain('賺了 24 幣')
     expect(note).toContain('來過：夜鴨子、月兔。')
     expect(note).toContain('新信件 1 封。')
     expect(note).toContain('收到禮物：燈籠。')
-    expect(note).toContain('夜裡：突然下雨了。')
+    expect(note).toContain('夜裡：突然下雨 ×1。')
     const start = streetWith({ arrivals: [0], staff: [], rngState: 3, phaseTick: 0 })
     const offline = applyOffline(start, 8 * gameConfig.tickMs, gameConfig)
     expect(offline.street.offlineNote).toContain('來過：')
+  })
+
+  it('aggregates a full 60-entry event log by type', () => {
+    const cycle: { kind: NightEventKind; title: string }[] = [
+      { kind: 'festival-eve', title: '節日前夜，燈先掛上了' },
+      { kind: 'rain', title: '突然下雨了' },
+      { kind: 'merchant', title: '神秘商人走進來了' },
+    ]
+    const items = [
+      ...Array.from({ length: 12 }, () => cycle).flat(),
+      ...Array.from({ length: 18 }, () => ({ kind: 'rain' as const, title: '突然下雨了' })),
+      ...Array.from({ length: 6 }, () => ({ kind: 'merchant' as const, title: '神秘商人走進來了' })),
+    ]
+    const eventLog: EventNote[] = items.map((item, index) => {
+      const seq = index + 1
+      return {
+        id: `event-${seq}`,
+        seq,
+        day: seq,
+        kind: item.kind,
+        title: item.title,
+        body: '夜裡發生了一件小事。',
+        tick: seq,
+      }
+    })
+    expect(eventLog).toHaveLength(60)
+    const listed = eventLog.map((item) => item.title).join('、')
+    expect(listed).toContain('節日前夜，燈先掛上了、突然下雨了、神秘商人走進來了')
+
+    const note = offlineSummary({
+      ticks: 8 * 3600,
+      earned: 120,
+      config: gameConfig,
+      visitors: [],
+      letters: 0,
+      gifts: [],
+      events: eventLog,
+    })
+    expect(note).toContain('夜裡：節日前夜 ×12、突然下雨 ×30、神秘商人 ×18。')
+    expect(note).not.toContain('節日前夜，燈先掛上了')
+    expect(note).not.toContain('突然下雨了')
+    expect(note).not.toContain('神秘商人走進來了')
+    expect(note.length).toBeLessThan(listed.length / 2)
+
+    const start = streetWith({
+      eventLog,
+      eventSeq: 0,
+      arrivals: [],
+      staff: [],
+      visitors: [],
+      phase: 'dusk',
+      phaseTick: 0,
+    })
+    const away = applyOffline(start, gameConfig.tickMs, gameConfig)
+    expect(away.ticks).toBe(1)
+    expect(away.street.eventLog).toHaveLength(60)
+    expect(away.street.offlineNote).toContain('夜裡：節日前夜 ×12、突然下雨 ×30、神秘商人 ×18。')
+    expect(away.street.offlineNote).not.toContain('節日前夜，燈先掛上了、突然下雨了')
   })
 
   it('still lists the night line after the event log is full', () => {

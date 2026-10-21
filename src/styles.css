@@ -338,19 +338,66 @@ input {
 
 .restock-hint.below-toast { top: max(116px, 8vw); }
 
-.offline-note {
+.offline-layer {
   position: absolute;
-  z-index: 6;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(420px, calc(100% - 32px));
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding:
+    calc(12px + env(safe-area-inset-top, 0px))
+    calc(16px + env(safe-area-inset-right, 0px))
+    calc(12px + env(safe-area-inset-bottom, 0px))
+    calc(16px + env(safe-area-inset-left, 0px));
+}
+
+.offline-backdrop {
+  position: absolute;
+  inset: 0;
   margin: 0;
-  padding: 14px 16px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  min-height: 0;
+  background: rgba(20, 16, 12, 0.35);
+}
+
+.offline-note {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(420px, 100%);
+  max-height: calc(80vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
   background: rgba(255, 250, 243, 0.96);
   border: 2px solid #24170f;
   border-radius: 16px;
   text-align: center;
+}
+
+.offline-body {
+  overflow: auto;
+  min-height: 0;
+  padding: 14px 16px 8px;
+}
+
+.offline-body p { margin: 0; }
+
+.offline-footer {
+  position: sticky;
+  bottom: 0;
+  flex: 0 0 auto;
+  padding: 8px 16px 14px;
+  background: rgba(255, 250, 243, 0.98);
+}
+
+.offline-footer button {
+  width: 100%;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .stall-card {

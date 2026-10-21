@@ -1,5 +1,26 @@
 import { streetTick } from './street'
-import type { DecorType, GameConfig, Species, Street } from './types'
+import type { DecorType, GameConfig, NightEventKind, Species, Street } from './types'
+
+const NIGHT_SUMMARY_LABEL: Record<NightEventKind, string> = {
+  'festival-eve': '節日前夜',
+  rain: '突然下雨',
+  merchant: '神秘商人',
+}
+
+const NIGHT_SUMMARY_ORDER: readonly NightEventKind[] = ['festival-eve', 'rain', 'merchant']
+
+function nightLine(events: readonly { kind: NightEventKind }[]): string | null {
+  const counts = new Map<NightEventKind, number>()
+  for (const event of events) {
+    if (!NIGHT_SUMMARY_LABEL[event.kind]) continue
+    counts.set(event.kind, (counts.get(event.kind) ?? 0) + 1)
+  }
+  const parts = NIGHT_SUMMARY_ORDER.filter((kind) => (counts.get(kind) ?? 0) > 0).map(
+    (kind) => `${NIGHT_SUMMARY_LABEL[kind]} ×${counts.get(kind)}`,
+  )
+  if (parts.length === 0) return null
+  return `夜裡：${parts.join('、')}。`
+}
 
 export function offlineCapTicks(config: GameConfig): number {
   return Math.floor((config.offlineCapHours * 3_600_000) / config.tickMs)
@@ -30,7 +51,7 @@ export function offlineSummary(input: {
   visitors: readonly Species[]
   letters: number
   gifts: readonly DecorType[]
-  events: readonly string[]
+  events: readonly { kind: NightEventKind }[]
 }): string {
   const note = `你不在的時候，夜市自己轉了 ${offlineDurationLabel(input.ticks, input.config)}（上限 ${input.config.offlineCapHours} 小時），賺了 ${input.earned} 幣。`
   const extras: string[] = []
@@ -43,7 +64,8 @@ export function offlineSummary(input: {
     const names = input.gifts.map((id) => input.config.decorLabels[id])
     extras.push(`收到禮物：${names.join('、')}。`)
   }
-  if (input.events.length > 0) extras.push(`夜裡：${input.events.join('、')}。`)
+  const nights = nightLine(input.events)
+  if (nights) extras.push(nights)
   return note + extras.join('')
 }
 
@@ -84,7 +106,7 @@ export function applyOffline(street: Street, elapsedMs: number, config: GameConf
           visitors: [...seen],
           letters,
           gifts: addedGifts(giftsBefore, next.giftTokens),
-          events: next.eventLog.filter((item) => item.seq > seqBefore).map((item) => item.title),
+          events: next.eventLog.filter((item) => item.seq > seqBefore),
         })
       : null
   return { ticks, earned, street: { ...next, offlineNote: note, lastOfflineTicks: ticks } }
